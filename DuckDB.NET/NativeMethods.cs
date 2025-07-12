@@ -192,7 +192,7 @@ internal unsafe static partial class NativeMethods
     internal static partial duckdb_state duckdb_open_ext(string path, 
                                                          out _duckdb_database* database, 
                                                          _duckdb_config* config, 
-                                                         [MarshalUsing(typeof(FreeStringMarshaller))] out string out_error);
+                                                         [MarshalUsing(typeof(Utf8StringMarshallerWithFree))] out string out_error);
 
     [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
     internal static partial void duckdb_close(ref _duckdb_database* database);
@@ -250,12 +250,14 @@ internal unsafe static partial class NativeMethods
     internal static partial void duckdb_destroy_result(ref duckdb_result result);
 
     [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [return: MarshalUsing(typeof(Utf8StringMarshallerWithoutFree))]
     internal static partial string duckdb_result_error(ref duckdb_result result);
 
     [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
     internal static partial idx_t duckdb_column_count(ref duckdb_result result);
 
     [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [return: MarshalUsing(typeof(Utf8StringMarshallerWithoutFree))]
     internal static partial string duckdb_column_name(ref duckdb_result result, idx_t col);
 
     [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
