@@ -82,6 +82,30 @@ public unsafe class DuckDbCommand
         return (int)index;
     }
 
+    public void BindParameter<T>(int index, T value)
+    {
+        ThrowIfParamIndexOutOfRange(index);
+
+        var _nativeObject = DuckDbValue.CreateNativeObject(value);
+        if (_nativeObject == null)
+            throw new DuckDbException("Failed to create object wrapping value. ");
+
+        try
+        {
+            duckdb_state status;
+            lock (_mutex)
+            {
+                status = NativeMethods.duckdb_bind_value(_nativeStatement, index, _nativeObject);
+            }
+
+            DuckDbException.ThrowOnFailure(status, "Could not bind specified value to parameter. ");
+        }
+        finally
+        {
+            NativeMethods.duckdb_destroy_value(ref _nativeObject);
+        }
+    }
+
     #region Destruction
 
     private void DisposeImpl(bool disposing)
