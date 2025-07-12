@@ -92,7 +92,7 @@ public unsafe sealed class DuckDbResult : IDisposable
     }
 
     public bool ProcessNextChunk<TState, TResult>(TState state, 
-                                                  DuckDbResultChunkFunc<TState, TResult> action,
+                                                  DuckDbChunkReadingFunc<TState, TResult> action,
                                                   [MaybeNullWhen(false)] out TResult result)
     {
         _duckdb_data_chunk* nativeChunk;
@@ -176,7 +176,7 @@ public unsafe class DuckDbResultChunk : IRefCountedObject, IDisposable
 
     public int Length => _length;
 
-    public TResult ProcessContents<TState, TResult>(TState state, DuckDbResultChunkFunc<TState, TResult> func)
+    public TResult ProcessContents<TState, TResult>(TState state, DuckDbChunkReadingFunc<TState, TResult> func)
     {
         using var _ = this.UseRef();
         var reader = new DuckDbChunkReader(_nativeChunk, _columnInfo, _length);

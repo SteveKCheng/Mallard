@@ -15,7 +15,10 @@ namespace DuckDB;
 /// <typeparam name="TResult">
 /// Arbitrary return type from the user-defined function.  This type may not be a
 /// "ref struct", to prevent dangling pointers to inside the current chunk from being
-/// returned.
+/// returned.  (The presence of the return value is for convenience; even if this delegate
+/// has been defined to return void, user-defined code can still propagate results
+/// out of the function by assigning to "ref" members suitably defined  
+/// inside <typeparamref name="TState" />.)
 /// </typeparam>
 /// <param name="chunk">
 /// Gives (temporary) access to the current chunk.
@@ -27,7 +30,7 @@ namespace DuckDB;
 /// Whatever is desired.  Typically the return value would be the 
 /// result of some transformation in the chunk's data.
 /// </returns>
-public delegate TResult DuckDbResultChunkFunc<in TState, out TResult>(in DuckDbChunkReader chunk, TState state)
+public delegate TResult DuckDbChunkReadingFunc<in TState, out TResult>(in DuckDbChunkReader chunk, TState state)
     where TState : allows ref struct;
 
 /// <summary>
