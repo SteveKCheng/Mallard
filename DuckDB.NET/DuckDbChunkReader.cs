@@ -4,7 +4,7 @@ using System;
 namespace DuckDB;
 
 /// <summary>
-/// Encapsulates user-defined code that accesses <see cref="DuckDbResultChunkAccessor" />.
+/// Encapsulates user-defined code that accesses <see cref="DuckDbChunkReader" />.
 /// </summary>
 /// <typeparam name="TState">
 /// Type of arbitrary state that the user-defined code can take.  The state may be represented by 
@@ -27,7 +27,7 @@ namespace DuckDB;
 /// Whatever is desired.  Typically the return value would be the 
 /// result of some transformation in the chunk's data.
 /// </returns>
-public delegate TResult DuckDbResultChunkFunc<in TState, out TResult>(in DuckDbResultChunkAccessor chunk, TState state)
+public delegate TResult DuckDbResultChunkFunc<in TState, out TResult>(in DuckDbChunkReader chunk, TState state)
     where TState : allows ref struct;
 
 /// <summary>
@@ -40,15 +40,15 @@ public delegate TResult DuckDbResultChunkFunc<in TState, out TResult>(in DuckDbR
 /// <see cref="DuckDbResultChunkFunc{TState}" /> and cannot be accessed outside of that
 /// body.
 /// </remarks>
-public unsafe readonly ref struct DuckDbResultChunkAccessor
+public unsafe readonly ref struct DuckDbChunkReader
 {
     private readonly _duckdb_data_chunk* _nativeChunk;
     private readonly DuckDbResult.ColumnInfo[] _columnInfo;
     private readonly int _length;
 
-    internal DuckDbResultChunkAccessor(_duckdb_data_chunk* nativeChunk,
-                                       DuckDbResult.ColumnInfo[] columnInfo,
-                                       int length)
+    internal DuckDbChunkReader(_duckdb_data_chunk* nativeChunk,
+                                     DuckDbResult.ColumnInfo[] columnInfo,
+                                     int length)
     {
         _nativeChunk = nativeChunk;
         _columnInfo = columnInfo;

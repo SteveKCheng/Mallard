@@ -111,8 +111,8 @@ public unsafe sealed class DuckDbResult : IDisposable
         try
         {
             var length = (int)NativeMethods.duckdb_data_chunk_get_size(nativeChunk);
-            var accessor = new DuckDbResultChunkAccessor(nativeChunk, _columnInfo, length);
-            result = action(accessor, state);
+            var reader = new DuckDbChunkReader(nativeChunk, _columnInfo, length);
+            result = action(reader, state);
             return true;
         }
         finally
@@ -179,8 +179,8 @@ public unsafe class DuckDbResultChunk : IRefCountedObject, IDisposable
     public TResult ProcessContents<TState, TResult>(TState state, DuckDbResultChunkFunc<TState, TResult> func)
     {
         using var _ = this.UseRef();
-        var accessor = new DuckDbResultChunkAccessor(_nativeChunk, _columnInfo, _length);
-        return func(accessor, state);
+        var reader = new DuckDbChunkReader(_nativeChunk, _columnInfo, _length);
+        return func(reader, state);
     }
 }
 
