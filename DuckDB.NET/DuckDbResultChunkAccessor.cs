@@ -27,7 +27,7 @@ namespace DuckDB;
 /// Whatever is desired.  Typically the return value would be the 
 /// result of some transformation in the chunk's data.
 /// </returns>
-public delegate TResult DuckDbResultChunkFunc<TState, TResult>(in DuckDbResultChunkAccessor chunk, TState state)
+public delegate TResult DuckDbResultChunkFunc<in TState, out TResult>(in DuckDbResultChunkAccessor chunk, TState state)
     where TState : allows ref struct;
 
 /// <summary>
