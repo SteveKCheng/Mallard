@@ -153,6 +153,7 @@ internal enum duckdb_error_type
 internal unsafe struct _duckdb_connection { private void* internal_ptr; }
 internal unsafe struct _duckdb_database { private void* internal_ptr; }
 internal unsafe struct _duckdb_config { private void* internal_ptr; }
+internal unsafe struct _duckdb_prepared_statement { private void* internal_ptr; }
 
 internal unsafe struct _duckdb_value { private void* internal_ptr; }
 internal unsafe struct _duckdb_data_chunk { private void* internal_ptr; }
@@ -293,6 +294,34 @@ internal unsafe static partial class NativeMethods
 
     [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
     internal static partial ulong* duckdb_vector_get_validity(_duckdb_vector* vector);
+
+    #endregion
+
+    #region Prepared statements
+    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial duckdb_state duckdb_prepare(_duckdb_connection* connection, string query, out _duckdb_prepared_statement* prepared_statement);
+
+    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial void duckdb_destroy_prepare(ref _duckdb_prepared_statement* prepared_statement);
+
+    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [return: MarshalUsing(typeof(Utf8StringMarshallerWithoutFree))]
+    internal static partial string duckdb_prepare_error(_duckdb_prepared_statement* prepared_statement);
+
+    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial long duckdb_nparams(_duckdb_prepared_statement* parepared_statement);
+
+    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [return: MarshalUsing(typeof(Utf8StringMarshallerWithFree))]
+    internal static partial string duckdb_parameter_name(_duckdb_prepared_statement* parepared_statement, idx_t index);
+
+    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial duckdb_type duckdb_param_type(_duckdb_prepared_statement* parepared_statement, idx_t param_idx);
+
+    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial duckdb_state duckdb_bind_parameter_index(_duckdb_prepared_statement* prepared_statement,
+                                                                     out idx_t param_idx,
+                                                                     string name);
 
     #endregion
 }
