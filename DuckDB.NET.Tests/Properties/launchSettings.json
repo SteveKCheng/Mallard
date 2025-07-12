@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "DuckDB.NET.Tests": {
+      "commandName": "Project",
+      "nativeDebugging": true
+    }
+  }
+}
