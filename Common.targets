@@ -1,0 +1,28 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <!-- Copy or hard/soft-link native library files as part of build outputs
+       of projects so that .NET can find them during execution or packaging. -->
+  <Target Name="CopyNativeFiles" AfterTargets="Compile">
+
+    <ItemGroup>
+      <OrigNativeFiles Include="$(MSBuildThisFileDirectory)native\**\*" />
+
+      <!-- Extract the first path segment of %(RecursiveDir) as %(Platform), 
+           with the rest set as %(Subdir). -->
+      <NativeFiles Include="@(OrigNativeFiles)">
+        <Platform>$([System.String]::Copy('%(RecursiveDir)').Split('\', 2)[0])</Platform>
+        <Subdir>$([System.String]::Copy('%(RecursiveDir)').Split('\', 2)[1])</Subdir>
+      </NativeFiles>
+    </ItemGroup>
+
+    <Copy UseHardlinksIfPossible="true"
+          UseSymbolicLinksIfPossible="true"
+          SkipUnchangedFiles="true"
+          SourceFiles="@(NativeFiles)"
+          DestinationFiles="@(NativeFiles->'$(OutputPath)runtimes\%(Platform)\native\%(Subdir)\%(Filename)%(Extension)')" />
+
+    <Message Text="Putting native library files into output directory" />
+
+  </Target>
+
+</Project>
