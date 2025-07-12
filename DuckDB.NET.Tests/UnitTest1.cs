@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 
 namespace DuckDB.Tests;
 
@@ -11,15 +12,12 @@ public class UnitTest1
         return;
     }
 
-    private static readonly string TestDataDirectory =
-        Path.Join(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "..", "..", "..", "..", "testData");
-
     [Fact]
     public void Test2()
     {
         using var dbConn = new DuckDbConnection("");
 
-        var testFilePath = Path.Join(TestDataDirectory, "QQQ.parquet");
+        var testFilePath = Path.Join(Program.TestDataDirectory, "QQQ.parquet");
         dbConn.ExecuteNonQuery($"CREATE TEMP TABLE PriceQQQ AS SELECT * FROM read_parquet('{testFilePath}')");
 
         using var dbResult = dbConn.Execute(@"
@@ -64,5 +62,4 @@ public class UnitTest1
         Assert.InRange(numChunks, 1, 10);
         Assert.InRange(totalRows, 1000, 2000);
     }
-
 }

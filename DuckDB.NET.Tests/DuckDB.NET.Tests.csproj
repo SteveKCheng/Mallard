@@ -23,6 +23,4 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
-  <Import Project="..\Common.targets" />
-
 </Project>

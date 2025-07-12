@@ -8,6 +8,4 @@
     <RootNamespace>DuckDB</RootNamespace>
   </PropertyGroup>
 
-  <Import Project="..\Common.targets" />
-  
 </Project>
