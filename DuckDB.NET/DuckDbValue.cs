@@ -33,6 +33,8 @@ public unsafe class DuckDbValue
             return NativeMethods.duckdb_create_float((float)(object)input!);
         if (typeof(T) == typeof(double))
             return NativeMethods.duckdb_create_double((double)(object)input!);
+        if (typeof(T) == typeof(bool))
+            return NativeMethods.duckdb_create_bool((bool)(object)input!);
 
         if (typeof(T) == typeof(string))
         {
