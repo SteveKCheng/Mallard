@@ -50,8 +50,8 @@ public unsafe readonly ref struct DuckDbChunkReader
     private readonly int _length;
 
     internal DuckDbChunkReader(_duckdb_data_chunk* nativeChunk,
-                                     DuckDbResult.ColumnInfo[] columnInfo,
-                                     int length)
+                               DuckDbResult.ColumnInfo[] columnInfo,
+                               int length)
     {
         _nativeChunk = nativeChunk;
         _columnInfo = columnInfo;
@@ -81,6 +81,11 @@ public unsafe readonly ref struct DuckDbChunkReader
             throw new IndexOutOfRangeException("Column index is not in range. ");
         return new DuckDbReadOnlyVector(nativeVector, _columnInfo[columnIndex].BasicType, _length);
     }
+
+    /// <summary>
+    /// The length (number of rows) present in this chunk.
+    /// </summary>
+    public int Length => _length;
 }
 
 /// <summary>
