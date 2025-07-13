@@ -1,8 +1,8 @@
-# DuckDB.NET
+# Mallard
 
 *WORK IN PROGRESS*
 
-.NET bindings for [DuckDB](https://duckdb.org/).
+Alternative .NET bindings for [DuckDB](https://duckdb.org/).
 
 Do not expect anything to work right now.  This page will be updated as the code approaches a working state.
 
@@ -22,7 +22,7 @@ You need to separately download the native library files for DuckDB, e.g. ``duck
 
 ## Relation to other .NET bindings
 
-There is another, much more mature project, also called [DuckDB.NET](https://duckdb.net/docs/introduction.html).
+There is another, much more mature project, called [DuckDB.NET](https://duckdb.net/docs/introduction.html).
 Needless to say, you should certainly look there if you need DuckDB working now in your .NET code.
 
 I only found out about that other project after starting to write this code on my own.  I might still continue 
@@ -35,4 +35,14 @@ without intermediate copying or heavy conversions involving GC objects.  I think
 useful in applications involving machine learning or data science.  An ADO.NET-based interface would just 
 not be performant enough, and so I do not put high priority on it.
 
-To avoid confusion for everyone, I will be renaming this project soon.
+## About the name
+
+  - *Mallard* is a species of wild duck.  I think the *wild* moniker is quite appropriate.
+  - This English word is cognate (via Latin) to the [French word *malard*](https://www.dictionnaire-academie.fr/article/A9M0304), 
+    which retains the original sense of "male duck".  (I originally thought to use the French word,
+    just to be a little unique, but ultimately decided not, to avoid any unintended sexist connotations.)
+  - I had also considered the Japanese word for mallard which is *magamo* マガモ【真鴨】. Literally, it 
+    means "true duck" — which sounds cool, though I checked the dictionary and it says the 
+    [*ma-* 【真】 prefix](https://kotobank.jp/word/%E7%9C%9F-4672#w-632658)
+    when applied to animals, simply refers to the animal being a representative species.
+
