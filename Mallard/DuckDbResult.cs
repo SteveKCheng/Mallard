@@ -130,14 +130,13 @@ public unsafe sealed class DuckDbResult : IDisposable
     public DuckDbBasicType GetColumnBasicType(int columnIndex) => _columnInfo[columnIndex].BasicType;
 }
 
-public unsafe class DuckDbResultChunk : IRefCountedObject, IDisposable
+public unsafe class DuckDbResultChunk : IDisposable
 {
     private _duckdb_data_chunk* _nativeChunk;
     private readonly DuckDbResult.ColumnInfo[] _columnInfo;
     private readonly int _length;
 
-    private int _refCount;
-    ref int IRefCountedObject.RefCount => ref _refCount;
+    private HandleRefCount _refCount;
 
     internal DuckDbResultChunk(ref _duckdb_data_chunk* nativeChunk,
                                DuckDbResult.ColumnInfo[] columnInfo)
@@ -150,7 +149,7 @@ public unsafe class DuckDbResultChunk : IRefCountedObject, IDisposable
 
     private void DisposeImpl(bool disposing)
     {
-        if (!this.PrepareToDispose())
+        if (!_refCount.PrepareToDisposeOwner())
             return;
 
         NativeMethods.duckdb_destroy_data_chunk(ref _nativeChunk);
@@ -171,7 +170,7 @@ public unsafe class DuckDbResultChunk : IRefCountedObject, IDisposable
     {
         get
         {
-            using var _ = this.UseRef();
+            using var _ = _refCount.EnterScope(this);
             return NativeMethods.duckdb_data_chunk_get_column_count(_nativeChunk);
         }
     }
@@ -180,7 +179,7 @@ public unsafe class DuckDbResultChunk : IRefCountedObject, IDisposable
 
     public TResult ProcessContents<TState, TResult>(TState state, DuckDbChunkReadingFunc<TState, TResult> func)
     {
-        using var _ = this.UseRef();
+        using var _ = _refCount.EnterScope(this);
         var reader = new DuckDbChunkReader(_nativeChunk, _columnInfo, _length);
         return func(reader, state);
     }

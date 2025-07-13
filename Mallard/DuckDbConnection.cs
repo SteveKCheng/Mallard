@@ -62,13 +62,11 @@ internal unsafe class DuckDbDatabase
     }
 }
 
-public unsafe class DuckDbConnection : IDisposable, IRefCountedObject
+public unsafe class DuckDbConnection : IDisposable
 {
     private _duckdb_connection* _nativeConn;
 
-    private int _refCount;
-    ref int IRefCountedObject.RefCount => ref _refCount;
-
+    private HandleRefCount _refCount;
     private DuckDbDatabase _database;
 
     /// <summary>
@@ -99,7 +97,7 @@ public unsafe class DuckDbConnection : IDisposable, IRefCountedObject
 
     public long ExecuteNonQuery(string sql)
     {
-        using var _ = this.UseRef();
+        using var _ = _refCount.EnterScope(this);
 
         duckdb_state status;
         status = NativeMethods.duckdb_query(_nativeConn, sql, out var nativeResult);
@@ -122,7 +120,7 @@ public unsafe class DuckDbConnection : IDisposable, IRefCountedObject
 
     public DuckDbResult Execute(string sql)
     {
-        using var _ = this.UseRef();
+        using var _ = _refCount.EnterScope(this);
 
         duckdb_state status;
         status = NativeMethods.duckdb_query(_nativeConn, sql, out var nativeResult);
@@ -143,7 +141,7 @@ public unsafe class DuckDbConnection : IDisposable, IRefCountedObject
 
     public DuckDbConnection Reopen()
     {
-        using var _ = this.UseRef();
+        using var _ = _refCount.EnterScope(this);
         return new DuckDbConnection(_database);
     }
 
@@ -156,7 +154,7 @@ public unsafe class DuckDbConnection : IDisposable, IRefCountedObject
 
     private void DisposeImpl(bool disposing)
     {
-        if (!this.PrepareToDispose())
+        if (!_refCount.PrepareToDisposeOwner())
             return;
 
         NativeMethods.duckdb_disconnect(ref _nativeConn);
