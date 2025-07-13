@@ -51,7 +51,7 @@ public unsafe readonly ref struct DuckDbReadOnlyVector
     /// the <paramref name="basicType" /> does not refer to data
     /// that can be directly interpreted from .NET.
     /// </returns>
-    private static bool ValidateGenericType<T>(DuckDbBasicType basicType)
+    private static bool ValidateGenericType<T>(DuckDbBasicType basicType) where T : unmanaged
     {
         return basicType switch
         {
@@ -72,7 +72,7 @@ public unsafe readonly ref struct DuckDbReadOnlyVector
         };
     }
 
-    public ReadOnlySpan<T> AsSpan<T>()
+    public ReadOnlySpan<T> AsSpan<T>() where T : unmanaged
     {
         // N.B. A default-initialized instance will always fail validation.
         if (!ValidateGenericType<T>(_basicType))
