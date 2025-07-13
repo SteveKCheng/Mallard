@@ -54,6 +54,27 @@ internal static class RefCountMethods
     public static bool PrepareToDispose(this IRefCountedObject parent) => PrepareToDispose(ref parent.RefCount);
 }
 
+/// <summary>
+/// Internal helper to implement "safe handle" functionality on objects
+/// that maintain ownership of objects from a native library which
+/// must be explicitly destroyed.
+/// </summary>
+/// <remarks>
+/// <para>
+/// Helps to ensure an object cannot be disposed while it is being used by
+/// another thread.  It is basically what <see cref="System.Runtime.InteropServices.SafeHandle" />
+/// does, but more efficient and with a nicer syntax, in the author's opinion.  
+/// In particular, the handle can be typed as pointers to unmanaged structs
+/// rather than being type-erased to <see cref="IntPtr" />.  DuckDB's C API uses
+/// double pointers fairly frequently and so it is easy to mistakenly pass a pointer with
+/// the wrong level of indirection if everything is just <see cref="IntPtr" />.
+/// </para>
+/// <para>
+/// This mechanism implicitly assumes every operation in the native library
+/// for the object other than its destruction is thread-safe.  If not, the solution
+/// is not reference counting, but simply a lock to protect all operations.
+/// </para>
+/// </remarks>
 internal interface IRefCountedObject
 {
     /// <summary>
