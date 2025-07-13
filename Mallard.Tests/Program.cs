@@ -4,7 +4,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-namespace DuckDB.Tests;
+namespace Mallard.Tests;
 
 internal static class Program
 {

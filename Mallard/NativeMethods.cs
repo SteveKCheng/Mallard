@@ -4,7 +4,7 @@ using System.Runtime.InteropServices.Marshalling;
 
 using idx_t = long;
 
-namespace DuckDB.C_API;
+namespace Mallard.C_API;
 
 #pragma warning disable IDE1006, CS0169 // Naming Styles, unused struct members
 

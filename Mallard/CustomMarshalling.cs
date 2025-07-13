@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Marshalling;
 using System.Text;
 
-namespace DuckDB.C_API;
+namespace Mallard.C_API;
 
 [CustomMarshaller(managedType: typeof(string), 
                   marshalMode: MarshalMode.ManagedToUnmanagedOut, 

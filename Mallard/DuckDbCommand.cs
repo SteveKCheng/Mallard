@@ -1,4 +1,4 @@
-﻿using DuckDB.C_API;
+﻿using Mallard.C_API;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace DuckDB;
+namespace Mallard;
 
 /// <summary>
 /// Prepared statement.

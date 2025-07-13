@@ -1,9 +1,9 @@
-﻿using DuckDB.C_API;
+﻿using Mallard.C_API;
 using System;
 using System.Collections.Generic;
 using System.Threading;
 
-namespace DuckDB;
+namespace Mallard;
 
 internal unsafe class DuckDbDatabase
 {

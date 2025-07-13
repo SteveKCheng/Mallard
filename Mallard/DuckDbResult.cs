@@ -1,10 +1,10 @@
-﻿using DuckDB.C_API;
+﻿using Mallard.C_API;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 
-namespace DuckDB;
+namespace Mallard;
 
 public unsafe sealed class DuckDbResult : IDisposable
 {
@@ -23,7 +23,6 @@ public unsafe sealed class DuckDbResult : IDisposable
     internal DuckDbResult(ref duckdb_result nativeResult)
     {
         _nativeResult = nativeResult;
-        nativeResult = default;
 
         var columnCount = NativeMethods.duckdb_column_count(ref _nativeResult);
 
@@ -36,6 +35,9 @@ public unsafe sealed class DuckDbResult : IDisposable
                 BasicType = NativeMethods.duckdb_column_type(ref _nativeResult, i)
             };
         }
+
+        // Ownership transfer
+        nativeResult = default;
     }
 
     private void DisposeImpl(bool disposing)

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 
-namespace DuckDB.Tests;
+namespace Mallard.Tests;
 
 public class UnitTest1
 {
@@ -34,29 +34,29 @@ public class UnitTest1
         int numChunks = -1;
         do
         {
-            hasChunk = dbResult.ProcessNextChunk(false, (in DuckDbChunkReader a, bool _) =>
+            numChunks++;
+            hasChunk = dbResult.ProcessNextChunk(false, (in DuckDbChunkReader reader, bool _) =>
             {
-                var dates = a.GetColumn(0);
-                var closes = a.GetColumn(1);
-                var sma = a.GetColumn(2);
-                var volume = a.GetColumn(3);
+                var dates = reader.GetColumn(0);
+                var closes = reader.GetColumn(1);
+                var sma = reader.GetColumn(2);
+                var volume = reader.GetColumn(3);
 
-                Assert.Equal(a.Length, closes.AsSpan<double>().Length);
-                Assert.Equal(a.Length, volume.AsSpan<int>().Length);
+                Assert.Equal(reader.Length, closes.AsSpan<double>().Length);
+                Assert.Equal(reader.Length, volume.AsSpan<int>().Length);
 
                 var closesVec = closes.AsSpan<double>();
                 var smaVec = sma.AsSpan<double>();
 
                 // Check "Close" values are within 20% of "Sma" values,
                 // as evidence that all data are being passed and interpreted correctly
-                for (int i = 0; i < a.Length; ++i)
+                for (int i = 0; i < reader.Length; ++i)
                     Assert.InRange(closesVec[i], smaVec[i] * 0.80, smaVec[i] * 1.20);
 
-                return a.Length;
+                return reader.Length;
             }, out var numRows);
 
             totalRows += numRows;
-            numChunks++;
         } while (hasChunk);
 
         Assert.InRange(numChunks, 1, 10);

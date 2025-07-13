@@ -1,4 +1,4 @@
-﻿using DuckDB.C_API;
+﻿using Mallard.C_API;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -7,7 +7,7 @@ using System.Runtime.InteropServices.Marshalling;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace DuckDB;
+namespace Mallard;
 
 public unsafe class DuckDbValue
 {

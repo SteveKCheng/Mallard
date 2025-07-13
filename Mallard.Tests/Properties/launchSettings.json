@@ -1,6 +1,6 @@
 {
   "profiles": {
-    "DuckDB.NET.Tests": {
+    "Mallard.Tests": {
       "commandName": "Project",
       "nativeDebugging": true
     }

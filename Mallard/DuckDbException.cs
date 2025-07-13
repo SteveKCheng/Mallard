@@ -1,7 +1,7 @@
-﻿using DuckDB.C_API;
+﻿using Mallard.C_API;
 using System;
 
-namespace DuckDB;
+namespace Mallard;
 
 public class DuckDbException : Exception
 {

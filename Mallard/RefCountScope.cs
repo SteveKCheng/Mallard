@@ -2,7 +2,7 @@
 using System.Runtime.CompilerServices;
 using System.Threading;
 
-namespace DuckDB;
+namespace Mallard;
 
 internal readonly ref struct RefCountScope
 {
