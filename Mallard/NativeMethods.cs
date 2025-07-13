@@ -117,104 +117,104 @@ internal unsafe static partial class NativeMethods
                                                          _duckdb_config* config, 
                                                          [MarshalUsing(typeof(Utf8StringMarshallerWithFree))] out string out_error);
 
-    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [LibraryImport(LibraryName)]
     internal static partial void duckdb_close(ref _duckdb_database* database);
 
     #endregion
 
     #region Database configuration
 
-    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [LibraryImport(LibraryName)]
     internal static partial duckdb_state duckdb_create_config(out _duckdb_config* config);
 
     [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
     internal static partial duckdb_state duckdb_set_config(_duckdb_config* config, string name, string option);
 
 
-    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [LibraryImport(LibraryName)]
     internal static partial void duckdb_destroy_config(ref _duckdb_config* config);
 
     #endregion
 
     #region Miscellaneous
-    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [LibraryImport(LibraryName)]
     internal static partial void duckdb_free(void* ptr);
 
     #endregion
 
     #region Establishing database connections
 
-    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [LibraryImport(LibraryName)]
     internal static partial duckdb_state duckdb_connect(_duckdb_database* database, out _duckdb_connection* connection);
 
-    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [LibraryImport(LibraryName)]
     internal static partial void duckdb_disconnect(ref _duckdb_connection* connection);
 
     #endregion
 
-    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [LibraryImport(LibraryName)]
     internal static partial void duckdb_interrupt(_duckdb_connection* connection);
-//    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
-//    internal static partial duckdb_query_progress_type duckdb_query_progress(_duckdb_connection* connection);
+
+    //    internal static partial duckdb_query_progress_type duckdb_query_progress(_duckdb_connection* connection);
     //    internal static partial void duckdb_connection_get_client_context(_duckdb_connection* connection, duckdb_client_context* out_context);
     //    internal static partial idx_t duckdb_client_context_get_connection_id(duckdb_client_context context);
     //    internal static partial void duckdb_destroy_client_context(duckdb_client_context* context);
-    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
-    internal static partial /* const */ char* duckdb_library_version();
-    //    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
-    //    internal static partial _duckdb_value** duckdb_get_table_names(_duckdb_connection* connection, /* const */ char* query, bool qualified);
+
+    [LibraryImport(LibraryName)]
+    [return: MarshalUsing(typeof(Utf8StringMarshallerWithoutFree))]
+    internal static partial string duckdb_library_version();
 
     #region Executing queries
 
     [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
     internal static partial duckdb_state duckdb_query(_duckdb_connection* connection, string query, out duckdb_result result);
 
-    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [LibraryImport(LibraryName)]
     internal static partial void duckdb_destroy_result(ref duckdb_result result);
 
-    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [LibraryImport(LibraryName)]
     [return: MarshalUsing(typeof(Utf8StringMarshallerWithoutFree))]
     internal static partial string duckdb_result_error(ref duckdb_result result);
 
-    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [LibraryImport(LibraryName)]
     internal static partial idx_t duckdb_column_count(ref duckdb_result result);
 
-    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [LibraryImport(LibraryName)]
     [return: MarshalUsing(typeof(Utf8StringMarshallerWithoutFree))]
     internal static partial string duckdb_column_name(ref duckdb_result result, idx_t col);
 
-    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [LibraryImport(LibraryName)]
     internal static partial DuckDbBasicType duckdb_column_type(ref duckdb_result result, idx_t col);
 
-    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [LibraryImport(LibraryName)]
     internal static partial idx_t duckdb_rows_changed(ref duckdb_result result);
 
-    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [LibraryImport(LibraryName)]
     internal static partial duckdb_result_type duckdb_result_return_type(duckdb_result result);
 
-    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [LibraryImport(LibraryName)]
     internal static partial _duckdb_data_chunk* duckdb_fetch_chunk(duckdb_result result);
 
     #endregion
 
     #region Data chunks
 
-    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [LibraryImport(LibraryName)]
     internal static partial void duckdb_destroy_data_chunk(ref _duckdb_data_chunk* chunk);
 
-    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [LibraryImport(LibraryName)]
     internal static partial idx_t duckdb_data_chunk_get_column_count(_duckdb_data_chunk* chunk);
 
-    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [LibraryImport(LibraryName)]
     internal static partial idx_t duckdb_data_chunk_get_size(_duckdb_data_chunk* chunk);
 
-    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [LibraryImport(LibraryName)]
     internal static partial _duckdb_vector* duckdb_data_chunk_get_vector(_duckdb_data_chunk* chunk, idx_t col_idx);
 
-    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [LibraryImport(LibraryName)]
     internal static partial void* duckdb_vector_get_data(_duckdb_vector* vector);
 
-    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [LibraryImport(LibraryName)]
     internal static partial ulong* duckdb_vector_get_validity(_duckdb_vector* vector);
 
     #endregion
@@ -223,21 +223,21 @@ internal unsafe static partial class NativeMethods
     [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
     internal static partial duckdb_state duckdb_prepare(_duckdb_connection* connection, string query, out _duckdb_prepared_statement* prepared_statement);
 
-    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [LibraryImport(LibraryName)]
     internal static partial void duckdb_destroy_prepare(ref _duckdb_prepared_statement* prepared_statement);
 
-    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [LibraryImport(LibraryName)]
     [return: MarshalUsing(typeof(Utf8StringMarshallerWithoutFree))]
     internal static partial string duckdb_prepare_error(_duckdb_prepared_statement* prepared_statement);
 
-    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [LibraryImport(LibraryName)]
     internal static partial long duckdb_nparams(_duckdb_prepared_statement* parepared_statement);
 
-    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [LibraryImport(LibraryName)]
     [return: MarshalUsing(typeof(Utf8StringMarshallerWithFree))]
     internal static partial string duckdb_parameter_name(_duckdb_prepared_statement* parepared_statement, idx_t index);
 
-    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [LibraryImport(LibraryName)]
     internal static partial DuckDbBasicType duckdb_param_type(_duckdb_prepared_statement* parepared_statement, idx_t param_idx);
 
     [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
@@ -254,7 +254,7 @@ internal unsafe static partial class NativeMethods
 
     #region Objects for single values
 
-    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [LibraryImport(LibraryName)]
     internal static partial void duckdb_destroy_value(ref _duckdb_value* value);
 
     [LibraryImport(LibraryName)]
@@ -263,28 +263,28 @@ internal unsafe static partial class NativeMethods
     [LibraryImport(LibraryName)]
     internal static partial _duckdb_value* duckdb_create_bool([MarshalAs(UnmanagedType.I1)] bool input);
 
-    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [LibraryImport(LibraryName)]
     internal static partial _duckdb_value* duckdb_create_int8(sbyte input);
 
-    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [LibraryImport(LibraryName)]
     internal static partial _duckdb_value* duckdb_create_uint8(byte input);
 
-    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [LibraryImport(LibraryName)]
     internal static partial _duckdb_value* duckdb_create_int16(short input);
 
-    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [LibraryImport(LibraryName)]
     internal static partial _duckdb_value* duckdb_create_uint16(ushort input);
 
-    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [LibraryImport(LibraryName)]
     internal static partial _duckdb_value* duckdb_create_int32(int input);
 
-    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [LibraryImport(LibraryName)]
     internal static partial _duckdb_value* duckdb_create_uint32(uint input);
 
-    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [LibraryImport(LibraryName)]
     internal static partial _duckdb_value* duckdb_create_uint64(ulong input);
 
-    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [LibraryImport(LibraryName)]
     internal static partial _duckdb_value* duckdb_create_int64(long val);
 
     [LibraryImport(LibraryName)]
@@ -294,26 +294,26 @@ internal unsafe static partial class NativeMethods
     internal static partial _duckdb_value* duckdb_create_timestamp(DuckDbTimestamp input);
 
     /*
-    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [LibraryImport(LibraryName)]
     internal static partial _duckdb_value* duckdb_create_hugeint(duckdb_hugeint input);
 
-    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [LibraryImport(LibraryName)]
     internal static partial _duckdb_value* duckdb_create_uhugeint(duckdb_uhugeint input);
 
-    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [LibraryImport(LibraryName)]
     internal static partial _duckdb_value* duckdb_create_varint(duckdb_varint input);
 
-    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [LibraryImport(LibraryName)]
     internal static partial _duckdb_value* duckdb_create_decimal(duckdb_decimal input);
     */
 
-    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [LibraryImport(LibraryName)]
     internal static partial _duckdb_value* duckdb_create_float(float input);
 
-    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [LibraryImport(LibraryName)]
     internal static partial _duckdb_value* duckdb_create_double(double input);
 
-    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    [LibraryImport(LibraryName)]
     [return: MarshalUsing(typeof(Utf8StringMarshallerWithFree))]
     internal static partial string duckdb_value_to_string(_duckdb_value* value);
 
