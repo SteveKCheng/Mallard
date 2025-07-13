@@ -45,13 +45,18 @@ public class UnitTest1
                 Assert.Equal(reader.Length, closes.AsSpan<double>().Length);
                 Assert.Equal(reader.Length, volume.AsSpan<int>().Length);
 
-                var closesVec = closes.AsSpan<double>();
-                var smaVec = sma.AsSpan<double>();
+                var datesSpan = dates.AsSpan<DuckDbDate>();
+                var closesSpan = closes.AsSpan<double>();
+                var smaSpan = sma.AsSpan<double>();
 
                 // Check "Close" values are within 20% of "Sma" values,
                 // as evidence that all data are being passed and interpreted correctly
                 for (int i = 0; i < reader.Length; ++i)
-                    Assert.InRange(closesVec[i], smaVec[i] * 0.80, smaVec[i] * 1.20);
+                    Assert.InRange(closesSpan[i], smaSpan[i] * 0.80, smaSpan[i] * 1.20);
+
+                // Check date values are in ascending order.
+                for (int i = 1; i < reader.Length; ++i)
+                    Assert.True(datesSpan[i].Days >= datesSpan[i-1].Days, $"Dates are not in ascending order");
 
                 return reader.Length;
             }, out var numRows);
