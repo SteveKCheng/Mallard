@@ -22,87 +22,6 @@ internal enum duckdb_result_type : int
     DUCKDB_RESULT_TYPE_QUERY_RESULT = 3,
 }
 
-public enum duckdb_type : int
-{
-    DUCKDB_TYPE_INVALID = 0,
-    // bool
-    DUCKDB_TYPE_BOOLEAN = 1,
-    // int8_t
-    DUCKDB_TYPE_TINYINT = 2,
-    // int16_t
-    DUCKDB_TYPE_SMALLINT = 3,
-    // int32_t
-    DUCKDB_TYPE_INTEGER = 4,
-    // int64_t
-    DUCKDB_TYPE_BIGINT = 5,
-    // uint8_t
-    DUCKDB_TYPE_UTINYINT = 6,
-    // uint16_t
-    DUCKDB_TYPE_USMALLINT = 7,
-    // uint32_t
-    DUCKDB_TYPE_UINTEGER = 8,
-    // uint64_t
-    DUCKDB_TYPE_UBIGINT = 9,
-    // float
-    DUCKDB_TYPE_FLOAT = 10,
-    // double
-    DUCKDB_TYPE_DOUBLE = 11,
-    // duckdb_timestamp (microseconds)
-    DUCKDB_TYPE_TIMESTAMP = 12,
-    // duckdb_date
-    DUCKDB_TYPE_DATE = 13,
-    // duckdb_time
-    DUCKDB_TYPE_TIME = 14,
-    // duckdb_interval
-    DUCKDB_TYPE_INTERVAL = 15,
-    // duckdb_hugeint
-    DUCKDB_TYPE_HUGEINT = 16,
-    // duckdb_uhugeint
-    DUCKDB_TYPE_UHUGEINT = 32,
-    // const char*
-    DUCKDB_TYPE_VARCHAR = 17,
-    // duckdb_blob
-    DUCKDB_TYPE_BLOB = 18,
-    // duckdb_decimal
-    DUCKDB_TYPE_DECIMAL = 19,
-    // duckdb_timestamp_s (seconds)
-    DUCKDB_TYPE_TIMESTAMP_S = 20,
-    // duckdb_timestamp_ms (milliseconds)
-    DUCKDB_TYPE_TIMESTAMP_MS = 21,
-    // duckdb_timestamp_ns (nanoseconds)
-    DUCKDB_TYPE_TIMESTAMP_NS = 22,
-    // enum type, only useful as logical type
-    DUCKDB_TYPE_ENUM = 23,
-    // list type, only useful as logical type
-    DUCKDB_TYPE_LIST = 24,
-    // struct type, only useful as logical type
-    DUCKDB_TYPE_STRUCT = 25,
-    // map type, only useful as logical type
-    DUCKDB_TYPE_MAP = 26,
-    // duckdb_array, only useful as logical type
-    DUCKDB_TYPE_ARRAY = 33,
-    // duckdb_hugeint
-    DUCKDB_TYPE_UUID = 27,
-    // union type, only useful as logical type
-    DUCKDB_TYPE_UNION = 28,
-    // duckdb_bit
-    DUCKDB_TYPE_BIT = 29,
-    // duckdb_time_tz
-    DUCKDB_TYPE_TIME_TZ = 30,
-    // duckdb_timestamp (microseconds)
-    DUCKDB_TYPE_TIMESTAMP_TZ = 31,
-    // enum type, only useful as logical type
-    DUCKDB_TYPE_ANY = 34,
-    // duckdb_varint
-    DUCKDB_TYPE_VARINT = 35,
-    // enum type, only useful as logical type
-    DUCKDB_TYPE_SQLNULL = 36,
-    // enum type, only useful as logical type
-    DUCKDB_TYPE_STRING_LITERAL = 37,
-    // enum type, only useful as logical type
-    DUCKDB_TYPE_INTEGER_LITERAL = 38,
-}
-
 //! An enum over DuckDB's different error types.
 internal enum duckdb_error_type
 {
@@ -151,26 +70,28 @@ internal enum duckdb_error_type
     DUCKDB_INVALID_CONFIGURATION = 42
 }
 
+[StructLayout(LayoutKind.Sequential)]
 internal unsafe struct _duckdb_connection { private void* internal_ptr; }
+
+[StructLayout(LayoutKind.Sequential)]
 internal unsafe struct _duckdb_database { private void* internal_ptr; }
+
+[StructLayout(LayoutKind.Sequential)]
 internal unsafe struct _duckdb_config { private void* internal_ptr; }
+
+[StructLayout(LayoutKind.Sequential)]
 internal unsafe struct _duckdb_prepared_statement { private void* internal_ptr; }
 
+[StructLayout(LayoutKind.Sequential)]
 internal unsafe struct _duckdb_value { private void* internal_ptr; }
+
+[StructLayout(LayoutKind.Sequential)]
 internal unsafe struct _duckdb_data_chunk { private void* internal_ptr; }
+
+[StructLayout(LayoutKind.Sequential)]
 internal unsafe struct _duckdb_vector { private void* internal_ptr; }
 
-public struct DuckDbTimestamp
-{
-    public long Microseconds;
-}
-
-public struct DuckDbDate
-{
-    public int Days; 
-}
-
-
+[StructLayout(LayoutKind.Sequential)]
 internal unsafe struct duckdb_result
 {
     private idx_t deprecated_column_count;
@@ -263,7 +184,7 @@ internal unsafe static partial class NativeMethods
     internal static partial string duckdb_column_name(ref duckdb_result result, idx_t col);
 
     [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
-    internal static partial duckdb_type duckdb_column_type(ref duckdb_result result, idx_t col);
+    internal static partial DuckDbBasicType duckdb_column_type(ref duckdb_result result, idx_t col);
 
     [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
     internal static partial idx_t duckdb_rows_changed(ref duckdb_result result);
@@ -317,7 +238,7 @@ internal unsafe static partial class NativeMethods
     internal static partial string duckdb_parameter_name(_duckdb_prepared_statement* parepared_statement, idx_t index);
 
     [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
-    internal static partial duckdb_type duckdb_param_type(_duckdb_prepared_statement* parepared_statement, idx_t param_idx);
+    internal static partial DuckDbBasicType duckdb_param_type(_duckdb_prepared_statement* parepared_statement, idx_t param_idx);
 
     [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
     internal static partial duckdb_state duckdb_bind_parameter_index(_duckdb_prepared_statement* prepared_statement,
@@ -366,6 +287,12 @@ internal unsafe static partial class NativeMethods
     [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
     internal static partial _duckdb_value* duckdb_create_int64(long val);
 
+    [LibraryImport(LibraryName)]
+    internal static partial _duckdb_value* duckdb_create_date(DuckDbDate input);
+
+    [LibraryImport(LibraryName)]
+    internal static partial _duckdb_value* duckdb_create_timestamp(DuckDbTimestamp input);
+
     /*
     [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
     internal static partial _duckdb_value* duckdb_create_hugeint(duckdb_hugeint input);
@@ -393,4 +320,4 @@ internal unsafe static partial class NativeMethods
     #endregion 
 }
 
-#pragma warning restore IDE1006 // Naming Styles
+#pragma warning restore IDE1006, CS0169

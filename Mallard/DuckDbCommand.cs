@@ -57,7 +57,7 @@ public unsafe class DuckDbCommand
         }
     }
 
-    public duckdb_type GetParameterBasicType(int index)
+    public DuckDbBasicType GetParameterBasicType(int index)
     {
         ThrowIfParamIndexOutOfRange(index);
 

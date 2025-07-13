@@ -13,28 +13,47 @@ public unsafe class DuckDbValue
 {
     internal static _duckdb_value* CreateNativeObject<T>(T input)
     {
+        if (typeof(T) == typeof(bool))
+            return NativeMethods.duckdb_create_bool((bool)(object)input!);
+
         if (typeof(T) == typeof(sbyte))
             return NativeMethods.duckdb_create_int8((sbyte)(object)input!);
         if (typeof(T) == typeof(byte))
             return NativeMethods.duckdb_create_uint8((byte)(object)input!);
+
         if (typeof(T) == typeof(short))
             return NativeMethods.duckdb_create_int16((short)(object)input!);
         if (typeof(T) == typeof(ushort))
             return NativeMethods.duckdb_create_uint16((ushort)(object)input!);
+
         if (typeof(T) == typeof(int))
             return NativeMethods.duckdb_create_int32((int)(object)input!);
         if (typeof(T) == typeof(uint))
             return NativeMethods.duckdb_create_uint32((uint)(object)input!);
+
         if (typeof(T) == typeof(long))
             return NativeMethods.duckdb_create_int64((long)(object)input!);
         if (typeof(T) == typeof(ulong))
             return NativeMethods.duckdb_create_uint64((ulong)(object)input!);
+
         if (typeof(T) == typeof(float))
             return NativeMethods.duckdb_create_float((float)(object)input!);
         if (typeof(T) == typeof(double))
             return NativeMethods.duckdb_create_double((double)(object)input!);
-        if (typeof(T) == typeof(bool))
-            return NativeMethods.duckdb_create_bool((bool)(object)input!);
+
+        if (typeof(T) == typeof(DuckDbDate))
+            return NativeMethods.duckdb_create_date((DuckDbDate)(object)input!);
+
+        if (typeof(T) == typeof(DuckDbTimestamp))
+            return NativeMethods.duckdb_create_timestamp((DuckDbTimestamp)(object)input!);
+
+        if (typeof(T) == typeof(DateTime))
+        {
+            // Convert to DuckDbTimestamp.
+            var dateTime = (DateTime)(object)input!;
+            var timestamp = new DuckDbTimestamp((dateTime - new DateTime(1970, 1, 1)).Ticks / 10);
+            return NativeMethods.duckdb_create_timestamp(timestamp);
+        }
 
         if (typeof(T) == typeof(string))
         {

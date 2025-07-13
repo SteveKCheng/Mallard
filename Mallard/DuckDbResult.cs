@@ -17,7 +17,7 @@ public unsafe sealed class DuckDbResult : IDisposable
     {
         public string Name { get; init; }
 
-        public duckdb_type BasicType { get; init; }
+        public DuckDbBasicType BasicType { get; init; }
     }
 
     internal DuckDbResult(ref duckdb_result nativeResult)
@@ -127,7 +127,7 @@ public unsafe sealed class DuckDbResult : IDisposable
 
     public string GetColumnName(int columnIndex) => _columnInfo[columnIndex].Name;
 
-    public duckdb_type GetColumnBasicType(int columnIndex) => _columnInfo[columnIndex].BasicType;
+    public DuckDbBasicType GetColumnBasicType(int columnIndex) => _columnInfo[columnIndex].BasicType;
 }
 
 public unsafe class DuckDbResultChunk : IRefCountedObject, IDisposable
