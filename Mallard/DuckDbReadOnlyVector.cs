@@ -30,6 +30,11 @@ public unsafe readonly ref struct DuckDbReadOnlyVector
     /// </summary>
     private readonly int _length;
 
+    /// <summary>
+    /// Pointer to the raw data array of the DuckDB vector. 
+    /// </summary>
+    private readonly void* _nativeData;
+
     internal DuckDbReadOnlyVector(_duckdb_vector* nativeVector, 
                                   DuckDbBasicType basicType, 
                                   int length)
@@ -37,6 +42,7 @@ public unsafe readonly ref struct DuckDbReadOnlyVector
         _nativeVector = nativeVector;
         _basicType = basicType;
         _length = length;
+        _nativeData = NativeMethods.duckdb_vector_get_data(_nativeVector);
     }
 
     /// <summary>
@@ -78,8 +84,7 @@ public unsafe readonly ref struct DuckDbReadOnlyVector
         if (!ValidateGenericType<T>(_basicType))
             throw new ArgumentException("Generic type T does not match type of data present in the result column. ");
 
-        return new ReadOnlySpan<T>(NativeMethods.duckdb_vector_get_data(_nativeVector),
-                                   _length);
+        return new ReadOnlySpan<T>(_nativeData, _length);
     }
 
     public ReadOnlySpan<ulong> GetValidityMask()
