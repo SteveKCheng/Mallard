@@ -95,6 +95,7 @@ public unsafe static partial class DuckDbReadOnlyVectorMethods
             DuckDbBasicType.Double => typeof(T) == typeof(double),
             DuckDbBasicType.Date => typeof(T) == typeof(DuckDbDate),
             DuckDbBasicType.Timestamp => typeof(T) == typeof(DuckDbTimestamp),
+            DuckDbBasicType.List => typeof(T) == typeof(DuckDbList),
             _ => false,
         };
     }
@@ -130,5 +131,32 @@ public unsafe static partial class DuckDbReadOnlyVectorMethods
     public static ReadOnlySpan<T> AsSpan<T>(in this DuckDbReadOnlyVector<T> vector) where T : unmanaged
     {
         return new ReadOnlySpan<T>(vector._nativeData, vector._length);
+    }
+
+    /// <summary>
+    /// Get an item from the vector at the specified index.
+    /// </summary>
+    /// <typeparam name="T">The .NET type of the vector's elements. 
+    /// (This particular method overload is only valid for vectors holding "simple" types.  Other overloads
+    /// handle other cases for <typeparamref name="T" />, e.g. strings.)
+    /// </typeparam>
+    /// <param name="vector">The vector to select the item from. </param>
+    /// <param name="index">Index of the item from the vector. </param>
+    /// <returns>
+    /// The desired item.
+    /// </returns>
+    /// <exception cref="IndexOutOfRangeException">The index is out of range for the vector. </exception>
+    /// <remarks>
+    /// Use <see cref="AsSpan" />, instead of this method, to get efficient access 
+    /// to the vector elements, when the element type directly corresponds to an unmanaged type in .NET 
+    /// (e.g. integers).
+    /// </remarks>
+    public static T GetItem<T>(in this DuckDbReadOnlyVector<T> vector, int index) where T : unmanaged
+    {
+        if (unchecked((uint)index >= (uint)vector._length))
+            throw new IndexOutOfRangeException("Index is out of range for the vector. ");
+
+        var p = (T*)vector._nativeData + index;
+        return *p;
     }
 }
