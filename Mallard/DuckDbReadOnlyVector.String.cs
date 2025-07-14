@@ -90,7 +90,7 @@ public unsafe static partial class DuckDbReadOnlyVectorMethods
     /// <exception cref="IndexOutOfRangeException">The index is out of range for the vector. </exception>
     public static ReadOnlySpan<byte> GetStringAsUtf8(in this DuckDbReadOnlyVector<string> vector, int index)
     {
-        ThrowIfIndexOutOfRange(index, vector._length);
+        vector.VerifyItemIsValid(index);
         var p = (DuckDbReadOnlyString*)vector._nativeData + index;
         return p->DangerousGetSpan();
     }

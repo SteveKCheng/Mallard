@@ -53,6 +53,7 @@ public unsafe static partial class DuckDbReadOnlyVectorMethods
     /// </returns>
     public static Range GetChildrenFor(in this DuckDbReadOnlyVector<DuckDbList> parent, int index)
     {
+        parent.VerifyItemIsValid(index);
         var c = parent.GetChildrenSpan()[index];
         return new Range((int)c.Offset, (int)c.Offset + (int)c.Length);
     }

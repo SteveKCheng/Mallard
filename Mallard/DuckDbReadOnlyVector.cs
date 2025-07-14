@@ -42,7 +42,7 @@ public unsafe readonly ref struct DuckDbReadOnlyVector<T>
     /// <remarks>
     /// This may be null if all elements in the array are valid.
     /// </remarks>
-    internal readonly void* _validityMask;
+    internal readonly ulong* _validityMask;
 
     internal DuckDbReadOnlyVector(_duckdb_vector* nativeVector,
                                   DuckDbBasicType basicType,
@@ -58,9 +58,49 @@ public unsafe readonly ref struct DuckDbReadOnlyVector<T>
         _validityMask = NativeMethods.duckdb_vector_get_validity(_nativeVector);
     }
 
+    /// <summary>
+    /// The length (number of rows) inherited from the result chunk this vector is part of.
+    /// </summary>
+    public int Length => _length;
+
+    /// <summary>
+    /// Get the variable-length bit mask indicating which elements in the vector are valid (not null).
+    /// </summary>
+    /// <returns>
+    /// The bit mask.  For element index <c>i</c> and validity mask <c>m</c> (the return value from this method), 
+    /// the following expression indicates if the element is valid:
+    /// <code>
+    /// m.Length == 0 || (m[i / 64] & (1u % 64)) != 0
+    /// </code>
+    /// </returns>
     public ReadOnlySpan<ulong> GetValidityMask()
     {
         return new ReadOnlySpan<ulong>(_validityMask, _validityMask != null ? _length : 0);
+    }
+
+    /// <summary>
+    /// Return whether an element of this vector is valid (not null).
+    /// </summary>
+    /// <param name="index">
+    /// The index of the element of the vector.
+    /// </param>
+    /// <returns>
+    /// True if valid (non-null), false if invalid (null).
+    /// </returns>
+    /// <exception cref="IndexOutOfRangeException">The index is out of range for the vector. </exception>
+    public bool IsItemValid(int index)
+    {
+        var j = unchecked((uint)index);
+        if (unchecked(j >= (uint)_length))
+            DuckDbReadOnlyVectorMethods.ThrowIndexOutOfRange(index, _length);
+
+        return _validityMask == null || (_validityMask[j >> 6] & (1u << (int)(j & 63))) != 0;
+    }
+
+    internal void VerifyItemIsValid(int index)
+    {
+        if (!IsItemValid(index))
+            DuckDbReadOnlyVectorMethods.ThrowForInvalidElement(index);
     }
 }
 
@@ -154,14 +194,18 @@ public unsafe static partial class DuckDbReadOnlyVectorMethods
     /// </remarks>
     public static T GetItem<T>(in this DuckDbReadOnlyVector<T> vector, int index) where T : unmanaged
     {
-        ThrowIfIndexOutOfRange(index, vector._length);
+        vector.VerifyItemIsValid(index);
         var p = (T*)vector._nativeData + index;
         return *p;
     }
 
-    internal static void ThrowIfIndexOutOfRange(int index, int length)
+    internal static void ThrowIndexOutOfRange(int index, int length)
     {
-        if (unchecked((uint)index >= (uint)length))
-            throw new IndexOutOfRangeException("Index is out of range for the vector. ");
+        throw new IndexOutOfRangeException("Index is out of range for the vector. ");
+    }
+
+    internal static void ThrowForInvalidElement(int index)
+    {
+        throw new InvalidOperationException($"The element of the vector at index {index} is invalid (null). ");
     }
 }
