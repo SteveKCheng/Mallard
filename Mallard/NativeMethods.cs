@@ -92,6 +92,9 @@ internal unsafe struct _duckdb_data_chunk { private void* internal_ptr; }
 internal unsafe struct _duckdb_vector { private void* internal_ptr; }
 
 [StructLayout(LayoutKind.Sequential)]
+internal unsafe struct _duckdb_logical_type { private void* internal_ptr; }
+
+[StructLayout(LayoutKind.Sequential)]
 internal unsafe struct duckdb_result
 {
     private idx_t deprecated_column_count;
@@ -137,8 +140,12 @@ internal unsafe static partial class NativeMethods
     #endregion
 
     #region Miscellaneous
+
     [LibraryImport(LibraryName)]
     internal static partial void duckdb_free(void* ptr);
+
+    [LibraryImport(LibraryName)]
+    internal static partial long duckdb_vector_size();
 
     #endregion
 
@@ -211,11 +218,30 @@ internal unsafe static partial class NativeMethods
     [LibraryImport(LibraryName)]
     internal static partial _duckdb_vector* duckdb_data_chunk_get_vector(_duckdb_data_chunk* chunk, idx_t col_idx);
 
+    #endregion
+
+    #region Vectors
+
     [LibraryImport(LibraryName)]
     internal static partial void* duckdb_vector_get_data(_duckdb_vector* vector);
 
     [LibraryImport(LibraryName)]
     internal static partial ulong* duckdb_vector_get_validity(_duckdb_vector* vector);
+
+    [LibraryImport(LibraryName)]
+    internal static partial _duckdb_vector* duckdb_array_vector_get_child(_duckdb_vector* vector);
+
+    [LibraryImport(LibraryName)]
+    internal static partial _duckdb_vector* duckdb_list_vector_get_child(_duckdb_vector* vector);
+
+    [LibraryImport(LibraryName)]
+    internal static partial idx_t duckdb_list_vector_get_size(_duckdb_vector* vector);
+
+    [LibraryImport(LibraryName)]
+    internal static partial _duckdb_vector* duckdb_struct_vector_get_child(_duckdb_vector* vector, idx_t index);
+
+    [LibraryImport(LibraryName)]
+    internal static partial _duckdb_logical_type* duckdb_vector_get_column_type(_duckdb_vector* vector);
 
     #endregion
 
@@ -249,6 +275,16 @@ internal unsafe static partial class NativeMethods
     internal static partial duckdb_state duckdb_bind_value(_duckdb_prepared_statement* prepared_statement,
                                                            idx_t param_idx,
                                                            _duckdb_value* val);
+
+    #endregion
+
+    #region Logical types
+
+    [LibraryImport(LibraryName)]
+    internal static partial void duckdb_destroy_logical_type(ref _duckdb_logical_type* type);
+
+    [LibraryImport(LibraryName)]
+    internal static partial DuckDbBasicType duckdb_get_type_id(_duckdb_logical_type* type);
 
     #endregion
 
