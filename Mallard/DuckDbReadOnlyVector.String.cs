@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Mallard.C_API;
+using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -58,9 +59,39 @@ internal unsafe ref struct DuckDbReadOnlyString
         void* p = (_length <= InlinedSize) ? Unsafe.AsPointer(ref Unsafe.AsRef(in _inlined[0])) : _ptr;
         return new ReadOnlySpan<byte>(p, checked((int)_length));
     }
+}
+
+public unsafe static partial class DuckDbReadOnlyVectorMethods
+{
+    /// <summary>
+    /// Get a string, after converting from its original UTF-8 representation, from a DuckDB vector of strings,
+    /// at the specified index.
+    /// </summary>
+    /// <param name="vector">The vector of strings. </param>
+    /// <param name="index">Which string to select from the vector. </param>
+    /// <returns>
+    /// The desired string.
+    /// </returns>
+    /// <exception cref="IndexOutOfRangeException">The index is out of range for the vector. </exception>
+    public static string GetItem(in this DuckDbReadOnlyVector<string> vector, int index)
+    {
+        return Encoding.UTF8.GetString(GetStringAsUtf8(vector, index));
+    }
 
     /// <summary>
-    /// Convert to a .NET string.
+    /// Get a string, in UTF-8 encoding, from a DuckDB vector of strings,
+    /// at the specified index.
     /// </summary>
-    public readonly override string ToString() => Encoding.UTF8.GetString(DangerousGetSpan());
+    /// <param name="vector">The vector of strings. </param>
+    /// <param name="index">Which string to select from the vector. </param>
+    /// <returns>
+    /// The desired string.
+    /// </returns>
+    /// <exception cref="IndexOutOfRangeException">The index is out of range for the vector. </exception>
+    public static ReadOnlySpan<byte> GetStringAsUtf8(in this DuckDbReadOnlyVector<string> vector, int index)
+    {
+        ThrowIfIndexOutOfRange(index, vector._length);
+        var p = (DuckDbReadOnlyString*)vector._nativeData + index;
+        return p->DangerousGetSpan();
+    }
 }

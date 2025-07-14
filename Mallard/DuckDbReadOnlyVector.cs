@@ -96,6 +96,7 @@ public unsafe static partial class DuckDbReadOnlyVectorMethods
             DuckDbBasicType.Date => typeof(T) == typeof(DuckDbDate),
             DuckDbBasicType.Timestamp => typeof(T) == typeof(DuckDbTimestamp),
             DuckDbBasicType.List => typeof(T) == typeof(DuckDbList),
+            DuckDbBasicType.VarChar => typeof(T) == typeof(string),
             _ => false,
         };
     }
@@ -153,10 +154,14 @@ public unsafe static partial class DuckDbReadOnlyVectorMethods
     /// </remarks>
     public static T GetItem<T>(in this DuckDbReadOnlyVector<T> vector, int index) where T : unmanaged
     {
-        if (unchecked((uint)index >= (uint)vector._length))
-            throw new IndexOutOfRangeException("Index is out of range for the vector. ");
-
+        ThrowIfIndexOutOfRange(index, vector._length);
         var p = (T*)vector._nativeData + index;
         return *p;
+    }
+
+    internal static void ThrowIfIndexOutOfRange(int index, int length)
+    {
+        if (unchecked((uint)index >= (uint)length))
+            throw new IndexOutOfRangeException("Index is out of range for the vector. ");
     }
 }
