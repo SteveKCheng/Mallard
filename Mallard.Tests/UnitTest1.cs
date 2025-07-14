@@ -37,17 +37,17 @@ public class UnitTest1
             numChunks++;
             hasChunk = dbResult.ProcessNextChunk(false, (in DuckDbChunkReader reader, bool _) =>
             {
-                var dates = reader.GetColumn(0);
-                var closes = reader.GetColumn(1);
-                var sma = reader.GetColumn(2);
-                var volume = reader.GetColumn(3);
+                var dates = reader.GetColumn<DuckDbDate>(0);
+                var closes = reader.GetColumn<double>(1);
+                var sma = reader.GetColumn<double>(2);
+                var volume = reader.GetColumn<int>(3);
 
-                Assert.Equal(reader.Length, closes.AsSpan<double>().Length);
-                Assert.Equal(reader.Length, volume.AsSpan<int>().Length);
+                Assert.Equal(reader.Length, closes.AsSpan().Length);
+                Assert.Equal(reader.Length, volume.AsSpan().Length);
 
-                var datesSpan = dates.AsSpan<DuckDbDate>();
-                var closesSpan = closes.AsSpan<double>();
-                var smaSpan = sma.AsSpan<double>();
+                var datesSpan = dates.AsSpan();
+                var closesSpan = closes.AsSpan();
+                var smaSpan = sma.AsSpan();
 
                 // Check "Close" values are within 20% of "Sma" values,
                 // as evidence that all data are being passed and interpreted correctly

@@ -12,13 +12,13 @@ namespace Mallard;
 /// (for the purposes of modifying the database) requires a different shape of API
 /// to enforce safety.
 /// </remarks>
-public unsafe readonly ref struct DuckDbReadOnlyVector
+public unsafe readonly ref struct DuckDbReadOnlyVector<T> 
 {
     /// <summary>
-    /// "Vector" data obtained as part of a chunk from DuckDB.  It is
+    /// "Vector" data structure obtained as part of a chunk from DuckDB.  It is
     /// de-allocated together with the chunk.
     /// </summary>
-    private readonly _duckdb_vector* _nativeVector;
+    internal readonly _duckdb_vector* _nativeVector;
 
     /// <summary>
     /// The basic type of data from DuckDB, used to verify correctly-typed access.
@@ -28,23 +28,44 @@ public unsafe readonly ref struct DuckDbReadOnlyVector
     /// <summary>
     /// The length (number of rows) inherited from the result chunk this vector is part of.
     /// </summary>
-    private readonly int _length;
+    internal readonly int _length;
 
     /// <summary>
     /// Pointer to the raw data array of the DuckDB vector. 
     /// </summary>
-    private readonly void* _nativeData;
+    internal readonly void* _nativeData;
 
-    internal DuckDbReadOnlyVector(_duckdb_vector* nativeVector, 
-                                  DuckDbBasicType basicType, 
+    /// <summary>
+    /// Pointer to the bit mask from DuckDB indicating whether the corresponding element
+    /// in the array pointed to by <see cref="_nativeData"/> is valid (not null). 
+    /// </summary>
+    /// <remarks>
+    /// This may be null if all elements in the array are valid.
+    /// </remarks>
+    internal readonly void* _validityMask;
+
+    internal DuckDbReadOnlyVector(_duckdb_vector* nativeVector,
+                                  DuckDbBasicType basicType,
                                   int length)
     {
+        DuckDbReadOnlyVectorMethods.ThrowOnWrongClrType<T>(basicType);
+
         _nativeVector = nativeVector;
         _basicType = basicType;
         _length = length;
+
         _nativeData = NativeMethods.duckdb_vector_get_data(_nativeVector);
+        _validityMask = NativeMethods.duckdb_vector_get_validity(_nativeVector);
     }
 
+    public ReadOnlySpan<ulong> GetValidityMask()
+    {
+        return new ReadOnlySpan<ulong>(_validityMask, _validityMask != null ? _length : 0);
+    }
+}
+
+public unsafe static partial class DuckDbReadOnlyVectorMethods 
+{
     /// <summary>
     /// Validate that the .NET type is correct for interpreting the raw
     /// data array obtained from DuckDB.
@@ -57,7 +78,7 @@ public unsafe readonly ref struct DuckDbReadOnlyVector
     /// the <paramref name="basicType" /> does not refer to data
     /// that can be directly interpreted from .NET.
     /// </returns>
-    private static bool ValidateGenericType<T>(DuckDbBasicType basicType) where T : unmanaged
+    public static bool ValidateGenericType<T>(DuckDbBasicType basicType)
     {
         return basicType switch
         {
@@ -78,19 +99,36 @@ public unsafe readonly ref struct DuckDbReadOnlyVector
         };
     }
 
-    public ReadOnlySpan<T> AsSpan<T>() where T : unmanaged
+    internal static void ThrowOnWrongClrType<T>(DuckDbBasicType basicType)
     {
-        // N.B. A default-initialized instance will always fail validation.
-        if (!ValidateGenericType<T>(_basicType))
-            throw new ArgumentException("Generic type T does not match type of data present in the result column. ");
-
-        return new ReadOnlySpan<T>(_nativeData, _length);
+        if (!ValidateGenericType<T>(basicType))
+            throw new ArgumentException($"Generic type {typeof(T).Name} does not match the DuckDB basic type {basicType} of the elements in the desired column.");
     }
 
-    public ReadOnlySpan<ulong> GetValidityMask()
+    internal static void ThrowOnNullVector(_duckdb_vector* vector)
     {
-        // N.B. A default-initialized instance will get a null pointer p.
-        var p = NativeMethods.duckdb_vector_get_validity(_nativeVector);
-        return new ReadOnlySpan<ulong>(p, p != null ? _length : 0);
+        if (vector == null)
+            throw new InvalidOperationException("Cannot operate on a default instance of DuckDbReadOnlyVector. ");
+    }
+
+    internal static DuckDbBasicType GetVectorElementBasicType(_duckdb_vector* vector)
+    {
+        var nativeType = NativeMethods.duckdb_vector_get_column_type(vector);
+        if (nativeType == null)
+            throw new DuckDbException("Could not query the logical type of a vector from DuckDB. ");
+
+        try
+        {
+            return NativeMethods.duckdb_get_type_id(nativeType);
+        }
+        finally
+        {
+            NativeMethods.duckdb_destroy_logical_type(ref nativeType);
+        }
+    }
+
+    public static ReadOnlySpan<T> AsSpan<T>(in this DuckDbReadOnlyVector<T> vector) where T : unmanaged
+    {
+        return new ReadOnlySpan<T>(vector._nativeData, vector._length);
     }
 }

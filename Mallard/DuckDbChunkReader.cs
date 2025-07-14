@@ -61,16 +61,20 @@ public unsafe readonly ref struct DuckDbChunkReader
     /// <summary>
     /// Get access to the data for one column for all the rows represented by this chunk.
     /// </summary>
+    /// <typeparam name="T">
+    /// The .NET type to bind the elements of the column to.  This type must be compatible with
+    /// the actual (dynamic) type of the column in DuckDB.
+    /// </typeparam>
     /// <param name="columnIndex">
     /// The index of the column.
     /// </param>
     /// <returns>
-    /// <see cref="DuckDbReadOnlyVector" /> representing the data for the column.
+    /// <see cref="DuckDbReadOnlyVector{T}" /> representing the data for the column.
     /// </returns>
     /// <exception cref="IndexOutOfRangeException">
     /// <paramref name="columnIndex"/> is out of range, or this instance is default-initialized.
     /// </exception>
-    public DuckDbReadOnlyVector GetColumn(int columnIndex)
+    public DuckDbReadOnlyVector<T> GetColumn<T>(int columnIndex)
     {
         // In case the user calls this method on a default-initialized instance,
         // the native library will not crash on this call because it does
@@ -79,7 +83,7 @@ public unsafe readonly ref struct DuckDbChunkReader
                                                                       columnIndex);
         if (nativeVector == null)
             throw new IndexOutOfRangeException("Column index is not in range. ");
-        return new DuckDbReadOnlyVector(nativeVector, _columnInfo[columnIndex].BasicType, _length);
+        return new DuckDbReadOnlyVector<T>(nativeVector, _columnInfo[columnIndex].BasicType, _length);
     }
 
     /// <summary>
