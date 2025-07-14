@@ -48,12 +48,8 @@ public unsafe class DuckDbValue
             return NativeMethods.duckdb_create_timestamp((DuckDbTimestamp)(object)input!);
 
         if (typeof(T) == typeof(DateTime))
-        {
-            // Convert to DuckDbTimestamp.
-            var dateTime = (DateTime)(object)input!;
-            var timestamp = new DuckDbTimestamp((dateTime - new DateTime(1970, 1, 1)).Ticks / 10);
-            return NativeMethods.duckdb_create_timestamp(timestamp);
-        }
+            return NativeMethods.duckdb_create_timestamp(
+                DuckDbTimestamp.FromDateTime((DateTime)(object)input!));
 
         if (typeof(T) == typeof(string))
         {
