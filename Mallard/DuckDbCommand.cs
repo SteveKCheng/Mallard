@@ -42,10 +42,18 @@ public unsafe class DuckDbCommand
 
     private void ThrowIfParamIndexOutOfRange(int index)
     {
-        if (index < 0 || index >= _numParams)
+        if (unchecked((uint)index - 1u >= (uint)_numParams))
             throw new IndexOutOfRangeException("Index of parameter is out of range. ");
     }
 
+    /// <summary>
+    /// Get the name of the parameter at the specified index.
+    /// </summary>
+    /// <param name="index">
+    /// 1-based index of the parameter.
+    /// </param>
+    /// <returns>The name of the parameter in the SQL statement.  If the parameter
+    /// has no name, the empty string is returned. </returns>
     public string GetParameterName(int index)
     {
         ThrowIfParamIndexOutOfRange(index);
