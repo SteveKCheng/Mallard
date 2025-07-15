@@ -47,6 +47,16 @@ public unsafe class DuckDbCommand
     }
 
     /// <summary>
+    /// The number of parameters in the prepared statement.
+    /// </summary>
+    /// <remarks>
+    /// In this class, all indices of parameters are 1-based, i.e. the first parameter has index 1.
+    /// This convention matches DuckDB's API and SQL syntax, where positional parameters
+    /// are also 1-based.
+    /// </remarks>
+    public int ParameterCount => _numParams;
+
+    /// <summary>
     /// Get the name of the parameter at the specified index.
     /// </summary>
     /// <param name="index">
