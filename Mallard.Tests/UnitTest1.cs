@@ -67,4 +67,64 @@ public class UnitTest1
         Assert.InRange(numChunks, 1, 10);
         Assert.InRange(totalRows, 1000, 2000);
     }
+
+    [Fact]
+    public void Test3()
+    {
+        using var dbConn = MakeDbConnectionWithGeneratedData();
+
+        using var dbResult = dbConn.Execute(@"
+            SELECT DISTINCT c_mktsegment FROM customer ORDER BY c_mktsegment ASC");
+
+        bool hasChunk;
+        int totalRows = 0;
+        int numChunks = -1;
+        string? prevString = null;
+
+        do
+        {
+            numChunks++;
+
+            hasChunk = dbResult.ProcessNextChunk(false, (in DuckDbChunkReader reader, bool _) =>
+            {
+                var strings = reader.GetColumn<string>(0);
+
+                for (int i = 0; i < reader.Length; ++i)
+                {
+                    var thisString = strings.GetItem(i);
+                    Assert.NotNull(thisString);
+
+                    Assert.True(IsAsciiString(thisString),
+                                $"String contains non-ASCII characters; it may be corrupt");
+                    Assert.True(prevString == null || string.CompareOrdinal(prevString, thisString) < 0,
+                                $"Strings are not in ascending order");
+                    prevString = thisString;
+                }
+
+                return reader.Length;
+            }, out var numRows);
+
+            totalRows += numRows;
+        } while (hasChunk);
+    }
+
+    private static bool IsAsciiString(string s)
+        => s.AsSpan().ContainsAnyExceptInRange('\u0020', '\u007E') == false;
+
+    private static DuckDbConnection MakeDbConnectionWithGeneratedData()
+    {
+        var c = new DuckDbConnection("");
+        try
+        {
+            c.ExecuteNonQuery("INSTALL tpch");
+            c.ExecuteNonQuery("LOAD tpch");
+            c.ExecuteNonQuery("CALL dbgen(sf = 0.2)");
+            return c;
+        }
+        catch
+        {
+            c.Dispose();
+            throw;
+        }
+    }
 }
