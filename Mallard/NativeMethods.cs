@@ -329,12 +329,13 @@ internal unsafe static partial class NativeMethods
     [LibraryImport(LibraryName)]
     internal static partial _duckdb_value* duckdb_create_timestamp(DuckDbTimestamp input);
 
-    /*
     [LibraryImport(LibraryName)]
-    internal static partial _duckdb_value* duckdb_create_hugeint(duckdb_hugeint input);
+    internal static partial _duckdb_value* duckdb_create_hugeint(Int128 input);
 
     [LibraryImport(LibraryName)]
-    internal static partial _duckdb_value* duckdb_create_uhugeint(duckdb_uhugeint input);
+    internal static partial _duckdb_value* duckdb_create_uhugeint(UInt128 input);
+
+    /*
 
     [LibraryImport(LibraryName)]
     internal static partial _duckdb_value* duckdb_create_varint(duckdb_varint input);

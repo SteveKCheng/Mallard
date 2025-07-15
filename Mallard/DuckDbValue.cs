@@ -36,6 +36,11 @@ public unsafe class DuckDbValue
         if (typeof(T) == typeof(ulong))
             return NativeMethods.duckdb_create_uint64((ulong)(object)input!);
 
+        if (typeof(T) == typeof(Int128))
+            return NativeMethods.duckdb_create_hugeint((Int128)(object)input!);
+        if (typeof(T) == typeof(UInt128))
+            return NativeMethods.duckdb_create_uhugeint((UInt128)(object)input!);
+
         if (typeof(T) == typeof(float))
             return NativeMethods.duckdb_create_float((float)(object)input!);
         if (typeof(T) == typeof(double))
