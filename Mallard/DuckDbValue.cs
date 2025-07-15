@@ -1,16 +1,23 @@
 ﻿using Mallard.C_API;
 using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Runtime.InteropServices.Marshalling;
-using System.Text;
-using System.Threading.Tasks;
+using System.Numerics;
+using System.Runtime.CompilerServices;
 
 namespace Mallard;
 
 public unsafe class DuckDbValue
 {
+    [SkipLocalsInit]
+    private static _duckdb_value* CreateNativeString(string input)
+    {
+        using scoped var marshalState = new Utf8StringConverterState();
+        var utf8Ptr = marshalState.ConvertToUtf8(
+            input,
+            out int utf8Length,
+            stackalloc byte[Utf8StringConverterState.SuggestedBufferSize]);
+        return NativeMethods.duckdb_create_varchar_length(utf8Ptr, utf8Length);
+    }
+
     internal static _duckdb_value* CreateNativeObject<T>(T input)
     {
         if (typeof(T) == typeof(bool))
@@ -56,15 +63,12 @@ public unsafe class DuckDbValue
             return NativeMethods.duckdb_create_timestamp(
                 DuckDbTimestamp.FromDateTime((DateTime)(object)input!));
 
+        // N.B. uses a P/Invoke custom marshaller
+        if (typeof(T) == typeof(BigInteger))
+            return NativeMethods.duckdb_create_varint((BigInteger)(object)input!);
+
         if (typeof(T) == typeof(string))
-        {
-            using scoped var marshalState = new Utf8StringConverterState();
-            var utf8Ptr = marshalState.ConvertToUtf8(
-                (string)(object)input!,
-                out int utf8Length,
-                stackalloc byte[Utf8StringConverterState.SuggestedBufferSize]);
-            return NativeMethods.duckdb_create_varchar_length(utf8Ptr, utf8Length);
-        }
+            return CreateNativeString((string)(object)input!);
 
         throw new InvalidOperationException("Unsupported type. ");
     }

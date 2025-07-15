@@ -1,8 +1,12 @@
 ﻿using System;
+using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Marshalling;
 
 using idx_t = long;
+
+[assembly: DisableRuntimeMarshalling]
 
 namespace Mallard.C_API;
 
@@ -93,6 +97,14 @@ internal unsafe struct _duckdb_vector { private void* internal_ptr; }
 
 [StructLayout(LayoutKind.Sequential)]
 internal unsafe struct _duckdb_logical_type { private void* internal_ptr; }
+
+[StructLayout(LayoutKind.Sequential)]
+internal unsafe struct duckdb_varint 
+{
+    internal byte* data;
+    internal idx_t size;
+    internal bool is_negative;
+}
 
 [StructLayout(LayoutKind.Sequential)]
 internal unsafe struct duckdb_result
@@ -335,11 +347,11 @@ internal unsafe static partial class NativeMethods
     [LibraryImport(LibraryName)]
     internal static partial _duckdb_value* duckdb_create_uhugeint(UInt128 input);
 
-    /*
-
     [LibraryImport(LibraryName)]
-    internal static partial _duckdb_value* duckdb_create_varint(duckdb_varint input);
+    internal static partial _duckdb_value* duckdb_create_varint(
+        [MarshalUsing(typeof(BigIntegerMarshaller))] BigInteger input);
 
+    /*
     [LibraryImport(LibraryName)]
     internal static partial _duckdb_value* duckdb_create_decimal(duckdb_decimal input);
     */
