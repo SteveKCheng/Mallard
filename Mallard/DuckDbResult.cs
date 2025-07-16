@@ -1,6 +1,5 @@
 ﻿using Mallard.C_API;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 
@@ -20,7 +19,67 @@ public unsafe sealed class DuckDbResult : IDisposable
         public DuckDbBasicType BasicType { get; init; }
     }
 
-    internal DuckDbResult(ref duckdb_result nativeResult)
+    /// <summary>
+    /// Wrap the native result from DuckDB, and handle errors. 
+    /// </summary>
+    /// <remarks>
+    /// This code is common to prepared and non-prepared queries.
+    /// </remarks>
+    /// <param name="status">
+    /// Return status from executing a query in DuckDB. 
+    /// </param>
+    /// <param name="nativeResult">
+    /// The result of the query.  The caller loses ownership of this object: it is either
+    /// transferred to the new instance of <see cref="DuckDbResult" />, or otherwise (when this
+    /// method throws an exception) gets destroyed.
+    /// </param>
+    /// <returns>
+    /// If <paramref name="status" /> indicates success, an instance of <see cref="DuckDbResult" />
+    /// that wraps the native result object.
+    /// </returns>
+    internal static DuckDbResult CreateFromQuery(duckdb_state status, ref duckdb_result nativeResult)
+    {
+        try
+        {
+            if (status != duckdb_state.DuckDBSuccess)
+                throw new DuckDbException(NativeMethods.duckdb_result_error(ref nativeResult));
+
+            // Passes ownership of nativeResult
+            return new DuckDbResult(ref nativeResult);
+        }
+        catch
+        {
+            NativeMethods.duckdb_destroy_result(ref nativeResult);
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Extract the number of changed rows from executing some SQL statement, and
+    /// abandon the native result object.
+    /// </summary>
+    /// <remarks>
+    /// This method is common code used to implement <see cref="DuckDbConnection.ExecuteNonQuery" />
+    /// and <see cref="DuckDbCommand.ExecuteNonQuery" />.
+    /// </remarks>
+    internal static long ExtractNumberOfChangedRows(duckdb_state status, ref duckdb_result nativeResult)
+    {
+        try
+        {
+            if (status != duckdb_state.DuckDBSuccess)
+                throw new DuckDbException(NativeMethods.duckdb_result_error(ref nativeResult));
+            var resultType = NativeMethods.duckdb_result_return_type(nativeResult);
+            if (resultType == duckdb_result_type.DUCKDB_RESULT_TYPE_CHANGED_ROWS)
+                return NativeMethods.duckdb_rows_changed(ref nativeResult);
+            return -1;
+        }
+        finally
+        {
+            NativeMethods.duckdb_destroy_result(ref nativeResult);
+        }
+    }
+
+    private DuckDbResult(ref duckdb_result nativeResult)
     {
         _nativeResult = nativeResult;
 

@@ -1,23 +1,77 @@
 ﻿using Mallard.C_API;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace Mallard;
 
 /// <summary>
 /// Prepared statement.
 /// </summary>
-public unsafe class DuckDbCommand
+public unsafe class DuckDbCommand : IDisposable
 {
     private _duckdb_prepared_statement* _nativeStatement;
     private readonly int _numParams;
     private readonly Lock _mutex = new();
     private bool _isDisposed;
 
+    #region Statement execution
+
+    /// <summary>
+    /// Execute the prepared statement and return the results (of the query).
+    /// </summary>
+    /// <returns>
+    /// The results of the query execution.
+    /// </returns>
+    public DuckDbResult Execute()
+    {
+        duckdb_state status;
+        duckdb_result nativeResult;
+        lock (_mutex)
+        {
+            ThrowIfDisposed();
+
+            // N.B. DuckDB captures the "client context" from the database connection
+            // when NativeMethods.duckdb_prepare is called, and holds it with shared ownership.
+            // Thus the connection object is not needed to execute the prepared statement,
+            // (and the originating DuckDbConnection object does not have to be "locked").
+            status = NativeMethods.duckdb_execute_prepared(_nativeStatement, out nativeResult);
+        }
+
+        return DuckDbResult.CreateFromQuery(status, ref nativeResult);
+    }
+
+    /// <summary>
+    /// Execute the prepared statement, and report only the number of rows changed.
+    /// </summary>
+    /// <returns>
+    /// The number of rows changed by the execution of the statement.
+    /// The result is -1 if the statement did not change any rows, or is otherwise
+    /// a statement or query for which DuckDB does not report the number of rows changed.
+    /// </returns>
+    public long ExecuteNonQuery()
+    {
+        duckdb_state status;
+        duckdb_result nativeResult;
+        lock (_mutex)
+        {
+            ThrowIfDisposed();
+            status = NativeMethods.duckdb_execute_prepared(_nativeStatement, out nativeResult);
+        }
+        return DuckDbResult.ExtractNumberOfChangedRows(status, ref nativeResult);
+    }
+
+    #endregion
+
+    /// <summary>
+    /// Wrap the native object for a prepared statement from DuckDB.
+    /// </summary>
+    /// <param name="nativeConn">
+    /// The native connection object that the prepared statement is associated with.
+    /// </param>
+    /// <param name="sql">
+    /// The SQL statement to prepare. 
+    /// </param>
     internal DuckDbCommand(_duckdb_connection* nativeConn, string sql)
     {
         var status = NativeMethods.duckdb_prepare(nativeConn, sql, out var nativeStatement);
@@ -103,9 +157,13 @@ public unsafe class DuckDbCommand
     public void BindParameter<T>(int index, T value)
     {
         ThrowIfParamIndexOutOfRange(index);
+        var nativeObject = DuckDbValue.CreateNativeObject(value);
+        BindParameterInternal(index, ref nativeObject);
+    }
 
-        var _nativeObject = DuckDbValue.CreateNativeObject(value);
-        if (_nativeObject == null)
+    private void BindParameterInternal(int index, ref _duckdb_value* nativeValue)
+    {
+        if (nativeValue == null)
             throw new DuckDbException("Failed to create object wrapping value. ");
 
         try
@@ -113,18 +171,18 @@ public unsafe class DuckDbCommand
             duckdb_state status;
             lock (_mutex)
             {
-                status = NativeMethods.duckdb_bind_value(_nativeStatement, index, _nativeObject);
+                status = NativeMethods.duckdb_bind_value(_nativeStatement, index, nativeValue);
             }
 
             DuckDbException.ThrowOnFailure(status, "Could not bind specified value to parameter. ");
         }
         finally
         {
-            NativeMethods.duckdb_destroy_value(ref _nativeObject);
+            NativeMethods.duckdb_destroy_value(ref nativeValue);
         }
     }
 
-    #region Destruction
+    #region Resource management
 
     private void DisposeImpl(bool disposing)
     {

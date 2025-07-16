@@ -95,48 +95,32 @@ public unsafe class DuckDbConnection : IDisposable
         _database = database;
     }
 
+    /// <summary>
+    /// Execute a SQL statement, and report only the number of rows changed.
+    /// </summary>
+    /// <returns>
+    /// The number of rows changed by the execution of the statement.
+    /// The result is -1 if the statement did not change any rows, or is otherwise
+    /// a statement or query for which DuckDB does not report the number of rows changed.
+    /// </returns>
     public long ExecuteNonQuery(string sql)
     {
         using var _ = _refCount.EnterScope(this);
-
-        duckdb_state status;
-        status = NativeMethods.duckdb_query(_nativeConn, sql, out var nativeResult);
-        try
-        {
-            if (status != duckdb_state.DuckDBSuccess)
-                throw new DuckDbException(NativeMethods.duckdb_result_error(ref nativeResult));
-
-            var resultType = NativeMethods.duckdb_result_return_type(nativeResult);
-            if (resultType == duckdb_result_type.DUCKDB_RESULT_TYPE_CHANGED_ROWS)
-                return NativeMethods.duckdb_rows_changed(ref nativeResult);
-
-            return 0;
-        }
-        finally
-        {
-            NativeMethods.duckdb_destroy_result(ref nativeResult);
-        }
+        var status = NativeMethods.duckdb_query(_nativeConn, sql, out var nativeResult);
+        return DuckDbResult.ExtractNumberOfChangedRows(status, ref nativeResult);
     }
 
+    /// <summary>
+    /// Execute a SQL statement and return the results (of the query).
+    /// </summary>
+    /// <returns>
+    /// The results of the query execution.
+    /// </returns>
     public DuckDbResult Execute(string sql)
     {
         using var _ = _refCount.EnterScope(this);
-
-        duckdb_state status;
-        status = NativeMethods.duckdb_query(_nativeConn, sql, out var nativeResult);
-        try
-        {
-            if (status != duckdb_state.DuckDBSuccess)
-                throw new DuckDbException(NativeMethods.duckdb_result_error(ref nativeResult));
-
-            // Passes ownership of nativeResult
-            return new DuckDbResult(ref nativeResult);
-        }
-        catch
-        {
-            NativeMethods.duckdb_destroy_result(ref nativeResult);
-            throw;
-        }
+        var status = NativeMethods.duckdb_query(_nativeConn, sql, out var nativeResult);
+        return DuckDbResult.CreateFromQuery(status, ref nativeResult);
     }
 
     public DuckDbConnection Reopen()
@@ -151,6 +135,27 @@ public unsafe class DuckDbConnection : IDisposable
         database.AcquireRef();
         _database = database;
     }
+
+    #region Prepared statements
+
+    // FIXME
+    // The standard interface method System.Data.IDbConnection.CreateCommand() does not
+    // take the SQL string as a parameter.  Instead it creates a mutable command object
+    // where the SQL string can be set later.  This is not compatible with the way DuckDB
+    // works, so eventually we have to implement a new DbCommand class that delays the
+    // actual preparation of the command until execution happens.  Then, the current
+    // DuckDbCommand class will probably be renamed to DuckDbPreparedStatement; and
+    // we will offer a new (non-interface) method to create a prepared statement in
+    // the DuckDB "native way", for efficiency.
+    public DuckDbCommand CreatePreparedStatement(string sql)
+    {
+        using var _ = _refCount.EnterScope(this);
+        return new DuckDbCommand(_nativeConn, sql);
+    }
+
+    #endregion
+
+    #region Resource management
 
     private void DisposeImpl(bool disposing)
     {
@@ -171,4 +176,6 @@ public unsafe class DuckDbConnection : IDisposable
         DisposeImpl(disposing: true);
         GC.SuppressFinalize(this);
     }
+
+    #endregion
 }
