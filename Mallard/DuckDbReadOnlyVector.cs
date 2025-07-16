@@ -197,7 +197,7 @@ public unsafe static partial class DuckDbReadOnlyVectorMethods
     /// </returns>
     /// <exception cref="IndexOutOfRangeException">The index is out of range for the vector. </exception>
     /// <remarks>
-    /// Use <see cref="AsSpan" />, instead of this method, to get efficient access 
+    /// Use <see cref="AsSpan{T}" />, instead of this method, to get efficient access 
     /// to the vector elements, when the element type directly corresponds to an unmanaged type in .NET 
     /// (e.g. integers).
     /// </remarks>

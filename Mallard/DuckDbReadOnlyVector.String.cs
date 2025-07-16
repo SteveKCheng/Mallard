@@ -7,20 +7,8 @@ using System.Text;
 namespace Mallard;
 
 /// <summary>
-/// Represents a string instantiated by DuckDB as an element in some vector.
+/// Represents a UTF-8 string or blob instantiated by DuckDB as an element in some vector.
 /// </summary>
-/// <remarks>
-/// <para>
-/// Due to this type having both an inline buffer and a pointer, there is no way to expose
-/// it safely to user code (without allowing the possibility of dangling pointers).
-/// This type is only used internally to translate the data to a more standard form:
-/// either <see cref="ReadOnlySpan{byte}" /> (UTF-8) or <see cref="string" />.
-/// </para>
-/// <para>
-/// Naturally, C# code, even within this library, cannot modify the string through this
-/// structure.
-/// </para>
-/// </remarks>
 [StructLayout(LayoutKind.Explicit)]
 internal unsafe ref struct DuckDbReadOnlyString
 {
@@ -30,7 +18,7 @@ internal unsafe ref struct DuckDbReadOnlyString
     private const int InlinedSize = 12;
 
     /// <summary>
-    /// Length of the UTF-8 string in bytes.
+    /// Length of the string or blob in bytes.
     /// </summary>
     [FieldOffset(0)]
     private readonly uint _length;
@@ -39,25 +27,33 @@ internal unsafe ref struct DuckDbReadOnlyString
     /// Inline buffer for short strings, up to the inlined size.
     /// </summary>
     [FieldOffset(4)]
-    private fixed byte _inlined[InlinedSize];
+    private fixed byte _inlined[InlinedSize];   // would be readonly if C# allowed that for fixed fields
 
     /// <summary>
-    /// Pointer to the UTF-8 string data if it exceeds the inlined size.
+    /// Pointer to the string or blob if it exceeds the inlined size.
     /// </summary>
     [FieldOffset(8)]
     private readonly byte* _ptr;
 
     /// <summary>
-    /// Get the span of UTF-8 bytes representing the string.
+    /// Get the span of bytes representing the UTF-8 string or blob.
     /// </summary>
     /// <remarks>
-    /// Caution: do not call this method on an rvalue, for in that case, any pointer to the inline buffer
-    /// would not be valid after this method returns.
+    /// This method is deliberately not an instance method, to disallow calling it on rvalues.
+    /// Pointers to the inline buffer would become dangling when the originating rvalue
+    /// disappears.
     /// </remarks>
-    public readonly ReadOnlySpan<byte> DangerousGetSpan()
+    /// <param name="nativeString">
+    /// The native DuckDB structure representing the string or blob.
+    /// The "ref" qualifier is only to ensure that the argument is an lvalue; this method does
+    /// not actually modify the argument.
+    /// </param>
+    internal static ReadOnlySpan<byte> AsSpan(ref DuckDbReadOnlyString nativeString)
     {
-        void* p = (_length <= InlinedSize) ? Unsafe.AsPointer(ref Unsafe.AsRef(in _inlined[0])) : _ptr;
-        return new ReadOnlySpan<byte>(p, checked((int)_length));
+        void* p = (nativeString._length <= InlinedSize) 
+                    ? Unsafe.AsPointer(ref nativeString._inlined[0]) 
+                    : nativeString._ptr;
+        return new ReadOnlySpan<byte>(p, checked((int)nativeString._length));
     }
 }
 
@@ -92,6 +88,21 @@ public unsafe static partial class DuckDbReadOnlyVectorMethods
     {
         vector.VerifyItemIsValid(index);
         var p = (DuckDbReadOnlyString*)vector._nativeData + index;
-        return p->DangerousGetSpan();
+        return p->AsSpan();
     }
+
+    /// <summary>
+    /// Get the span of bytes representing a UTF-8 string, or blob.
+    /// </summary>
+    /// <remarks>
+    /// This extension method simply wraps <see cref="DuckDbReadOnlyString.AsSpan" />
+    /// to enable calling it with the normal object-oriented syntax, but only for lvalues.
+    /// </remarks>
+    /// <param name="nativeString">
+    /// The native DuckDB structure representing the string or blob.
+    /// The "ref" qualifier is only to ensure that the argument is an lvalue; this method does
+    /// not actually modify the argument.
+    /// </param>
+    internal static ReadOnlySpan<byte> AsSpan(ref this DuckDbReadOnlyString nativeString) 
+        => DuckDbReadOnlyString.AsSpan(ref nativeString);
 }
