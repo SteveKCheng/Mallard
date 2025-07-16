@@ -71,7 +71,7 @@ public class UnitTest1
     [Fact]
     public void Test3()
     {
-        using var dbConn = MakeDbConnectionWithGeneratedData();
+        using var dbConn = Program.MakeDbConnectionWithGeneratedData();
 
         using var dbResult = dbConn.Execute(@"
             SELECT DISTINCT c_mktsegment FROM customer ORDER BY c_mktsegment ASC");
@@ -110,21 +110,4 @@ public class UnitTest1
 
     private static bool IsAsciiString(string s)
         => s.AsSpan().ContainsAnyExceptInRange('\u0020', '\u007E') == false;
-
-    private static DuckDbConnection MakeDbConnectionWithGeneratedData()
-    {
-        var c = new DuckDbConnection("");
-        try
-        {
-            c.ExecuteNonQuery("INSTALL tpch");
-            c.ExecuteNonQuery("LOAD tpch");
-            c.ExecuteNonQuery("CALL dbgen(sf = 0.2)");
-            return c;
-        }
-        catch
-        {
-            c.Dispose();
-            throw;
-        }
-    }
 }
