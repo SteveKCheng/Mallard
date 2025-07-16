@@ -355,10 +355,8 @@ internal unsafe static partial class NativeMethods
     internal static partial _duckdb_value* duckdb_create_varint(
         [MarshalUsing(typeof(BigIntegerMarshaller))] BigInteger input);
 
-    /*
     [LibraryImport(LibraryName)]
-    internal static partial _duckdb_value* duckdb_create_decimal(duckdb_decimal input);
-    */
+    internal static partial _duckdb_value* duckdb_create_decimal(DuckDbDecimal input);
 
     [LibraryImport(LibraryName)]
     internal static partial _duckdb_value* duckdb_create_float(float input);

@@ -53,6 +53,11 @@ public unsafe class DuckDbValue
         if (typeof(T) == typeof(double))
             return NativeMethods.duckdb_create_double((double)(object)input!);
 
+        if (typeof(T) == typeof(DuckDbDecimal))
+            return NativeMethods.duckdb_create_decimal((DuckDbDecimal)(object)input!);
+        if (typeof(T) == typeof(Decimal))
+            return NativeMethods.duckdb_create_decimal(DuckDbDecimal.FromDecimal((Decimal)(object)input!));
+
         if (typeof(T) == typeof(DuckDbDate))
             return NativeMethods.duckdb_create_date((DuckDbDate)(object)input!);
 
