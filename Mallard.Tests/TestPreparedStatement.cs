@@ -28,4 +28,17 @@ public class TestPreparedStatement(DatabaseFixture fixture) : IClassFixture<Data
         using var dbResult = ps.Execute();
         Assert.Equal(limitRows, dbResult.DestructiveGetNumberOfResults());
     }
+
+    [Fact]
+    public void DecimalParameter()
+    {
+        const int limitRows = 50;
+        using var ps = DbConnection.CreatePreparedStatement($"SELECT c_name, c_acctbal FROM customer WHERE ABS(c_acctbal) >= $1 LIMIT {limitRows}");
+
+        ps.BindParameter(1, 5182.05M);  // decimal literal
+
+        using var dbResult = ps.Execute();
+        Assert.Equal(limitRows, dbResult.DestructiveGetNumberOfResults());
+
+    }
 }
