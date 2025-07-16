@@ -178,4 +178,17 @@ public unsafe class DuckDbConnection : IDisposable
     }
 
     #endregion
+
+    #region Global information
+
+    private static string? _nativeLibraryVersion;
+
+    /// <summary>
+    /// The version of the native DuckDB library being used, as a string.
+    /// </summary>
+    public static string NativeLibraryVersion 
+        => (_nativeLibraryVersion ??= NativeMethods.duckdb_library_version());
+
+    #endregion
+
 }
