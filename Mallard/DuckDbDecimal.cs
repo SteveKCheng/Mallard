@@ -13,8 +13,25 @@ public readonly struct DuckDbDecimal
 {
     private readonly byte width;
     private readonly byte scale;
-    private readonly Int128 value;
 
+    //
+    // We really just want to use Int128 here, but must substitute in DuckDbHugeUInt
+    // to work around a bug in the .NET runtime's marshalling of 128-bit integer types.
+    //
+
+    private readonly DuckDbHugeUInt valuePInvoke;
+
+    private Int128 value { 
+        get { 
+            unsafe {
+                Int128 v;
+                fixed (DuckDbHugeUInt* p = &valuePInvoke)
+                    v = *(Int128*)p;
+                return v;
+            } 
+        }
+    }
+        
     /// <summary>
     /// The maximum significand that can be represented by .NET's <see cref="Decimal" /> type: 2^96 - 1.
     /// </summary>
@@ -24,7 +41,11 @@ public readonly struct DuckDbDecimal
     {
         this.width = width;
         this.scale = scale;
-        this.value = value;
+
+        unsafe
+        {
+            valuePInvoke = *(DuckDbHugeUInt*)&value;
+        }
     }
 
     /// <summary>

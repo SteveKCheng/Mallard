@@ -137,12 +137,6 @@ public unsafe static partial class DuckDbReadOnlyVectorMethods
             DuckDbBasicType.Timestamp => typeof(T) == typeof(DuckDbTimestamp),
             DuckDbBasicType.List => typeof(T) == typeof(DuckDbList),
             DuckDbBasicType.VarChar => typeof(T) == typeof(string),
-
-            // "Huge integers" in DuckDB are 128-bit integers.  Both DuckDB and .NET
-            // assume little-endianness and two's complement, and, fortunately, decompose
-            // a 128-integer into two 64-bit integers in the natural way.  Therefore we cam
-            // just use the existing UInt128 and Int128 types from .NET to read and write
-            // DuckDB "huge integers".
             DuckDbBasicType.UHugeInt => typeof(T) == typeof(UInt128),
             DuckDbBasicType.HugeInt => typeof(T) == typeof(Int128),
 

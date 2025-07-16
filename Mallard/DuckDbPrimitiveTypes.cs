@@ -149,3 +149,20 @@ public struct DuckDbTimestamp(long microseconds)
         return new DateTime(ticks: t * 10, kind: DateTimeKind.Unspecified);
     }
 }
+
+// "Huge integers" in DuckDB are 128-bit integers.  Both DuckDB and .NET
+// assume little-endianness and two's complement, and, fortunately, decompose
+// a 128-integer into two 64-bit integers in the natural way.  Therefore we can
+// just use the existing UInt128 and Int128 types from .NET to read and write
+// DuckDB "huge integers".
+//
+// However, the .NET runtime has a bug in marshalling UInt128, Int128 under P/Invoke.
+// It simply fails with a C++ exception thrown from the runtime!  We work around
+// the bug by defining our own structure with the same layout, and then
+// "reinterpret-casting" between this structure and UInt128, Int128 as necessary.
+[StructLayout(LayoutKind.Sequential)]
+internal struct DuckDbHugeUInt
+{
+    public ulong lower;
+    public ulong upper;
+}

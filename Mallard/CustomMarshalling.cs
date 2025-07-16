@@ -160,3 +160,23 @@ internal static unsafe class BigIntegerMarshaller
         }
     }
 }
+
+//
+// Custom marshallers for UInt128, Int128 to work around bug in .NET runtime.
+// See comment surrounding struct DuckDbHugeUInt.
+//
+
+[CustomMarshaller(managedType: typeof(Int128), marshalMode: MarshalMode.Default, marshallerType: typeof(Int128Marshaller))]
+internal static unsafe class Int128Marshaller
+{
+    public static Int128 ConvertToManaged(DuckDbHugeUInt v) => *(Int128*)&v;
+
+    public static DuckDbHugeUInt ConvertToUnmanaged(Int128 v) => *(DuckDbHugeUInt*)&v;
+}
+
+[CustomMarshaller(managedType: typeof(UInt128), marshalMode: MarshalMode.Default, marshallerType: typeof(UInt128Marshaller))]
+internal static unsafe class UInt128Marshaller
+{
+    public static UInt128 ConvertToManaged(DuckDbHugeUInt v) => *(UInt128*)&v;
+    public static DuckDbHugeUInt ConvertToUnmanaged(UInt128 v) => *(DuckDbHugeUInt*)&v;
+}
