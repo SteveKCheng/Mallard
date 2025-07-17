@@ -11,26 +11,9 @@ namespace Mallard;
 [StructLayout(LayoutKind.Sequential)]
 public readonly struct DuckDbDecimal
 {
-    private readonly byte width;
-    private readonly byte scale;
-
-    //
-    // We really just want to use Int128 here, but must substitute in DuckDbHugeUInt
-    // to work around a bug in the .NET runtime's marshalling of 128-bit integer types.
-    //
-
-    private readonly DuckDbHugeUInt valuePInvoke;
-
-    private Int128 value { 
-        get { 
-            unsafe {
-                Int128 v;
-                fixed (DuckDbHugeUInt* p = &valuePInvoke)
-                    v = *(Int128*)p;
-                return v;
-            } 
-        }
-    }
+    private readonly byte _width;
+    private readonly byte _scale;
+    private readonly DuckDbHugeUInt _value;
         
     /// <summary>
     /// The maximum significand that can be represented by .NET's <see cref="Decimal" /> type: 2^96 - 1.
@@ -39,13 +22,9 @@ public readonly struct DuckDbDecimal
 
     private DuckDbDecimal(Int128 value, byte scale, byte width)
     {
-        this.width = width;
-        this.scale = scale;
-
-        unsafe
-        {
-            valuePInvoke = *(DuckDbHugeUInt*)&value;
-        }
+        _width = width;
+        _scale = scale;
+        _value = new(value);
     }
 
     /// <summary>
@@ -61,6 +40,7 @@ public readonly struct DuckDbDecimal
     {
         unchecked
         {
+            var value = _value.ToInt128();
             var isNegative = (value < 0);
             var magnitude = isNegative ? (UInt128)(-value) : (UInt128)value;
 
@@ -70,7 +50,7 @@ public readonly struct DuckDbDecimal
                 var magnitudeMid = (uint)(magnitude >> 32);
                 var magnitudeHigh = (uint)(magnitude >> 64);
                 return new Decimal((int)magnitudeLow, (int)magnitudeMid, (int)magnitudeHigh,
-                                   isNegative, scale);
+                                   isNegative, _scale);
             }
             else
             {

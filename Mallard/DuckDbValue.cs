@@ -78,3 +78,17 @@ public unsafe class DuckDbValue
         throw new InvalidOperationException("Unsupported type. ");
     }
 }
+
+internal static class FnPtrTest
+{
+    static object Generic<T>(string input) where T : INumber<T>
+    {
+        return (object)T.Parse(input, null);
+    }
+
+    static unsafe void Use()
+    {
+        delegate*<string, object> f = &Generic<int>;
+       
+    }
+}
