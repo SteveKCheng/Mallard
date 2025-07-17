@@ -21,16 +21,6 @@ public unsafe readonly ref struct DuckDbReadOnlyVector<T> where T: allows ref st
     internal readonly _duckdb_vector* _nativeVector;
 
     /// <summary>
-    /// The basic type of data from DuckDB, used to verify correctly-typed access.
-    /// </summary>
-    private readonly DuckDbBasicType _basicType;
-
-    /// <summary>
-    /// The length (number of rows) inherited from the result chunk this vector is part of.
-    /// </summary>
-    internal readonly int _length;
-
-    /// <summary>
     /// Pointer to the raw data array of the DuckDB vector. 
     /// </summary>
     internal readonly void* _nativeData;
@@ -44,6 +34,35 @@ public unsafe readonly ref struct DuckDbReadOnlyVector<T> where T: allows ref st
     /// </remarks>
     internal readonly ulong* _validityMask;
 
+    /// <summary>
+    /// The length (number of rows) inherited from the result chunk this vector is part of.
+    /// </summary>
+    internal readonly int _length;
+
+    /// <summary>
+    /// The basic type of data from DuckDB, used to verify correctly-typed access, 
+    /// cast to <c>byte</c> to conserve space.
+    /// </summary>
+    private readonly byte _basicType;
+
+    /// <summary>
+    /// The actual DuckDB type used for storage, when the logical type is
+    /// <see cref="DuckDbBasicType.Enum" /> or <see cref="DuckDbBasicType.Decimal" />.
+    /// </summary>
+    /// <remarks>
+    /// Set to zero (<see cref="DuckDbBasicType.Invalid" /> if inapplicable. 
+    /// </remarks>
+    private readonly byte _storageType;
+
+    /// <summary>
+    /// The number of digits after the decimal point, when the logical type is
+    /// <see cref="DuckDbBasicType.Decimal" />.
+    /// </summary>
+    /// <remarks>
+    /// Set to zero if inapplicable. 
+    /// </remarks>
+    private readonly byte _decimalScale;
+
     internal DuckDbReadOnlyVector(_duckdb_vector* nativeVector,
                                   DuckDbBasicType basicType,
                                   int length)
@@ -51,11 +70,24 @@ public unsafe readonly ref struct DuckDbReadOnlyVector<T> where T: allows ref st
         DuckDbReadOnlyVectorMethods.ThrowOnWrongClrType<T>(basicType);
 
         _nativeVector = nativeVector;
-        _basicType = basicType;
-        _length = length;
-
         _nativeData = NativeMethods.duckdb_vector_get_data(_nativeVector);
         _validityMask = NativeMethods.duckdb_vector_get_validity(_nativeVector);
+
+        _length = length;
+        _basicType = (byte)basicType;
+
+        if (basicType == DuckDbBasicType.Decimal)
+        {
+            var (scale, storageType) = DuckDbReadOnlyVectorMethods.GetDecimalStorageInfo(_nativeVector);
+            DuckDbReadOnlyVectorMethods.ThrowOnWrongClrType<T>(storageType);
+            _decimalScale = scale;
+            _storageType = (byte)storageType;
+        }
+        else if (basicType == DuckDbBasicType.Enum)
+        {
+            var storageType = DuckDbReadOnlyVectorMethods.GetEnumStorageType(_nativeVector);
+            _storageType = (byte)storageType;
+        }
     }
 
     /// <summary>
@@ -141,9 +173,49 @@ public unsafe static partial class DuckDbReadOnlyVectorMethods
             DuckDbBasicType.HugeInt => typeof(T) == typeof(Int128),
             DuckDbBasicType.Blob => typeof(T) == typeof(DuckDbString),
             DuckDbBasicType.Bit => typeof(T) == typeof(DuckDbString),
-
+            DuckDbBasicType.Uuid => typeof(T) == typeof(UInt128),
+            DuckDbBasicType.Decimal => typeof(T) == typeof(short) ||
+                                       typeof(T) == typeof(int) ||
+                                       typeof(T) == typeof(long) ||
+                                       typeof(T) == typeof(Int128),
+            DuckDbBasicType.Enum => typeof(T) == typeof(byte) ||
+                                    typeof(T) == typeof(ushort) ||
+                                    typeof(T) == typeof(uint),
             _ => false,
         };
+    }
+
+    internal static (byte Scale, DuckDbBasicType StorageType) GetDecimalStorageInfo(_duckdb_vector* vector)
+    {
+        var nativeType = NativeMethods.duckdb_vector_get_column_type(vector);
+        if (nativeType == null)
+            throw new DuckDbException("Could not query the logical type of a vector from DuckDB. ");
+
+        try
+        {
+            return (Scale: NativeMethods.duckdb_decimal_scale(nativeType),
+                    StorageType: NativeMethods.duckdb_decimal_internal_type(nativeType));
+        }
+        finally
+        {
+            NativeMethods.duckdb_destroy_logical_type(ref nativeType);
+        }
+    }
+
+    internal static DuckDbBasicType GetEnumStorageType(_duckdb_vector* vector)
+    {
+        var nativeType = NativeMethods.duckdb_vector_get_column_type(vector);
+        if (nativeType == null)
+            throw new DuckDbException("Could not query the logical type of a vector from DuckDB. ");
+
+        try
+        {
+            return NativeMethods.duckdb_enum_internal_type(nativeType);
+        }
+        finally
+        {
+            NativeMethods.duckdb_destroy_logical_type(ref nativeType);
+        }
     }
 
     internal static void ThrowOnWrongClrType<T>(DuckDbBasicType basicType) where T : allows ref struct

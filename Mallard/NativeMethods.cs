@@ -302,6 +302,21 @@ internal unsafe static partial class NativeMethods
     [LibraryImport(LibraryName)]
     internal static partial DuckDbBasicType duckdb_get_type_id(_duckdb_logical_type* type);
 
+    [LibraryImport(LibraryName)]
+    internal static partial byte duckdb_decimal_width(_duckdb_logical_type* type);
+
+    [LibraryImport(LibraryName)]
+    internal static partial byte duckdb_decimal_scale(_duckdb_logical_type* type);
+
+    [LibraryImport(LibraryName)]
+    internal static partial DuckDbBasicType duckdb_decimal_internal_type(_duckdb_logical_type* type);
+
+    [LibraryImport(LibraryName)]
+    internal static partial DuckDbBasicType duckdb_enum_internal_type(_duckdb_logical_type* type);
+
+    [LibraryImport(LibraryName)]
+    internal static partial uint duckdb_enum_dictionary_size(_duckdb_logical_type* type);
+
     #endregion
 
     #region Objects for single values

@@ -31,7 +31,6 @@ public unsafe static partial class DuckDbReadOnlyVectorMethods
         var totalChildren = NativeMethods.duckdb_list_vector_get_size(parentVector);
 
         var childBasicType = GetVectorElementBasicType(childVector);
-        ThrowOnWrongClrType<T>(childBasicType);
 
         return new DuckDbReadOnlyVector<T>(childVector, childBasicType, (int)totalChildren);
     }
