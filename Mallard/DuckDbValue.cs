@@ -68,6 +68,9 @@ public unsafe class DuckDbValue
             return NativeMethods.duckdb_create_timestamp(
                 DuckDbTimestamp.FromDateTime((DateTime)(object)input!));
 
+        if (typeof(T) == typeof(DuckDbInterval))
+            return NativeMethods.duckdb_create_interval((DuckDbInterval)(object)input!);
+
         // N.B. uses a P/Invoke custom marshaller
         if (typeof(T) == typeof(BigInteger))
             return NativeMethods.duckdb_create_varint((BigInteger)(object)input!);

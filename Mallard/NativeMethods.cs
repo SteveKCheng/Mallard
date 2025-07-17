@@ -382,6 +382,9 @@ internal unsafe static partial class NativeMethods
     internal static partial _duckdb_value* duckdb_create_double(double input);
 
     [LibraryImport(LibraryName)]
+    internal static partial _duckdb_value* duckdb_create_interval(DuckDbInterval input);
+
+    [LibraryImport(LibraryName)]
     [return: MarshalUsing(typeof(Utf8StringMarshallerWithFree))]
     internal static partial string duckdb_value_to_string(_duckdb_value* value);
 

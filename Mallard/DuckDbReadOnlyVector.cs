@@ -165,8 +165,12 @@ public unsafe static partial class DuckDbReadOnlyVectorMethods
             DuckDbBasicType.UBigInt => typeof(T) == typeof(ulong),
             DuckDbBasicType.Float => typeof(T) == typeof(float),
             DuckDbBasicType.Double => typeof(T) == typeof(double),
+            
             DuckDbBasicType.Date => typeof(T) == typeof(DuckDbDate),
             DuckDbBasicType.Timestamp => typeof(T) == typeof(DuckDbTimestamp),
+
+            DuckDbBasicType.Interval => typeof(T) == typeof(DuckDbInterval),
+
             DuckDbBasicType.List => typeof(T) == typeof(DuckDbList),
             DuckDbBasicType.VarChar => typeof(T) == typeof(string) || typeof(T) == typeof(DuckDbString),
             DuckDbBasicType.UHugeInt => typeof(T) == typeof(UInt128),

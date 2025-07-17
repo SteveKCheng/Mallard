@@ -69,12 +69,15 @@ public struct DuckDbTimestamp(long microseconds)
     /// <param name="dateTime">Desired date/time to represent in DuckDB. </param>
     /// <param name="exact">
     /// If true, fail if <paramref name="dateTime" /> cannot be represented exactly in DuckDB.
-    /// If false, the timestamp will be silently rounded to the nearest timepoint in milliseconds 
+    /// If false, the timestamp will be silently rounded to the nearest timepoint in microseconds 
     /// (since the epoch) for storage into DuckDB.  (The earliest and latest times allowed in 
     /// <see cref="DateTime" /> are both representable in DuckDB, so underflow or overflow cannot
     /// occur when converting to <see cref="DuckDbTimestamp" />, only rounding.)
     /// </param>
     /// <returns>The DuckDB representation of the date/time. </returns>
+    /// <exception cref="ArgumentException">
+    /// There are fractional microseconds and <paramref name="exact" /> is true.
+    /// </exception>
     public static DuckDbTimestamp FromDateTime(DateTime dateTime, bool exact = true)
     {
         // Under the current internal representation of DataTime, the following
@@ -82,11 +85,28 @@ public struct DuckDbTimestamp(long microseconds)
         // Note that the TimeSpan calculation ignores DateTimeKind.
         var dt = (dateTime - DateTime.UnixEpoch).Ticks;
 
-        var a = Math.DivRem(dt, TimeSpan.TicksPerMicrosecond, out var r);
+        return new DuckDbTimestamp(ConvertTicksToMicroseconds(dt, exact));
+    }
+
+    /// <summary>
+    /// Convert the ticks value from <see cref="DateTime" /> or <see cref="TimeSpan" />
+    /// into microseconds, carefully accounting for any fractional microseconds.
+    /// </summary>
+    /// <param name="ticks">The number of ticks (may be negative). </param>
+    /// <param name="exact">If true, fail if there are any fractional microseconds.
+    /// If false, the result will be rounded to the nearest microsecond.
+    /// </param>
+    /// <exception cref="ArgumentException">
+    /// There are fractional microseconds and <paramref name="exact" /> is true.
+    /// </exception>
+    internal static long ConvertTicksToMicroseconds(long ticks, bool exact)
+    {
+        var a = Math.DivRem(ticks, TimeSpan.TicksPerMicrosecond, out var r);
         if (r != 0)
         {
             if (exact)
-                throw new ArgumentException("The given DateTime instance is not exactly representable in DuckDB as a timestamp. ");
+                throw new ArgumentException(
+                    "The time span has a fractional number of microseconds that cannot be represented in DuckDB. ");
 
             const long h = TimeSpan.TicksPerMicrosecond / 2;
 
@@ -95,16 +115,16 @@ public struct DuckDbTimestamp(long microseconds)
             if (a > 0) // r > 0
             {
                 var s = ((r > h) ? 1 : 0) - ((r < h) ? 1 : 0);  // sign of r-h
-                a = (s == 0) ? ((a + 1) & ~1L) : a + s; 
+                a = (s == 0) ? ((a + 1) & ~1L) : a + s;
             }
             else // a < 0, r < 0
             {
-                var s = ((0 > h+r) ? 1 : 0) - ((0 < h+r) ? 1 : 0); // sign of |r|-h
+                var s = ((0 > h + r) ? 1 : 0) - ((0 < h + r) ? 1 : 0); // sign of |r|-h
                 a = (s == 0) ? (a & ~1L) : a - s;
             }
         }
 
-        return new DuckDbTimestamp(a);
+        return a;
     }
 
     /// <summary>
