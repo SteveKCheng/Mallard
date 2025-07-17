@@ -12,7 +12,7 @@ namespace Mallard;
 /// (for the purposes of modifying the database) requires a different shape of API
 /// to enforce safety.
 /// </remarks>
-public unsafe readonly ref struct DuckDbReadOnlyVector<T> 
+public unsafe readonly ref struct DuckDbReadOnlyVector<T> where T: allows ref struct
 {
     /// <summary>
     /// "Vector" data structure obtained as part of a chunk from DuckDB.  It is
@@ -118,7 +118,7 @@ public unsafe static partial class DuckDbReadOnlyVectorMethods
     /// the <paramref name="basicType" /> does not refer to data
     /// that can be directly interpreted from .NET.
     /// </returns>
-    public static bool ValidateGenericType<T>(DuckDbBasicType basicType)
+    public static bool ValidateGenericType<T>(DuckDbBasicType basicType) where T : allows ref struct
     {
         return basicType switch
         {
@@ -136,15 +136,17 @@ public unsafe static partial class DuckDbReadOnlyVectorMethods
             DuckDbBasicType.Date => typeof(T) == typeof(DuckDbDate),
             DuckDbBasicType.Timestamp => typeof(T) == typeof(DuckDbTimestamp),
             DuckDbBasicType.List => typeof(T) == typeof(DuckDbList),
-            DuckDbBasicType.VarChar => typeof(T) == typeof(string),
+            DuckDbBasicType.VarChar => typeof(T) == typeof(string) || typeof(T) == typeof(DuckDbString),
             DuckDbBasicType.UHugeInt => typeof(T) == typeof(UInt128),
             DuckDbBasicType.HugeInt => typeof(T) == typeof(Int128),
+            DuckDbBasicType.Blob => typeof(T) == typeof(DuckDbString),
+            DuckDbBasicType.Bit => typeof(T) == typeof(DuckDbString),
 
             _ => false,
         };
     }
 
-    internal static void ThrowOnWrongClrType<T>(DuckDbBasicType basicType)
+    internal static void ThrowOnWrongClrType<T>(DuckDbBasicType basicType) where T : allows ref struct
     {
         if (!ValidateGenericType<T>(basicType))
             throw new ArgumentException($"Generic type {typeof(T).Name} does not match the DuckDB basic type {basicType} of the elements in the desired column.");
