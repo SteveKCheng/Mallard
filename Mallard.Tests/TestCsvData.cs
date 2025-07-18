@@ -13,11 +13,10 @@ using CsvHelper.TypeConversion;
 namespace Mallard.Tests;
 
 // Wrapper around ImmutableArray to implement structural equality.
-internal readonly struct ValueArray<T> : IReadOnlyList<T>, IEquatable<ValueArray<T>>
-    where T : IEquatable<T>
+internal readonly struct ValueArray<T>(ImmutableArray<T> values) 
+    : IReadOnlyList<T>, IEquatable<ValueArray<T>> where T : IEquatable<T>
 {
-    private readonly ImmutableArray<T> _values;
-    public ValueArray(ImmutableArray<T> values) => _values = values;
+    private readonly ImmutableArray<T> _values = values;
     public T this[int index] => _values[index];
     public int Count => _values.Length;
     public IEnumerator<T> GetEnumerator() => ((IEnumerable<T>)_values).GetEnumerator();
@@ -35,22 +34,11 @@ internal readonly struct ValueArray<T> : IReadOnlyList<T>, IEquatable<ValueArray
         => obj is ValueArray<T> other && this.Equals(other);
 
     public bool Equals(ValueArray<T> other)
-    {
-        if (this.Count != other.Count) 
-            return false;
-
-        for (int i = 0; i < Count; ++i)
-        {
-            if (!this[i].Equals(other[i]))
-                return false;
-        }
-
-        return true;
-    }
+        => _values.SequenceEqual(other._values);
 }
 
 // Turn a string from the CSV file into a list of strings, assuming the item separator is ';'
-internal class StringListConverter : DefaultTypeConverter
+internal sealed class StringListConverter : DefaultTypeConverter
 {
     public override object? ConvertFromString(string? text, IReaderRow row, MemberMapData memberMapData)
         => text != null ? new ValueArray<string>(ImmutableArray.Create(text.Split(';'))) : null;
@@ -63,7 +51,7 @@ internal enum 菜類_enum
 }
 
 // One row of the Recipes.csv in strongly-typed format
-internal record Recipe
+internal sealed record Recipe
 {
     public int 頁 { get; init; }
     public 菜類_enum 菜類 { get; init; }
