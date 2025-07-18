@@ -76,6 +76,12 @@ public unsafe readonly ref struct DuckDbChunkReader
     /// </exception>
     public DuckDbVectorReader<T> GetColumn<T>(int columnIndex)
     {
+        var vectorInfo = GetVectorInfo(columnIndex);
+        return new DuckDbVectorReader<T>(vectorInfo.NativeVector, vectorInfo.BasicType, vectorInfo.Length);
+    }
+
+    private DuckDbVectorInfo GetVectorInfo(int columnIndex)
+    {
         // In case the user calls this method on a default-initialized instance,
         // the native library will not crash on this call because it does
         // check _nativeChunk for null first, returning null in that case.
@@ -83,8 +89,28 @@ public unsafe readonly ref struct DuckDbChunkReader
                                                                       columnIndex);
         if (nativeVector == null)
             throw new IndexOutOfRangeException("Column index is not in range. ");
-        return new DuckDbVectorReader<T>(nativeVector, _columnInfo[columnIndex].BasicType, _length);
+
+        return new DuckDbVectorInfo(nativeVector, _columnInfo[columnIndex].BasicType, _length);
     }
+
+    /// <summary>
+    /// Get access to the raw data for one column for all the rows represented by this chunk.
+    /// </summary>
+    /// <typeparam name="T">
+    /// The .NET type to bind the elements of the column to.  This type must be 
+    /// what <see cref="DuckDbVectorRawReader{T}" /> accepts for the selected column.
+    /// </typeparam>
+    /// <param name="columnIndex">
+    /// The index of the column.
+    /// </param>
+    /// <returns>
+    /// <see cref="DuckDbVectorRawReader{T}" /> representing the data for the column.
+    /// </returns>
+    /// <exception cref="IndexOutOfRangeException">
+    /// <paramref name="columnIndex"/> is out of range, or this instance is default-initialized.
+    /// </exception>
+    public DuckDbVectorRawReader<T> GetColumnRaw<T>(int columnIndex) where T : unmanaged, allows ref struct
+        => new(GetVectorInfo(columnIndex));
 
     /// <summary>
     /// The length (number of rows) present in this chunk.
