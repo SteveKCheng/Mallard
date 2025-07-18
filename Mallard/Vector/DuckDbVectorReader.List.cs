@@ -49,7 +49,7 @@ public unsafe static partial class DuckDbVectorMethods
     /// The lists' children, collected into one vector, i.e. the "children vector" or "vector of list children".
     /// </returns>
     /// <exception cref="DuckDbException"></exception>
-    public static DuckDbVectorRawReader<T> GetChildrenRawVector<T>(in this DuckDbVectorRawReader<DuckDbListChild> parent)
+    public static DuckDbVectorRawReader<T> GetChildrenRawVector<T>(in this DuckDbVectorRawReader<DuckDbListRef> parent)
         where T : unmanaged, allows ref struct
         => new(parent.GetChildrenVectorInfo());
 
@@ -66,13 +66,13 @@ public unsafe static partial class DuckDbVectorMethods
     /// The lists' children, collected into one vector, i.e. the "children vector" or "vector of list children".
     /// </returns>
     /// <exception cref="DuckDbException"></exception>
-    public static DuckDbVectorReader<T> GetChildrenVector<T>(in this DuckDbVectorRawReader<DuckDbListChild> parent)
+    public static DuckDbVectorReader<T> GetChildrenVector<T>(in this DuckDbVectorRawReader<DuckDbListRef> parent)
     {
         var vectorInfo = parent.GetChildrenVectorInfo();
         return new DuckDbVectorReader<T>(vectorInfo.NativeVector, vectorInfo.BasicType, vectorInfo.Length);
     }
 
-    private static DuckDbVectorInfo GetChildrenVectorInfo(in this DuckDbVectorRawReader<DuckDbListChild> parent)
+    private static DuckDbVectorInfo GetChildrenVectorInfo(in this DuckDbVectorRawReader<DuckDbListRef> parent)
     {
         var parentVector = parent._info.NativeVector;
         ThrowOnNullVector(parentVector);
@@ -87,9 +87,9 @@ public unsafe static partial class DuckDbVectorMethods
         return new DuckDbVectorInfo(childVector, childBasicType, (int)totalChildren);
     }
 
-    public static ReadOnlySpan<DuckDbListChild> GetChildrenSpan(in this DuckDbVectorReader<DuckDbList> parent)
+    public static ReadOnlySpan<DuckDbListRef> GetChildrenSpan(in this DuckDbVectorReader<DuckDbList> parent)
     {
-        return new ReadOnlySpan<DuckDbListChild>(parent._info.DataPointer, parent._info.Length);
+        return new ReadOnlySpan<DuckDbListRef>(parent._info.DataPointer, parent._info.Length);
     }
 
     /// <summary>
@@ -114,7 +114,7 @@ public unsafe static partial class DuckDbVectorMethods
 /// Reports where the data for one list resides in a list-valued DuckDB vector.
 /// </summary>
 [StructLayout(LayoutKind.Sequential)]
-public readonly struct DuckDbListChild
+public readonly struct DuckDbListRef
 {
     // We do not support vectors of length > int.MaxValue
     // (not sure if this is even possible in DuckDB itself).

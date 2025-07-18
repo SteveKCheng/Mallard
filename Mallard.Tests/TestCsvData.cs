@@ -78,7 +78,7 @@ public class TestCsvData
         return csv.GetRecords<Recipe>().OrderBy(r => r.頁).ToList();
     }
 
-    private static ValueArray<string>? ReadList(in DuckDbVectorRawReader<DuckDbListChild> vector, int index)
+    private static ValueArray<string>? ReadList(in DuckDbVectorRawReader<DuckDbListRef> vector, int index)
     {
         if (!vector.TryGetItem(index, out var listRef))
             return null;
@@ -114,10 +114,10 @@ public class TestCsvData
                 var 菜類column = reader.GetColumn<byte>(1);
                 var 菜式column = reader.GetColumn<string>(2);
                 var 份量對應人數column = reader.GetColumn<short>(3);
-                var 材料column = reader.GetColumnRaw<DuckDbListChild>(4);
-                var 醃料column = reader.GetColumnRaw<DuckDbListChild>(5);
-                var 調味column = reader.GetColumnRaw<DuckDbListChild>(6);
-                var 芡汁column = reader.GetColumnRaw<DuckDbListChild>(7);
+                var 材料column = reader.GetColumnRaw<DuckDbListRef>(4);
+                var 醃料column = reader.GetColumnRaw<DuckDbListRef>(5);
+                var 調味column = reader.GetColumnRaw<DuckDbListRef>(6);
+                var 芡汁column = reader.GetColumnRaw<DuckDbListRef>(7);
 
                 for (int i = 0; i < reader.Length; ++i)
                 {

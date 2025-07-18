@@ -90,7 +90,7 @@ public readonly ref struct DuckDbVectorRawReader<T> : IDuckDbVector
 
             DuckDbBasicType.Interval => typeof(T) == typeof(DuckDbInterval),
 
-            DuckDbBasicType.List => typeof(T) == typeof(DuckDbListChild),
+            DuckDbBasicType.List => typeof(T) == typeof(DuckDbListRef),
             DuckDbBasicType.VarChar => typeof(T) == typeof(DuckDbString),
             DuckDbBasicType.UHugeInt => typeof(T) == typeof(UInt128),
             DuckDbBasicType.HugeInt => typeof(T) == typeof(Int128),
