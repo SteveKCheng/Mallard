@@ -36,7 +36,8 @@ public unsafe static partial class DuckDbVectorMethods
     }
 
     /// <summary>
-    /// Retrieve the vector containing all the children across all lists in a vector of lists.
+    /// Retrieve the vector containing all the children across all lists in a vector of lists,
+    /// allowing "raw" access (spans).
     /// </summary>
     /// <typeparam name="T">
     /// The .NET type to bind an element of the lists to.
@@ -50,6 +51,28 @@ public unsafe static partial class DuckDbVectorMethods
     /// <exception cref="DuckDbException"></exception>
     public static DuckDbVectorRawReader<T> GetChildrenRawVector<T>(in this DuckDbVectorRawReader<DuckDbListChild> parent)
         where T : unmanaged, allows ref struct
+        => new(parent.GetChildrenVectorInfo());
+
+    /// <summary>
+    /// Retrieve the vector containing all the children across all lists in a vector of lists.
+    /// </summary>
+    /// <typeparam name="T">
+    /// The .NET type to bind an element of the lists to.
+    /// </typeparam>
+    /// <param name="parent">
+    /// The vector of lists.
+    /// </param>
+    /// <returns>
+    /// The lists' children, collected into one vector, i.e. the "children vector" or "vector of list children".
+    /// </returns>
+    /// <exception cref="DuckDbException"></exception>
+    public static DuckDbVectorReader<T> GetChildrenVector<T>(in this DuckDbVectorRawReader<DuckDbListChild> parent)
+    {
+        var vectorInfo = parent.GetChildrenVectorInfo();
+        return new DuckDbVectorReader<T>(vectorInfo.NativeVector, vectorInfo.BasicType, vectorInfo.Length);
+    }
+
+    private static DuckDbVectorInfo GetChildrenVectorInfo(in this DuckDbVectorRawReader<DuckDbListChild> parent)
     {
         var parentVector = parent._info.NativeVector;
         ThrowOnNullVector(parentVector);
@@ -61,8 +84,7 @@ public unsafe static partial class DuckDbVectorMethods
         var totalChildren = NativeMethods.duckdb_list_vector_get_size(parentVector);
         var childBasicType = GetVectorElementBasicType(childVector);
 
-        return new DuckDbVectorRawReader<T>(
-                new DuckDbVectorInfo(childVector, childBasicType, (int)totalChildren));
+        return new DuckDbVectorInfo(childVector, childBasicType, (int)totalChildren);
     }
 
     public static ReadOnlySpan<DuckDbListChild> GetChildrenSpan(in this DuckDbVectorReader<DuckDbList> parent)
