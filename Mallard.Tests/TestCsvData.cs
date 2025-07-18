@@ -78,17 +78,15 @@ public class TestCsvData
         return csv.GetRecords<Recipe>().OrderBy(r => r.頁).ToList();
     }
 
-    private static ValueArray<string>? ReadList(in DuckDbVectorReader<DuckDbList> vector, int index)
+    private static ValueArray<string>? ReadList(in DuckDbVectorRawReader<DuckDbListChild> vector, int index)
     {
-        if (!vector.IsItemValid(index))
+        if (!vector.TryGetItem(index, out var listRef))
             return null;
 
-        var childrenRange = vector.GetChildrenFor(index);
         var childrenVector = vector.GetChildrenVector<string>();
-        var (offset, length) = childrenRange.GetOffsetAndLength(childrenVector.Length);
-        var arrayBuilder = ImmutableArray.CreateBuilder<string>(length);
-        for (int i = 0; i < length; ++i)
-            arrayBuilder.Add(childrenVector.GetItem(offset + i));
+        var arrayBuilder = ImmutableArray.CreateBuilder<string>(listRef.Length);
+        for (int i = 0; i < listRef.Length; ++i)
+            arrayBuilder.Add(childrenVector.GetItem(listRef.Offset + i));
         return new ValueArray<string>(arrayBuilder.DrainToImmutable());
     }
 
@@ -116,10 +114,10 @@ public class TestCsvData
                 var 菜類column = reader.GetColumn<byte>(1);
                 var 菜式column = reader.GetColumn<string>(2);
                 var 份量對應人數column = reader.GetColumn<short>(3);
-                var 材料column = reader.GetColumn<DuckDbList>(4);
-                var 醃料column = reader.GetColumn<DuckDbList>(5);
-                var 調味column = reader.GetColumn<DuckDbList>(6);
-                var 芡汁column = reader.GetColumn<DuckDbList>(7);
+                var 材料column = reader.GetColumnRaw<DuckDbListChild>(4);
+                var 醃料column = reader.GetColumnRaw<DuckDbListChild>(5);
+                var 調味column = reader.GetColumnRaw<DuckDbListChild>(6);
+                var 芡汁column = reader.GetColumnRaw<DuckDbListChild>(7);
 
                 for (int i = 0; i < reader.Length; ++i)
                 {
