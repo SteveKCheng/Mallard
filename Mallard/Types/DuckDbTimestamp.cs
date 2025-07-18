@@ -4,48 +4,6 @@ using System.Runtime.InteropServices;
 namespace Mallard;
 
 /// <summary>
-/// DuckDB's representation of a date.
-/// </summary>
-/// <param name="days">
-/// The date represented as a number of days since the Unix epoch (January 1, 1970).
-/// </param>
-/// <remarks>
-/// The fields are not wrapped in properties
-/// to allow vectorized processing (i.e. SIMD), and DuckDB already essentially guarantees a stable
-/// layout of this structure. 
-/// </remarks>
-[StructLayout(LayoutKind.Sequential)]
-public struct DuckDbDate(int days)
-{
-    /// <summary>
-    /// Number of days since 1970-01-01 (Unix epoch).
-    /// </summary>
-    public int Days = days;
-
-    /// <summary>
-    /// Convert from a standard <see cref="DateOnly" />.
-    /// </summary>
-    /// <param name="date">
-    /// Desired date to represent in DuckDB.
-    /// </param>
-    /// <returns>
-    /// The DuckDB representation of the date.  
-    /// </returns>
-    public static DuckDbDate FromDateOnly(DateOnly date)
-    {
-        return new DuckDbDate(date.DayNumber - new DateOnly(1970, 1, 1).DayNumber);
-    }
-
-    /// <summary>
-    /// Convert this instance to a standard <see cref="DateOnly" />.
-    /// </summary>
-    public readonly DateOnly ToDateOnly()
-    {
-        return DateOnly.FromDayNumber(Days + new DateOnly(1970, 1, 1).DayNumber);
-    }
-}
-
-/// <summary>
 /// DuckDB's representation of a timestamp.
 /// </summary>
 /// <param name="microseconds">The timestamp value represented as the number of microseconds since the Unix epoch (January 1, 1970, 00:00:00
@@ -168,56 +126,4 @@ public struct DuckDbTimestamp(long microseconds)
 
         return new DateTime(ticks: t * 10, kind: DateTimeKind.Unspecified);
     }
-}
-
-/// <summary>
-/// DuckDB's "huge integers": 128-bit integers.
-/// </summary>
-/// <remarks>
-/// <para>
-/// Assuming little-endianness and twos' complement representation, both DuckDB and .NET
-/// decompose a 128-integer into two 64-bit integers in the natural way.  
-/// Therefore we expect to
-/// just use the existing UInt128 and Int128 types from .NET to read and write
-/// DuckDB "huge integers".
-/// </para>
-/// <para>
-/// Unfortunately, the .NET runtime (as of version 9) has a bug in marshalling UInt128, 
-/// Int128 under P/Invoke.  It simply fails with a C++ exception thrown internally from the runtime.
-/// See the discussion under <a href="https://github.com/dotnet/runtime/pull/74123">dotnet/runtime PR 74123</a>.
-/// It looks like some platforms require 16-byte alignment of the structure (while DuckDB just wants 
-/// a plain struct with 8-byte alignment), so this issue may persist in the future.
-/// </para>
-/// <para>
-/// We work around the issue by defining DuckDB's structure, and 
-/// "reinterpret-casting" between this structure and UInt128, Int128 as necessary.
-/// </para>
-/// <para>
-/// Since we do not expect to do math directly on this structure, we do not bother
-/// with the signed/unsigned distinction.  We cast both Int128 and UInt128 into this structure,
-/// and vice versa.
-/// </para>
-/// </remarks>
-[StructLayout(LayoutKind.Sequential)]
-internal struct DuckDbHugeUInt
-{
-    public ulong lower;
-    public ulong upper;
-
-    public unsafe DuckDbHugeUInt(Int128 value)
-    {
-        var p = (ulong*)&value;
-        lower = p[0];
-        upper = p[1];
-    }
-
-    public unsafe DuckDbHugeUInt(UInt128 value)
-    {
-        var p = (ulong*)&value;
-        lower = p[0];
-        upper = p[1];
-    }
-
-    public readonly Int128 ToInt128() => new(upper, lower);
-    public readonly UInt128 ToUInt128() => new(upper, lower);
 }
