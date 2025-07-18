@@ -112,7 +112,7 @@ public unsafe static partial class DuckDbVectorMethods
     internal static void ThrowOnWrongClrType<T>(DuckDbBasicType basicType) where T : allows ref struct
     {
         if (!ValidateGenericType<T>(basicType))
-            throw new ArgumentException($"Generic type {typeof(T).Name} does not match the DuckDB basic type {basicType} of the elements in the desired column.");
+            DuckDbVectorInfo.ThrowForWrongParamType(basicType, basicType, typeof(T));
     }
 
     internal static void ThrowOnNullVector(_duckdb_vector* vector)

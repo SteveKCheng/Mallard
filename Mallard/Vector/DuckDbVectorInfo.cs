@@ -163,4 +163,20 @@ internal unsafe readonly struct DuckDbVectorInfo
     {
         throw new InvalidOperationException($"The element of the vector at index {index} is invalid (null). ");
     }
+
+    internal static void ThrowForWrongParamType(DuckDbBasicType basicType, 
+                                                DuckDbBasicType storageType,
+                                                Type paramType)
+    {
+        if (basicType == storageType)
+        {
+            throw new ArgumentException(
+                $"Generic type {paramType.Name} does not match the DuckDB basic type {basicType} of the elements in the desired column.");
+        }
+        else
+        {
+            throw new ArgumentException(
+                $"Generic type {paramType.Name} does not match the DuckDB basic type {basicType} [{storageType}] of the elements in the desired column.");
+        }
+    }
 }
