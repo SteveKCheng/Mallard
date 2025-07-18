@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 
 namespace Mallard;
 
-public unsafe static partial class DuckDbReadOnlyVectorMethods
+public unsafe static partial class DuckDbVectorMethods
 {
     /// <summary>
     /// Retrieve the vector containing all the children across all lists in a vector of lists.
@@ -19,7 +19,7 @@ public unsafe static partial class DuckDbReadOnlyVectorMethods
     /// The lists' children, collected into one vector, i.e. the "children vector" or "vector of list children".
     /// </returns>
     /// <exception cref="DuckDbException"></exception>
-    public static DuckDbReadOnlyVector<T> GetChildrenVector<T>(in this DuckDbReadOnlyVector<DuckDbList> parent)
+    public static DuckDbVectorReader<T> GetChildrenVector<T>(in this DuckDbVectorReader<DuckDbList> parent)
     {
         var parentVector = parent._nativeVector;
         ThrowOnNullVector(parentVector);
@@ -32,10 +32,10 @@ public unsafe static partial class DuckDbReadOnlyVectorMethods
 
         var childBasicType = GetVectorElementBasicType(childVector);
 
-        return new DuckDbReadOnlyVector<T>(childVector, childBasicType, (int)totalChildren);
+        return new DuckDbVectorReader<T>(childVector, childBasicType, (int)totalChildren);
     }
 
-    public static ReadOnlySpan<DuckDbListChild> GetChildrenSpan(in this DuckDbReadOnlyVector<DuckDbList> parent)
+    public static ReadOnlySpan<DuckDbListChild> GetChildrenSpan(in this DuckDbVectorReader<DuckDbList> parent)
     {
         return new ReadOnlySpan<DuckDbListChild>(parent._nativeData, parent._length);
     }
@@ -50,7 +50,7 @@ public unsafe static partial class DuckDbReadOnlyVectorMethods
     /// The range of indices in the children vector as returned by 
     /// <see cref="GetChildrenVector{T}" /> applied to <paramref name="parent" />.
     /// </returns>
-    public static Range GetChildrenFor(in this DuckDbReadOnlyVector<DuckDbList> parent, int index)
+    public static Range GetChildrenFor(in this DuckDbVectorReader<DuckDbList> parent, int index)
     {
         parent.VerifyItemIsValid(index);
         var c = parent.GetChildrenSpan()[index];

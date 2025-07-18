@@ -12,7 +12,7 @@ namespace Mallard;
 /// (for the purposes of modifying the database) requires a different shape of API
 /// to enforce safety.
 /// </remarks>
-public unsafe readonly ref struct DuckDbReadOnlyVector<T> where T: allows ref struct
+public unsafe readonly ref struct DuckDbVectorReader<T> where T: allows ref struct
 {
     /// <summary>
     /// "Vector" data structure obtained as part of a chunk from DuckDB.  It is
@@ -63,11 +63,11 @@ public unsafe readonly ref struct DuckDbReadOnlyVector<T> where T: allows ref st
     /// </remarks>
     private readonly byte _decimalScale;
 
-    internal DuckDbReadOnlyVector(_duckdb_vector* nativeVector,
+    internal DuckDbVectorReader(_duckdb_vector* nativeVector,
                                   DuckDbBasicType basicType,
                                   int length)
     {
-        DuckDbReadOnlyVectorMethods.ThrowOnWrongClrType<T>(basicType);
+        DuckDbVectorMethods.ThrowOnWrongClrType<T>(basicType);
 
         _nativeVector = nativeVector;
         _nativeData = NativeMethods.duckdb_vector_get_data(_nativeVector);
@@ -78,14 +78,14 @@ public unsafe readonly ref struct DuckDbReadOnlyVector<T> where T: allows ref st
 
         if (basicType == DuckDbBasicType.Decimal)
         {
-            var (scale, storageType) = DuckDbReadOnlyVectorMethods.GetDecimalStorageInfo(_nativeVector);
-            DuckDbReadOnlyVectorMethods.ThrowOnWrongClrType<T>(storageType);
+            var (scale, storageType) = DuckDbVectorMethods.GetDecimalStorageInfo(_nativeVector);
+            DuckDbVectorMethods.ThrowOnWrongClrType<T>(storageType);
             _decimalScale = scale;
             _storageType = (byte)storageType;
         }
         else if (basicType == DuckDbBasicType.Enum)
         {
-            var storageType = DuckDbReadOnlyVectorMethods.GetEnumStorageType(_nativeVector);
+            var storageType = DuckDbVectorMethods.GetEnumStorageType(_nativeVector);
             _storageType = (byte)storageType;
         }
     }
@@ -124,7 +124,7 @@ public unsafe readonly ref struct DuckDbReadOnlyVector<T> where T: allows ref st
     {
         var j = unchecked((uint)index);
         if (unchecked(j >= (uint)_length))
-            DuckDbReadOnlyVectorMethods.ThrowIndexOutOfRange(index, _length);
+            DuckDbVectorMethods.ThrowIndexOutOfRange(index, _length);
 
         return _validityMask == null || (_validityMask[j >> 6] & (1u << (int)(j & 63))) != 0;
     }
@@ -132,11 +132,11 @@ public unsafe readonly ref struct DuckDbReadOnlyVector<T> where T: allows ref st
     internal void VerifyItemIsValid(int index)
     {
         if (!IsItemValid(index))
-            DuckDbReadOnlyVectorMethods.ThrowForInvalidElement(index);
+            DuckDbVectorMethods.ThrowForInvalidElement(index);
     }
 }
 
-public unsafe static partial class DuckDbReadOnlyVectorMethods 
+public unsafe static partial class DuckDbVectorMethods 
 {
     /// <summary>
     /// Validate that the .NET type is correct for interpreting the raw
@@ -250,7 +250,7 @@ public unsafe static partial class DuckDbReadOnlyVectorMethods
         }
     }
 
-    public static ReadOnlySpan<T> AsSpan<T>(in this DuckDbReadOnlyVector<T> vector) where T : unmanaged
+    public static ReadOnlySpan<T> AsSpan<T>(in this DuckDbVectorReader<T> vector) where T : unmanaged
     {
         return new ReadOnlySpan<T>(vector._nativeData, vector._length);
     }
@@ -273,7 +273,7 @@ public unsafe static partial class DuckDbReadOnlyVectorMethods
     /// to the vector elements, when the element type directly corresponds to an unmanaged type in .NET 
     /// (e.g. integers).
     /// </remarks>
-    public static T GetItem<T>(in this DuckDbReadOnlyVector<T> vector, int index) where T : unmanaged
+    public static T GetItem<T>(in this DuckDbVectorReader<T> vector, int index) where T : unmanaged
     {
         vector.VerifyItemIsValid(index);
         var p = (T*)vector._nativeData + index;

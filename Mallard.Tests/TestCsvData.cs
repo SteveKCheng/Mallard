@@ -78,7 +78,7 @@ public class TestCsvData
         return csv.GetRecords<Recipe>().OrderBy(r => r.頁).ToList();
     }
 
-    private static ValueArray<string>? ReadList(in DuckDbReadOnlyVector<DuckDbList> vector, int index)
+    private static ValueArray<string>? ReadList(in DuckDbVectorReader<DuckDbList> vector, int index)
     {
         if (!vector.IsItemValid(index))
             return null;

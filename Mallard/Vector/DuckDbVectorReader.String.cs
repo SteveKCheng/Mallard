@@ -12,14 +12,14 @@ namespace Mallard;
 /// <para>
 /// This type is only used for reading elements from a DuckDB vector.  It is a "ref struct"
 /// as it may internally point to natively-allocated memory, which must be scoped to the
-/// lifetime of the vector (<see cref="DuckDbReadOnlyVector{T}" />).  
+/// lifetime of the vector (<see cref="DuckDbVectorReader{T}" />).  
 /// </para>
 /// <para>Semantically, this structure
 /// is nothing more than <see cref="ReadOnlySpan{byte}" /> on the string or blob data,
-/// which can be accessed through the extension method <see cref="DuckDbReadOnlyVectorMethods.AsSpan(ref Mallard.DuckDbString)" />.
+/// which can be accessed through the extension method <see cref="DuckDbVectorMethods.AsSpan(ref Mallard.DuckDbString)" />.
 /// DuckDB's representation of strings and blobs
 /// is obviously different from <see cref="ReadOnlySpan{byte}" /> so that type cannot be used
-/// directly in <see cref="DuckDbReadOnlyVector{T}" /> to read vector elements.  
+/// directly in <see cref="DuckDbVectorReader{T}" /> to read vector elements.  
 /// </para>
 /// <para>
 /// This type is not used for sending values from .NET to DuckDB, since DuckDB needs to allocate
@@ -78,7 +78,7 @@ public unsafe ref struct DuckDbString
     }
 }
 
-public unsafe static partial class DuckDbReadOnlyVectorMethods
+public unsafe static partial class DuckDbVectorMethods
 {
     /// <summary>
     /// Get a string, after converting from its original UTF-8 representation, from a DuckDB vector of strings,
@@ -90,7 +90,7 @@ public unsafe static partial class DuckDbReadOnlyVectorMethods
     /// The desired string.
     /// </returns>
     /// <exception cref="IndexOutOfRangeException">The index is out of range for the vector. </exception>
-    public static string GetItem(in this DuckDbReadOnlyVector<string> vector, int index)
+    public static string GetItem(in this DuckDbVectorReader<string> vector, int index)
     {
         return Encoding.UTF8.GetString(GetStringAsUtf8(vector, index));
     }
@@ -105,7 +105,7 @@ public unsafe static partial class DuckDbReadOnlyVectorMethods
     /// The desired string.
     /// </returns>
     /// <exception cref="IndexOutOfRangeException">The index is out of range for the vector. </exception>
-    public static ReadOnlySpan<byte> GetStringAsUtf8(in this DuckDbReadOnlyVector<string> vector, int index)
+    public static ReadOnlySpan<byte> GetStringAsUtf8(in this DuckDbVectorReader<string> vector, int index)
     {
         vector.VerifyItemIsValid(index);
         var p = (DuckDbString*)vector._nativeData + index;
