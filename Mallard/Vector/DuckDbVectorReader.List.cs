@@ -48,8 +48,8 @@ public unsafe static partial class DuckDbVectorMethods
     /// The lists' children, collected into one vector, i.e. the "children vector" or "vector of list children".
     /// </returns>
     /// <exception cref="DuckDbException"></exception>
-    public static DuckDbVectorRawReader<T> GetChildrenRawVector<T>(in this DuckDbVectorRawReader<DuckDbList> parent)
-        where T : unmanaged
+    public static DuckDbVectorRawReader<T> GetChildrenRawVector<T>(in this DuckDbVectorRawReader<DuckDbListChild> parent)
+        where T : unmanaged, allows ref struct
     {
         var parentVector = parent._info.NativeVector;
         ThrowOnNullVector(parentVector);
@@ -59,10 +59,10 @@ public unsafe static partial class DuckDbVectorMethods
             throw new DuckDbException("Could not get the child vector from a list vector in DuckDB. ");
 
         var totalChildren = NativeMethods.duckdb_list_vector_get_size(parentVector);
-
         var childBasicType = GetVectorElementBasicType(childVector);
 
-        return new DuckDbVectorReader<T>(childVector, childBasicType, (int)totalChildren);
+        return new DuckDbVectorRawReader<T>(
+                new DuckDbVectorInfo(childVector, childBasicType, (int)totalChildren));
     }
 
     public static ReadOnlySpan<DuckDbListChild> GetChildrenSpan(in this DuckDbVectorReader<DuckDbList> parent)
