@@ -139,7 +139,7 @@ public unsafe static partial class DuckDbVectorMethods
 
     public static ReadOnlySpan<T> AsSpan<T>(in this DuckDbVectorReader<T> vector) where T : unmanaged
     {
-        return new ReadOnlySpan<T>(vector._info.NativeData, vector._info.Length);
+        return new ReadOnlySpan<T>(vector._info.DataPointer, vector._info.Length);
     }
 
     /// <summary>
@@ -163,7 +163,7 @@ public unsafe static partial class DuckDbVectorMethods
     public static T GetItem<T>(in this DuckDbVectorReader<T> vector, int index) where T : unmanaged
     {
         vector._info.VerifyItemIsValid(index);
-        var p = (T*)vector._info.NativeData + index;
+        var p = (T*)vector._info.DataPointer + index;
         return *p;
     }
 }

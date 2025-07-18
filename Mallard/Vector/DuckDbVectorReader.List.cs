@@ -89,7 +89,7 @@ public unsafe static partial class DuckDbVectorMethods
 
     public static ReadOnlySpan<DuckDbListChild> GetChildrenSpan(in this DuckDbVectorReader<DuckDbList> parent)
     {
-        return new ReadOnlySpan<DuckDbListChild>(parent._info.NativeData, parent._info.Length);
+        return new ReadOnlySpan<DuckDbListChild>(parent._info.DataPointer, parent._info.Length);
     }
 
     /// <summary>

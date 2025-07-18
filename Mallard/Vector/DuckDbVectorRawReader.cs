@@ -122,7 +122,7 @@ public readonly ref struct DuckDbVectorRawReader<T> : IDuckDbVector
             _info.VerifyItemIsValid(index);
             unsafe
             {
-                return ((T*)_info.NativeVector)[index];
+                return ((T*)_info.DataPointer)[index];
             }
         }
     }
@@ -142,7 +142,7 @@ public readonly ref struct DuckDbVectorRawReader<T> : IDuckDbVector
     {
         if (_info.IsItemValid(index))
         {
-            item = ((T*)_info.NativeVector)[index];
+            item = ((T*)_info.DataPointer)[index];
             return true;
         }
         else
@@ -171,5 +171,5 @@ public unsafe static partial class DuckDbVectorMethods
     /// indexed using the returned span. 
     /// </returns>
     public static ReadOnlySpan<T> AsSpan<T>(in this DuckDbVectorRawReader<T> vector) where T : unmanaged
-        => new(vector._info.NativeData, vector._info.Length);
+        => new(vector._info.DataPointer, vector._info.Length);
 }

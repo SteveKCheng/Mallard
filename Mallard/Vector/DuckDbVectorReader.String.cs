@@ -108,7 +108,7 @@ public unsafe static partial class DuckDbVectorMethods
     public static ReadOnlySpan<byte> GetStringAsUtf8(in this DuckDbVectorReader<string> vector, int index)
     {
         vector._info.VerifyItemIsValid(index);
-        var p = (DuckDbString*)vector._info.NativeData + index;
+        var p = (DuckDbString*)vector._info.DataPointer + index;
         return p->AsSpan();
     }
 

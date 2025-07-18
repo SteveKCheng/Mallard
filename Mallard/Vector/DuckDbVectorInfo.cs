@@ -25,11 +25,11 @@ internal unsafe readonly struct DuckDbVectorInfo
     /// <summary>
     /// Pointer to the raw data array of the DuckDB vector. 
     /// </summary>
-    internal readonly void* NativeData;
+    internal readonly void* DataPointer;
 
     /// <summary>
     /// Pointer to the bit mask from DuckDB indicating whether the corresponding element
-    /// in the array pointed to by <see cref="NativeData"/> is valid (not null). 
+    /// in the array pointed to by <see cref="DataPointer"/> is valid (not null). 
     /// </summary>
     /// <remarks>
     /// This may be null if all elements in the array are valid.
@@ -70,7 +70,7 @@ internal unsafe readonly struct DuckDbVectorInfo
                               int length)
     {
         NativeVector = nativeVector;
-        NativeData = NativeMethods.duckdb_vector_get_data(NativeVector);
+        DataPointer = NativeMethods.duckdb_vector_get_data(NativeVector);
         _validityMask = NativeMethods.duckdb_vector_get_validity(NativeVector);
 
         Length = length;
