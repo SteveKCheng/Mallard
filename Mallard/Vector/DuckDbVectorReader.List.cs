@@ -21,7 +21,7 @@ public unsafe static partial class DuckDbVectorMethods
     /// <exception cref="DuckDbException"></exception>
     public static DuckDbVectorReader<T> GetChildrenVector<T>(in this DuckDbVectorReader<DuckDbList> parent)
     {
-        var parentVector = parent._nativeVector;
+        var parentVector = parent._info.NativeVector;
         ThrowOnNullVector(parentVector);
 
         var childVector = NativeMethods.duckdb_list_vector_get_child(parentVector);
@@ -37,7 +37,7 @@ public unsafe static partial class DuckDbVectorMethods
 
     public static ReadOnlySpan<DuckDbListChild> GetChildrenSpan(in this DuckDbVectorReader<DuckDbList> parent)
     {
-        return new ReadOnlySpan<DuckDbListChild>(parent._nativeData, parent._length);
+        return new ReadOnlySpan<DuckDbListChild>(parent._info.NativeData, parent._info.Length);
     }
 
     /// <summary>
@@ -52,7 +52,7 @@ public unsafe static partial class DuckDbVectorMethods
     /// </returns>
     public static Range GetChildrenFor(in this DuckDbVectorReader<DuckDbList> parent, int index)
     {
-        parent.VerifyItemIsValid(index);
+        parent._info.VerifyItemIsValid(index);
         var c = parent.GetChildrenSpan()[index];
         return new Range((int)c.Offset, (int)c.Offset + (int)c.Length);
     }

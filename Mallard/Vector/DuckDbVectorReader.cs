@@ -14,101 +14,29 @@ namespace Mallard;
 /// </remarks>
 public unsafe readonly ref struct DuckDbVectorReader<T> where T: allows ref struct
 {
-    /// <summary>
-    /// "Vector" data structure obtained as part of a chunk from DuckDB.  It is
-    /// de-allocated together with the chunk.
-    /// </summary>
-    internal readonly _duckdb_vector* _nativeVector;
-
-    /// <summary>
-    /// Pointer to the raw data array of the DuckDB vector. 
-    /// </summary>
-    internal readonly void* _nativeData;
-
-    /// <summary>
-    /// Pointer to the bit mask from DuckDB indicating whether the corresponding element
-    /// in the array pointed to by <see cref="_nativeData"/> is valid (not null). 
-    /// </summary>
-    /// <remarks>
-    /// This may be null if all elements in the array are valid.
-    /// </remarks>
-    internal readonly ulong* _validityMask;
-
-    /// <summary>
-    /// The length (number of rows) inherited from the result chunk this vector is part of.
-    /// </summary>
-    internal readonly int _length;
-
-    /// <summary>
-    /// The basic type of data from DuckDB, used to verify correctly-typed access, 
-    /// cast to <c>byte</c> to conserve space.
-    /// </summary>
-    private readonly byte _basicType;
-
-    /// <summary>
-    /// The actual DuckDB type used for storage, when the logical type is
-    /// <see cref="DuckDbBasicType.Enum" /> or <see cref="DuckDbBasicType.Decimal" />.
-    /// </summary>
-    /// <remarks>
-    /// Set to zero (<see cref="DuckDbBasicType.Invalid" /> if inapplicable. 
-    /// </remarks>
-    private readonly byte _storageType;
-
-    /// <summary>
-    /// The number of digits after the decimal point, when the logical type is
-    /// <see cref="DuckDbBasicType.Decimal" />.
-    /// </summary>
-    /// <remarks>
-    /// Set to zero if inapplicable. 
-    /// </remarks>
-    private readonly byte _decimalScale;
+    internal readonly DuckDbVectorInfo _info;
 
     internal DuckDbVectorReader(_duckdb_vector* nativeVector,
-                                  DuckDbBasicType basicType,
-                                  int length)
+                                DuckDbBasicType basicType,
+                                int length)
     {
         DuckDbVectorMethods.ThrowOnWrongClrType<T>(basicType);
-
-        _nativeVector = nativeVector;
-        _nativeData = NativeMethods.duckdb_vector_get_data(_nativeVector);
-        _validityMask = NativeMethods.duckdb_vector_get_validity(_nativeVector);
-
-        _length = length;
-        _basicType = (byte)basicType;
-
-        if (basicType == DuckDbBasicType.Decimal)
-        {
-            var (scale, storageType) = DuckDbVectorMethods.GetDecimalStorageInfo(_nativeVector);
-            DuckDbVectorMethods.ThrowOnWrongClrType<T>(storageType);
-            _decimalScale = scale;
-            _storageType = (byte)storageType;
-        }
-        else if (basicType == DuckDbBasicType.Enum)
-        {
-            var storageType = DuckDbVectorMethods.GetEnumStorageType(_nativeVector);
-            _storageType = (byte)storageType;
-        }
+        _info = new DuckDbVectorInfo(nativeVector, basicType, length);
+        if (basicType == DuckDbBasicType.Enum || basicType == DuckDbBasicType.Decimal)
+            DuckDbVectorMethods.ThrowOnWrongClrType<T>(_info.StorageType);
     }
 
     /// <summary>
-    /// The length (number of rows) inherited from the result chunk this vector is part of.
+    /// The variable-length bit mask indicating which elements in the vector are valid (not null).
     /// </summary>
-    public int Length => _length;
-
-    /// <summary>
-    /// Get the variable-length bit mask indicating which elements in the vector are valid (not null).
-    /// </summary>
-    /// <returns>
-    /// The bit mask.  For element index <c>i</c> and validity mask <c>m</c> (the return value from this method), 
+    /// <remarks>
+    /// For element index <c>i</c> and validity mask <c>m</c> (the return value from this method), 
     /// the following expression indicates if the element is valid:
     /// <code>
-    /// m.Length == 0 || (m[i / 64] & (1u % 64)) != 0
+    /// m.Length == 0 || (m[i / 64] &amp; (1u % 64)) != 0
     /// </code>
-    /// </returns>
-    public ReadOnlySpan<ulong> GetValidityMask()
-    {
-        return new ReadOnlySpan<ulong>(_validityMask, _validityMask != null ? _length : 0);
-    }
+    /// </remarks>
+    public ReadOnlySpan<ulong> ValidityMask => _info.ValidityMask;
 
     /// <summary>
     /// Return whether an element of this vector is valid (not null).
@@ -120,20 +48,12 @@ public unsafe readonly ref struct DuckDbVectorReader<T> where T: allows ref stru
     /// True if valid (non-null), false if invalid (null).
     /// </returns>
     /// <exception cref="IndexOutOfRangeException">The index is out of range for the vector. </exception>
-    public bool IsItemValid(int index)
-    {
-        var j = unchecked((uint)index);
-        if (unchecked(j >= (uint)_length))
-            DuckDbVectorMethods.ThrowIndexOutOfRange(index, _length);
+    public bool IsItemValid(int index) => _info.IsItemValid(index);
 
-        return _validityMask == null || (_validityMask[j >> 6] & (1u << (int)(j & 63))) != 0;
-    }
-
-    internal void VerifyItemIsValid(int index)
-    {
-        if (!IsItemValid(index))
-            DuckDbVectorMethods.ThrowForInvalidElement(index);
-    }
+    /// <summary>
+    /// The length (number of rows) inherited from the result chunk this vector is part of.
+    /// </summary>
+    public int Length => _info.Length;
 }
 
 public unsafe static partial class DuckDbVectorMethods 
@@ -189,39 +109,6 @@ public unsafe static partial class DuckDbVectorMethods
         };
     }
 
-    internal static (byte Scale, DuckDbBasicType StorageType) GetDecimalStorageInfo(_duckdb_vector* vector)
-    {
-        var nativeType = NativeMethods.duckdb_vector_get_column_type(vector);
-        if (nativeType == null)
-            throw new DuckDbException("Could not query the logical type of a vector from DuckDB. ");
-
-        try
-        {
-            return (Scale: NativeMethods.duckdb_decimal_scale(nativeType),
-                    StorageType: NativeMethods.duckdb_decimal_internal_type(nativeType));
-        }
-        finally
-        {
-            NativeMethods.duckdb_destroy_logical_type(ref nativeType);
-        }
-    }
-
-    internal static DuckDbBasicType GetEnumStorageType(_duckdb_vector* vector)
-    {
-        var nativeType = NativeMethods.duckdb_vector_get_column_type(vector);
-        if (nativeType == null)
-            throw new DuckDbException("Could not query the logical type of a vector from DuckDB. ");
-
-        try
-        {
-            return NativeMethods.duckdb_enum_internal_type(nativeType);
-        }
-        finally
-        {
-            NativeMethods.duckdb_destroy_logical_type(ref nativeType);
-        }
-    }
-
     internal static void ThrowOnWrongClrType<T>(DuckDbBasicType basicType) where T : allows ref struct
     {
         if (!ValidateGenericType<T>(basicType))
@@ -252,7 +139,7 @@ public unsafe static partial class DuckDbVectorMethods
 
     public static ReadOnlySpan<T> AsSpan<T>(in this DuckDbVectorReader<T> vector) where T : unmanaged
     {
-        return new ReadOnlySpan<T>(vector._nativeData, vector._length);
+        return new ReadOnlySpan<T>(vector._info.NativeData, vector._info.Length);
     }
 
     /// <summary>
@@ -275,18 +162,8 @@ public unsafe static partial class DuckDbVectorMethods
     /// </remarks>
     public static T GetItem<T>(in this DuckDbVectorReader<T> vector, int index) where T : unmanaged
     {
-        vector.VerifyItemIsValid(index);
-        var p = (T*)vector._nativeData + index;
+        vector._info.VerifyItemIsValid(index);
+        var p = (T*)vector._info.NativeData + index;
         return *p;
-    }
-
-    internal static void ThrowIndexOutOfRange(int index, int length)
-    {
-        throw new IndexOutOfRangeException("Index is out of range for the vector. ");
-    }
-
-    internal static void ThrowForInvalidElement(int index)
-    {
-        throw new InvalidOperationException($"The element of the vector at index {index} is invalid (null). ");
     }
 }
