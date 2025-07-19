@@ -209,6 +209,8 @@ internal unsafe readonly struct VectorElementConverter
             DuckDbBasicType.UHugeInt when type == typeof(UInt128) => CreateForPrimitive<UInt128>(),
             DuckDbBasicType.HugeInt when type == typeof(Int128) => CreateForPrimitive<Int128>(),
 
+            DuckDbBasicType.Decimal when type == typeof(Decimal) => DuckDbDecimal.CreateDecimalConverter(vector),
+
             DuckDbBasicType.List when type.IsInstanceOfGenericDefinition(typeof(ImmutableArray<>))
                 => ListConverter.ConstructForImmutableArray(type, vector),
             // N.B. This matches only T[] and not arbitrary System.Array objects

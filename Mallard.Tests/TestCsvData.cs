@@ -116,14 +116,6 @@ public class TestCsvData
         bool hasChunk;
         do
         {
-            static long IntPow10(int n)
-            {
-                ArgumentOutOfRangeException.ThrowIfLessThan(n, 0);
-                long v = 1;
-                while (n-- > 0) v = checked(v * 10);
-                return v;
-            }
-
             hasChunk = dbResult.ProcessNextChunk(false, (in DuckDbChunkReader reader, bool _) =>
             {
                 var 頁column = reader.GetColumn<int>(0);
@@ -135,8 +127,6 @@ public class TestCsvData
                 var 調味column = reader.GetColumnRaw<DuckDbListRef>(6);
                 var 芡汁column = reader.GetColumnRaw<DuckDbListRef>(7);
 
-                long divisor = IntPow10(份量對應人數column.DecimalScale);
-
                 for (int i = 0; i < reader.Length; ++i)
                 {
                     recipesDb.Add(new Recipe
@@ -144,7 +134,8 @@ public class TestCsvData
                         頁 = 頁column.GetItem(i),
                         菜類 = (菜類_enum)菜類column.GetItem(i),
                         菜式 = 菜式column.GetItem(i),
-                        份量對應人數 = new decimal(份量對應人數column.GetItem(i)) / divisor,
+                        份量對應人數 = DuckDbDecimal.ConvertToDecimal(份量對應人數column.GetItem(i), 
+                                                                    份量對應人數column.DecimalScale),
                         材料 = ReadList(材料column, i),
                         醃料 = ReadList(醃料column, i),
                         調味 = ReadList(調味column, i),
@@ -183,7 +174,7 @@ public class TestCsvData
                 var 頁column = reader.GetColumn<int>(0);
                 var 菜類column = reader.GetColumnRaw<byte>(1);
                 var 菜式column = reader.GetColumn<string>(2);
-                var 份量對應人數column = reader.GetColumn<short>(3);
+                var 份量對應人數column = reader.GetColumn<Decimal>(3);
                 var 材料column = reader.GetColumn<ImmutableArray<string>>(4);
                 var 醃料column = reader.GetColumn<ImmutableArray<string>>(5);
                 var 調味column = reader.GetColumn<ImmutableArray<string>>(6);
@@ -196,7 +187,7 @@ public class TestCsvData
                         頁 = 頁column.GetItem(i),
                         菜類 = (菜類_enum)菜類column.GetItem(i),
                         菜式 = 菜式column.GetItem(i),
-                        份量對應人數 = new decimal(份量對應人數column.GetItem(i)) / 100,
+                        份量對應人數 = 份量對應人數column.GetItem(i),
                         材料 = 材料column.GetNullableValue(i).ToValueArray(),
                         醃料 = 醃料column.GetNullableValue(i).ToValueArray(),
                         調味 = 調味column.GetNullableValue(i).ToValueArray(),

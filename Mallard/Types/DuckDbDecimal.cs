@@ -28,6 +28,66 @@ public readonly struct DuckDbDecimal
     }
 
     /// <summary>
+    /// Instantiate <see cref="Decimal" /> with a 16-bit significand
+    /// (e.g. as obtained from a DuckDB vector).
+    /// </summary>
+    /// <param name="value">Signed value of the significand. </param>
+    /// <param name="scale">Number of digits after the decimal point.
+    /// </param>
+    public static Decimal ConvertToDecimal(short value, byte scale)
+    {
+        var valueInt = (int)value;
+        var isNegative = (value < 0);
+        var magnitude = isNegative ? -valueInt : valueInt;
+        return new Decimal(magnitude, 0, 0, isNegative, scale);
+    }
+
+    /// <summary>
+    /// Instantiate <see cref="Decimal" /> with a 32-bit significand
+    /// (e.g. as obtained from a DuckDB vector).
+    /// </summary>
+    /// <param name="value">Signed value of the significand. </param>
+    /// <param name="scale">Number of digits after the decimal point.
+    /// </param>
+    public static Decimal ConvertToDecimal(int value, byte scale)
+    {
+        unchecked // overflow below has expected behavior
+        {
+            var isNegative = (value < 0);
+            var magnitude = isNegative ? (uint)-value : (uint)value;
+            return new Decimal((int)magnitude, 0, 0, isNegative, scale);
+        }
+    }
+
+    /// <summary>
+    /// Instantiate <see cref="Decimal" /> with a 64-bit significand
+    /// (e.g. as obtained from a DuckDB vector).
+    /// </summary>
+    /// <param name="value">Signed value of the significand. </param>
+    /// <param name="scale">Number of digits after the decimal point.
+    /// </param>
+    public static Decimal ConvertToDecimal(long value, byte scale)
+    {
+        unchecked // overflow below has expected behavior
+        {
+            var isNegative = (value < 0);
+            var magnitude = isNegative ? (ulong)-value : (ulong)value;
+            var magnitudeLow = (uint)magnitude;
+            var magnitudeMid = (uint)(magnitude >> 32);
+            return new Decimal((int)magnitudeLow, (int)magnitudeMid, 0, isNegative, scale);
+        }
+    }
+
+    /// <summary>
+    /// Instantiate <see cref="Decimal" /> with a full 128-bit significand.
+    /// </summary>
+    /// <param name="value">Signed value of the significand. </param>
+    /// <param name="scale">Number of digits after the decimal point.
+    /// </param>
+    public static Decimal ConvertToDecimal(Int128 value, byte scale)
+        => new DuckDbDecimal(value, scale, 38 /* ignored */).ToDecimal();
+
+    /// <summary>
     /// Convert from DuckDB's representation of a decimal number to a .NET <see cref="Decimal" />.
     /// </summary>
     /// <returns>
@@ -134,4 +194,30 @@ public readonly struct DuckDbDecimal
 
         return significand;
     }
+
+    #region Type conversions for vector reader
+
+    private static Decimal ConvertToDecimalFromInt16(object? state, in DuckDbVectorInfo vector, int index)
+        => ConvertToDecimal(vector.UnsafeRead<short>(index), vector.DecimalScale);
+
+    private static Decimal ConvertToDecimalFromInt32(object? state, in DuckDbVectorInfo vector, int index)
+        => ConvertToDecimal(vector.UnsafeRead<int>(index), vector.DecimalScale);
+
+    private static Decimal ConvertToDecimalFromInt64(object? state, in DuckDbVectorInfo vector, int index)
+        => ConvertToDecimal(vector.UnsafeRead<long>(index), vector.DecimalScale);
+
+    private static Decimal ConvertToDecimalFromInt128(object? state, in DuckDbVectorInfo vector, int index)
+        => ConvertToDecimal(vector.UnsafeRead<Int128>(index), vector.DecimalScale);
+
+    internal unsafe static VectorElementConverter CreateDecimalConverter(in DuckDbVectorInfo vector)
+        => vector.StorageType switch
+        {
+            DuckDbBasicType.SmallInt => VectorElementConverter.Create(&ConvertToDecimalFromInt16),
+            DuckDbBasicType.Integer => VectorElementConverter.Create(&ConvertToDecimalFromInt32),
+            DuckDbBasicType.BigInt => VectorElementConverter.Create(&ConvertToDecimalFromInt64),
+            DuckDbBasicType.HugeInt => VectorElementConverter.Create(&ConvertToDecimalFromInt128),
+            _ => throw new InvalidOperationException("Cannot decode Decimal from a DuckDB vector with the given storage type. ")
+        };
+
+    #endregion
 }
