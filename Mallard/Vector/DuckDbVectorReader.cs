@@ -22,9 +22,7 @@ namespace Mallard;
 /// </para>
 /// </remarks>
 public unsafe readonly ref struct 
-    DuckDbVectorReader<T> 
-    : IDuckDbVector<T>
-    where T : notnull
+    DuckDbVectorReader<T> : IDuckDbVector<T> where T : notnull
 {
     /// <summary>
     /// Type information and native pointers on this DuckDB vector.
@@ -40,53 +38,11 @@ public unsafe readonly ref struct
     internal DuckDbVectorReader(scoped in DuckDbVectorInfo info)
     {
         _info = info;
-        _converter = GetConverter(_info.StorageType, info);
+        _converter = VectorElementConverter.CreateForType(typeof(T), _info);
 
         if (!_converter.IsValid)
             DuckDbVectorInfo.ThrowForWrongParamType(info.BasicType, info.StorageType, typeof(T));
     }
-
-    private static VectorElementConverter GetConverter(DuckDbBasicType storageType, in DuckDbVectorInfo info)
-    {
-        if (DuckDbVectorInfo.ValidateElementType<T>(storageType))
-            return VectorElementConverter.Create(&PrimitiveRead);
-
-        if (typeof(T) == typeof(string) && storageType == DuckDbBasicType.VarChar)
-            return DuckDbString.Converter;
-
-        if (storageType == DuckDbBasicType.List)
-            return ListConverter.CreateElemConverter(storageType, typeof(T), info);
-
-        return default;
-    }
-
-    /// <summary>
-    /// Read a "primitive" element, i.e. one whose memory representation in DuckDB is exactly
-    /// the same as the .NET type <typeparamref name="T"/>.
-    /// </summary>
-    /// <remarks>
-    /// This function is for setting into <see cref="_converterFunc" />.
-    /// </remarks>
-    internal static T PrimitiveRead(object? state, in DuckDbVectorInfo vector, int index)
-    {
-        // "This takes the address of, gets the size of, or declares a pointer to a managed type"
-        // We never call this method for T being a managed type. 
-        // Unfortunately we cannot express that constraint in C#, without exhaustively
-        // listing the unmanaged types we allow here (which is possible but tedious).
-#pragma warning disable CS8500 
-        var p = (T*)vector.DataPointer;
-#pragma warning restore CS8500
-        return p[index];
-    }
-
-    /// <summary>
-    /// Cast a function pointer for <see cref="_converterFunc" /> when
-    /// <typeparamref name="U"/> is dynamically equal to <typeparamref name="T" />
-    /// but is not known to be so statically.
-    /// </summary>
-    private static delegate*<object?, DuckDbVectorInfo*, int, T> 
-        CastConversionFunc<U>(delegate*<object?, DuckDbVectorInfo*, int, U> p)
-        => (delegate*<object?, DuckDbVectorInfo*, int, T>)p;
 
     /// <inheritdoc cref="IDuckDbVector.ValidityMask" />
     public ReadOnlySpan<ulong> ValidityMask => _info.ValidityMask;
