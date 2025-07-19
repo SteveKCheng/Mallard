@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Net.NetworkInformation;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -76,42 +77,19 @@ public unsafe ref struct DuckDbString
                     : nativeString._ptr;
         return new ReadOnlySpan<byte>(p, checked((int)nativeString._length));
     }
+
+    /// <summary>
+    /// Implementation of reading an element for <see cref="DuckDbVectorReader{string}" />.
+    /// </summary>
+    internal static string ReadStringFromVector(object? state, DuckDbVectorInfo* vector, int index)
+    {
+        var p = (DuckDbString*)vector->DataPointer;
+        return Encoding.UTF8.GetString(p[index].AsSpan());
+    }
 }
 
-public unsafe static partial class DuckDbVectorMethods
+public static partial class DuckDbVectorMethods
 {
-    /// <summary>
-    /// Get a string, after converting from its original UTF-8 representation, from a DuckDB vector of strings,
-    /// at the specified index.
-    /// </summary>
-    /// <param name="vector">The vector of strings. </param>
-    /// <param name="index">Which string to select from the vector. </param>
-    /// <returns>
-    /// The desired string.
-    /// </returns>
-    /// <exception cref="IndexOutOfRangeException">The index is out of range for the vector. </exception>
-    public static string GetItem(in this DuckDbVectorReader<string> vector, int index)
-    {
-        return Encoding.UTF8.GetString(GetStringAsUtf8(vector, index));
-    }
-
-    /// <summary>
-    /// Get a string, in UTF-8 encoding, from a DuckDB vector of strings,
-    /// at the specified index.
-    /// </summary>
-    /// <param name="vector">The vector of strings. </param>
-    /// <param name="index">Which string to select from the vector. </param>
-    /// <returns>
-    /// The desired string.
-    /// </returns>
-    /// <exception cref="IndexOutOfRangeException">The index is out of range for the vector. </exception>
-    public static ReadOnlySpan<byte> GetStringAsUtf8(in this DuckDbVectorReader<string> vector, int index)
-    {
-        vector._info.VerifyItemIsValid(index);
-        var p = (DuckDbString*)vector._info.DataPointer + index;
-        return p->AsSpan();
-    }
-
     /// <summary>
     /// Get the span of bytes representing a UTF-8 string, bit string, or blob.
     /// </summary>

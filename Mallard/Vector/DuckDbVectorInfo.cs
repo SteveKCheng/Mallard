@@ -1,5 +1,6 @@
 ﻿using Mallard.C_API;
 using System;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Mallard;
 
@@ -148,6 +149,7 @@ internal unsafe readonly struct DuckDbVectorInfo
         return _validityMask == null || (_validityMask[j >> 6] & (1u << (int)(j & 63))) != 0;
     }
 
+    [DoesNotReturn]
     private static void ThrowIndexOutOfRange(int index, int length)
     {
         throw new IndexOutOfRangeException("Index is out of range for the vector. ");
@@ -159,11 +161,13 @@ internal unsafe readonly struct DuckDbVectorInfo
             ThrowForInvalidElement(index);
     }
 
-    private static void ThrowForInvalidElement(int index)
+    [DoesNotReturn]
+    internal static void ThrowForInvalidElement(int index)
     {
         throw new InvalidOperationException($"The element of the vector at index {index} is invalid (null). ");
     }
 
+    [DoesNotReturn]
     internal static void ThrowForWrongParamType(DuckDbBasicType basicType, 
                                                 DuckDbBasicType storageType,
                                                 Type paramType)
@@ -179,4 +183,57 @@ internal unsafe readonly struct DuckDbVectorInfo
                 $"Generic type {paramType.Name} does not match the DuckDB basic type {basicType} [{storageType}] of the elements in the desired column.");
         }
     }
+
+    /// <summary>
+    /// Validate that the .NET type is correct for interpreting the raw
+    /// data array obtained from DuckDB.
+    /// </summary>
+    /// <typeparam name="T">The .NET type to check. </typeparam>
+    /// <param name="basicType">The basic type of the DuckDB data array
+    /// desired to be accessed. </param>
+    /// <returns>
+    /// True if the .NET type is correct; false if incorrect or
+    /// the <paramref name="basicType" /> does not refer to data
+    /// that can be directly interpreted from .NET.
+    /// </returns>
+    internal static bool ValidateElementType<T>(DuckDbBasicType basicType) 
+        where T : allows ref struct
+    {
+        return basicType switch
+        {
+            DuckDbBasicType.Boolean => typeof(T) == typeof(byte),
+            DuckDbBasicType.TinyInt => typeof(T) == typeof(sbyte),
+            DuckDbBasicType.SmallInt => typeof(T) == typeof(short),
+            DuckDbBasicType.Integer => typeof(T) == typeof(int),
+            DuckDbBasicType.BigInt => typeof(int) == typeof(long),
+            DuckDbBasicType.UTinyInt => typeof(T) == typeof(byte),
+            DuckDbBasicType.USmallInt => typeof(T) == typeof(ushort),
+            DuckDbBasicType.UInteger => typeof(T) == typeof(uint),
+            DuckDbBasicType.UBigInt => typeof(T) == typeof(ulong),
+            DuckDbBasicType.Float => typeof(T) == typeof(float),
+            DuckDbBasicType.Double => typeof(T) == typeof(double),
+
+            DuckDbBasicType.Date => typeof(T) == typeof(DuckDbDate),
+            DuckDbBasicType.Timestamp => typeof(T) == typeof(DuckDbTimestamp),
+
+            DuckDbBasicType.Interval => typeof(T) == typeof(DuckDbInterval),
+
+            DuckDbBasicType.List => typeof(T) == typeof(DuckDbListRef),
+            DuckDbBasicType.VarChar => typeof(T) == typeof(DuckDbString),
+            DuckDbBasicType.UHugeInt => typeof(T) == typeof(UInt128),
+            DuckDbBasicType.HugeInt => typeof(T) == typeof(Int128),
+            DuckDbBasicType.Blob => typeof(T) == typeof(DuckDbString),
+            DuckDbBasicType.Bit => typeof(T) == typeof(DuckDbString),
+            DuckDbBasicType.Uuid => typeof(T) == typeof(UInt128),
+            DuckDbBasicType.Decimal => typeof(T) == typeof(short) ||
+                                       typeof(T) == typeof(int) ||
+                                       typeof(T) == typeof(long) ||
+                                       typeof(T) == typeof(Int128),
+            DuckDbBasicType.Enum => typeof(T) == typeof(byte) ||
+                                    typeof(T) == typeof(ushort) ||
+                                    typeof(T) == typeof(uint),
+            _ => false,
+        };
+    }
+
 }

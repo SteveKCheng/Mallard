@@ -9,8 +9,3 @@ namespace Mallard;
 public class DuckDbCompositeValue
 {
 }
-
-public sealed class DuckDbList : DuckDbCompositeValue
-{
-
-}

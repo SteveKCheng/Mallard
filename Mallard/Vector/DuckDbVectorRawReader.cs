@@ -33,12 +33,31 @@ namespace Mallard;
 /// <para>
 /// This "raw" version of the reader passes the data to the user directly from the native
 /// memory loaded by the DuckDB library.  It does not perform any other translation
-/// (to other .NET types).
+/// (to other .NET types). 
+/// </para>
+/// <para>
+/// Elements can be accessed one by one through 
+/// Call <see cref="DuckDbVectorMethods.AsSpan" /> to obtain the 
+/// </para>
+/// <para>
+/// This "raw" data may be difficult to consume, particularly for elements that are 
+/// higher-level like <see cref="DuckDbBasicType.Decimal" /> or nested ones like
+/// <see cref="DuckDbBasicType.List" />.  Results that are easier to consume can
+/// be produced by the non-raw <see cref="DuckDbVectorReader{T}" /> instead
+/// at the expense of some efficiency.
+/// </para>
+/// <para>
+/// In theory, any type can be retrieved and converted in the most efficient manner 
+/// by generating source code that reads the raw data through this reader.  But
+/// source generation may be overkill and complicated for many applications.
 /// </para>
 /// </remarks>
 public readonly ref struct DuckDbVectorRawReader<T> : IDuckDbVector
     where T : unmanaged, allows ref struct
 {
+    /// <summary>
+    /// Type information and native pointers on this DuckDB vector.
+    /// </summary>
     internal readonly DuckDbVectorInfo _info;
 
     internal DuckDbVectorRawReader(scoped in DuckDbVectorInfo info)
@@ -70,43 +89,16 @@ public readonly ref struct DuckDbVectorRawReader<T> : IDuckDbVector
     /// that can be directly interpreted from .NET.
     /// </returns>
     public static bool ValidateParamType(DuckDbBasicType basicType)
-    {
-        return basicType switch
-        {
-            DuckDbBasicType.Boolean => typeof(T) == typeof(byte),
-            DuckDbBasicType.TinyInt => typeof(T) == typeof(sbyte),
-            DuckDbBasicType.SmallInt => typeof(T) == typeof(short),
-            DuckDbBasicType.Integer => typeof(T) == typeof(int),
-            DuckDbBasicType.BigInt => typeof(int) == typeof(long),
-            DuckDbBasicType.UTinyInt => typeof(T) == typeof(byte),
-            DuckDbBasicType.USmallInt => typeof(T) == typeof(ushort),
-            DuckDbBasicType.UInteger => typeof(T) == typeof(uint),
-            DuckDbBasicType.UBigInt => typeof(T) == typeof(ulong),
-            DuckDbBasicType.Float => typeof(T) == typeof(float),
-            DuckDbBasicType.Double => typeof(T) == typeof(double),
+        => DuckDbVectorInfo.ValidateElementType<T>(basicType);
 
-            DuckDbBasicType.Date => typeof(T) == typeof(DuckDbDate),
-            DuckDbBasicType.Timestamp => typeof(T) == typeof(DuckDbTimestamp),
-
-            DuckDbBasicType.Interval => typeof(T) == typeof(DuckDbInterval),
-
-            DuckDbBasicType.List => typeof(T) == typeof(DuckDbListRef),
-            DuckDbBasicType.VarChar => typeof(T) == typeof(DuckDbString),
-            DuckDbBasicType.UHugeInt => typeof(T) == typeof(UInt128),
-            DuckDbBasicType.HugeInt => typeof(T) == typeof(Int128),
-            DuckDbBasicType.Blob => typeof(T) == typeof(DuckDbString),
-            DuckDbBasicType.Bit => typeof(T) == typeof(DuckDbString),
-            DuckDbBasicType.Uuid => typeof(T) == typeof(UInt128),
-            DuckDbBasicType.Decimal => typeof(T) == typeof(short) ||
-                                       typeof(T) == typeof(int) ||
-                                       typeof(T) == typeof(long) ||
-                                       typeof(T) == typeof(Int128),
-            DuckDbBasicType.Enum => typeof(T) == typeof(byte) ||
-                                    typeof(T) == typeof(ushort) ||
-                                    typeof(T) == typeof(uint),
-            _ => false,
-        };
-    }
+    /// <summary>
+    /// Same as <see cref="GetItem" />: retrieve a valid element of this vector.
+    /// </summary>
+    /// <param name="index">The index of the element in this vector. </param>
+    /// <returns>The desired element of this vector. </returns>
+    /// <exception cref="IndexOutOfRangeException">The index is out of range for the vector. </exception>
+    /// <exception cref="InvalidOperationException">The requested element is invalid. </exception>
+    public T this[int index] => GetItem(index);
 
     /// <summary>
     /// Retrieve a valid element of this vector.
@@ -115,16 +107,10 @@ public readonly ref struct DuckDbVectorRawReader<T> : IDuckDbVector
     /// <returns>The desired element of this vector. </returns>
     /// <exception cref="IndexOutOfRangeException">The index is out of range for the vector. </exception>
     /// <exception cref="InvalidOperationException">The requested element is invalid. </exception>
-    public T this[int index]
+    public unsafe T GetItem(int index)
     {
-        get
-        {
-            _info.VerifyItemIsValid(index);
-            unsafe
-            {
-                return ((T*)_info.DataPointer)[index];
-            }
-        }
+        _info.VerifyItemIsValid(index);
+        return ((T*)_info.DataPointer)[index];
     }
 
     /// <summary>
@@ -153,7 +139,7 @@ public readonly ref struct DuckDbVectorRawReader<T> : IDuckDbVector
     }
 }
 
-public unsafe static partial class DuckDbVectorMethods
+public static partial class DuckDbVectorMethods
 {
     /// <summary>
     /// Get the contents of a DuckDB vector as a .NET span.
@@ -170,6 +156,6 @@ public unsafe static partial class DuckDbVectorMethods
     /// Note that elements of the vector that are invalid, may be "garbage" or un-initialized when
     /// indexed using the returned span. 
     /// </returns>
-    public static ReadOnlySpan<T> AsSpan<T>(in this DuckDbVectorRawReader<T> vector) where T : unmanaged
+    public unsafe static ReadOnlySpan<T> AsSpan<T>(in this DuckDbVectorRawReader<T> vector) where T : unmanaged
         => new(vector._info.DataPointer, vector._info.Length);
 }

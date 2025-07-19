@@ -37,10 +37,10 @@ public class UnitTest1
             numChunks++;
             hasChunk = dbResult.ProcessNextChunk(false, (in DuckDbChunkReader reader, bool _) =>
             {
-                var dates = reader.GetColumn<DuckDbDate>(0);
-                var closes = reader.GetColumn<double>(1);
-                var sma = reader.GetColumn<double>(2);
-                var volume = reader.GetColumn<int>(3);
+                var dates = reader.GetColumnRaw<DuckDbDate>(0);
+                var closes = reader.GetColumnRaw<double>(1);
+                var sma = reader.GetColumnRaw<double>(2);
+                var volume = reader.GetColumnRaw<int>(3);
 
                 Assert.Equal(reader.Length, closes.AsSpan().Length);
                 Assert.Equal(reader.Length, volume.AsSpan().Length);
