@@ -119,12 +119,17 @@ internal sealed class ListConverter
         typeof(ListConverter).GetMethod(nameof(ConstructForImmutableArrayNullableImpl),
                                         BindingFlags.Static | BindingFlags.NonPublic)!;
 
-    private ListConverter(Type childType, in DuckDbVectorInfo parent)
+    private ListConverter(Type? childType, in DuckDbVectorInfo parent)
     {
-        _childrenInfo = DuckDbVectorMethods.GetChildrenVectorInfo(parent);
+        _childrenInfo = parent.GetChildrenVectorInfo();
         _childrenConverter = VectorElementConverter.CreateForType(childType, _childrenInfo);
         if (!_childrenConverter.IsValid)
-            throw new ArgumentException($"The element type of the list/array cannot be converted to .NET type {childType}. ");
+        {
+            throw new ArgumentException(
+                childType != null 
+                    ? $"The element type of the list/array cannot be converted to .NET type {childType}. "
+                    : "The element type of the list/array cannot be converted to any .NET type. ");
+        }
     }
 
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
@@ -163,6 +168,17 @@ internal sealed class ListConverter
         }
 
         return VectorElementConverter.UnsafeCreateFromGeneric(method, childType, parent);
+    }
+
+    public static VectorElementConverter ConstructForArrayOfUnknownType(in DuckDbVectorInfo parent)
+    {
+        // FIXME this is an extra allocation which could be eliminated
+        var self = new ListConverter(null, parent);
+
+        var childType = self._childrenConverter.TargetType;
+        var method = childType.IsValueType ? ConstructForArrayNullableImplMethod
+                                           : ConstructForArrayImplMethod;
+        return VectorElementConverter.UnsafeCreateFromGeneric(method, childType, parent);       
     }
 
     public static VectorElementConverter ConstructForImmutableArray(Type listType, in DuckDbVectorInfo parent)

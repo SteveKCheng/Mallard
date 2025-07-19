@@ -2,7 +2,9 @@
 using System;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 
 namespace Mallard;
 
@@ -86,15 +88,16 @@ internal unsafe readonly struct VectorElementConverter
     /// </summary>
     /// <remarks>
     /// Used to verify the consistent types are being passed in while being
-    /// type-erased.
+    /// type-erased.  It may also be consulted if the target type is unknown
+    /// because the user requested all values be boxed to objects. 
     /// </remarks>
-    private readonly Type _type;
+    public Type TargetType { get; init; }
 
-    private VectorElementConverter(object? state, void* function, Type type)
+    private VectorElementConverter(object? state, void* function, Type targetType)
     {
         _state = state;
         _function = function;
-        _type = type;
+        TargetType = targetType;
     }
 
     /// <summary>
@@ -130,8 +133,9 @@ internal unsafe readonly struct VectorElementConverter
     public T Invoke<T>(in DuckDbVectorInfo vector, int index)
         where T : notnull
     {
-        Debug.Assert(typeof(T) == _type,
-            "Type passed to Invoke does not match that on creation of VectorElementConverter. ");
+        Debug.Assert(typeof(T).IsValueType ? typeof(T) == TargetType 
+                                           : typeof(T).IsAssignableFrom(TargetType),
+            "Type passed to Invoke is not compatible with the type that this VectorElementConverter was created for. ");
 
         var f = (delegate*<object?, in DuckDbVectorInfo, int, T>)_function;
         return f(_state, in vector, index);
@@ -182,46 +186,57 @@ internal unsafe readonly struct VectorElementConverter
     /// or an invalid (default-initialized) instance if there is none suitable.
     /// </returns>
     public static VectorElementConverter
-        CreateForType(Type type, in DuckDbVectorInfo vector)
+        CreateForType(Type? type, in DuckDbVectorInfo vector)
     {
+        // Request for boxing.  Note that CreateForBoxedType may recursively call this
+        // function (with type == null) to get the converter for the unboxed type first.
+        if (type == typeof(object))
+            return CreateForBoxedType(vector);
+
+        // Allow matching against a null (unknown) type
+        static bool Match(Type? type, Type target)
+            => type == null || type == target;
+ 
         return vector.BasicType switch
         {
             // Fortunately "bool" is considered an unmanaged type (of one byte), even though
             // P/Invoke marshalling does not treat it as such (because BOOL in the Win32 API is a 32-bit integer).
             // Strictly speaking, the C language does not define its "bool" (or "_Bool") type as one byte,
             // but common ABIs make it so, to be compatible with C++.
-            DuckDbBasicType.Boolean when type == typeof(bool) => CreateForPrimitive<bool>(),
+            DuckDbBasicType.Boolean when Match(type, typeof(bool)) => CreateForPrimitive<bool>(),
 
-            DuckDbBasicType.TinyInt when type == typeof(sbyte) => CreateForPrimitive<sbyte>(),
-            DuckDbBasicType.SmallInt when type == typeof(short) => CreateForPrimitive<short>(),
-            DuckDbBasicType.Integer when type == typeof(int) => CreateForPrimitive<int>(),
-            DuckDbBasicType.BigInt when type == typeof(long) => CreateForPrimitive<long>(),
+            DuckDbBasicType.TinyInt when Match(type, typeof(sbyte)) => CreateForPrimitive<sbyte>(),
+            DuckDbBasicType.SmallInt when Match(type, typeof(short)) => CreateForPrimitive<short>(),
+            DuckDbBasicType.Integer when Match(type, typeof(int)) => CreateForPrimitive<int>(),
+            DuckDbBasicType.BigInt when Match(type, typeof(long)) => CreateForPrimitive<long>(),
 
-            DuckDbBasicType.UTinyInt when type == typeof(byte) => CreateForPrimitive<byte>(),
-            DuckDbBasicType.USmallInt when type == typeof(ushort) => CreateForPrimitive<ushort>(),
-            DuckDbBasicType.UInteger when type == typeof(uint) => CreateForPrimitive<uint>(),
-            DuckDbBasicType.UBigInt when type == typeof(ulong) => CreateForPrimitive<ulong>(),
+            DuckDbBasicType.UTinyInt when Match(type, typeof(byte)) => CreateForPrimitive<byte>(),
+            DuckDbBasicType.USmallInt when Match(type, typeof(ushort)) => CreateForPrimitive<ushort>(),
+            DuckDbBasicType.UInteger when Match(type, typeof(uint)) => CreateForPrimitive<uint>(),
+            DuckDbBasicType.UBigInt when Match(type, typeof(ulong)) => CreateForPrimitive<ulong>(),
 
-            DuckDbBasicType.Float when type == typeof(float) => CreateForPrimitive<float>(),
-            DuckDbBasicType.Double when type == typeof(double) => CreateForPrimitive<double>(),
+            DuckDbBasicType.Float when Match(type, typeof(float)) => CreateForPrimitive<float>(),
+            DuckDbBasicType.Double when Match(type, typeof(double)) => CreateForPrimitive<double>(),
 
-            DuckDbBasicType.Date when type == typeof(DuckDbDate) => CreateForPrimitive<DuckDbDate>(),
-            DuckDbBasicType.Timestamp when type == typeof(DuckDbTimestamp) => CreateForPrimitive<DuckDbTimestamp>(),
+            DuckDbBasicType.Date when Match(type, typeof(DuckDbDate)) => CreateForPrimitive<DuckDbDate>(),
+            DuckDbBasicType.Timestamp when Match(type, typeof(DuckDbTimestamp)) => CreateForPrimitive<DuckDbTimestamp>(),
 
-            DuckDbBasicType.Interval when type == typeof(DuckDbInterval) => CreateForPrimitive<DuckDbInterval>(),
+            DuckDbBasicType.Interval when Match(type, typeof(DuckDbInterval)) => CreateForPrimitive<DuckDbInterval>(),
 
-            DuckDbBasicType.VarChar when type == typeof(string) => DuckDbString.Converter,
+            DuckDbBasicType.VarChar when Match(type, typeof(string)) => DuckDbString.Converter,
 
-            DuckDbBasicType.UHugeInt when type == typeof(UInt128) => CreateForPrimitive<UInt128>(),
-            DuckDbBasicType.HugeInt when type == typeof(Int128) => CreateForPrimitive<Int128>(),
+            DuckDbBasicType.UHugeInt when Match(type, typeof(UInt128)) => CreateForPrimitive<UInt128>(),
+            DuckDbBasicType.HugeInt when Match(type, typeof(Int128)) => CreateForPrimitive<Int128>(),
 
-            DuckDbBasicType.Decimal when type == typeof(Decimal) => DuckDbDecimal.CreateDecimalConverter(vector),
+            DuckDbBasicType.Decimal when Match(type, typeof(Decimal)) => DuckDbDecimal.CreateDecimalConverter(vector),
+
+            DuckDbBasicType.List when type == null => ListConverter.ConstructForArrayOfUnknownType(vector),
 
             DuckDbBasicType.List when type.IsInstanceOfGenericDefinition(typeof(ImmutableArray<>))
                 => ListConverter.ConstructForImmutableArray(type, vector),
             // N.B. This matches only T[] and not arbitrary System.Array objects
             // (with arbitrary ranks and lower/upper bounds)
-            DuckDbBasicType.List when type.IsArray => ListConverter.ConstructForArray(type, vector),
+            DuckDbBasicType.List when type != null && type.IsArray => ListConverter.ConstructForArray(type, vector),
 
             _ => default
         };
@@ -269,6 +284,106 @@ internal unsafe readonly struct VectorElementConverter
         var f = (delegate*<in DuckDbVectorInfo, VectorElementConverter>)
                     method.MakeGenericMethod(type).MethodHandle.GetFunctionPointer();
         return f(vector);
+    }
+
+    internal unsafe static VectorElementConverter
+        UnsafeCreateFromGeneric<TArg>(MethodInfo method, Type type, TArg arg, in DuckDbVectorInfo vector)
+    {
+        ArgumentNullException.ThrowIfNull(method);
+        ArgumentNullException.ThrowIfNull(type);
+
+        var f = (delegate*<TArg, in DuckDbVectorInfo, VectorElementConverter>)
+                    method.MakeGenericMethod(type).MethodHandle.GetFunctionPointer();
+        return f(arg, vector);
+    }
+
+    #endregion
+
+    #region Boxing converters
+
+    public static VectorElementConverter CreateForBoxedPrimitive<T>() where T : unmanaged
+        => Create(&ReadPrimitiveAndBox<T>);
+
+    private static object ReadPrimitiveAndBox<T>(object? state, in DuckDbVectorInfo vector, int index)
+        where T : unmanaged
+        => (object)vector.UnsafeRead<T>(index);
+
+    private static VectorElementConverter
+        CreateForBoxedType(in DuckDbVectorInfo vector)
+    {
+        var converter = vector.BasicType switch
+        {
+            DuckDbBasicType.Boolean => CreateForBoxedPrimitive<bool>(),
+
+            DuckDbBasicType.TinyInt => CreateForBoxedPrimitive<sbyte>(),
+            DuckDbBasicType.SmallInt => CreateForBoxedPrimitive<short>(),
+            DuckDbBasicType.Integer => CreateForBoxedPrimitive<int>(),
+            DuckDbBasicType.BigInt => CreateForBoxedPrimitive<long>(),
+
+            DuckDbBasicType.UTinyInt => CreateForBoxedPrimitive<byte>(),
+            DuckDbBasicType.USmallInt => CreateForBoxedPrimitive<ushort>(),
+            DuckDbBasicType.UInteger => CreateForBoxedPrimitive<uint>(),
+            DuckDbBasicType.UBigInt => CreateForBoxedPrimitive<ulong>(),
+
+            DuckDbBasicType.Float => CreateForBoxedPrimitive<float>(),
+            DuckDbBasicType.Double => CreateForBoxedPrimitive<double>(),
+
+            DuckDbBasicType.Date => CreateForBoxedPrimitive<DuckDbDate>(),
+            DuckDbBasicType.Timestamp => CreateForBoxedPrimitive<DuckDbTimestamp>(),
+
+            DuckDbBasicType.Interval => CreateForBoxedPrimitive<DuckDbInterval>(),
+
+            DuckDbBasicType.UHugeInt => CreateForBoxedPrimitive<UInt128>(),
+            DuckDbBasicType.HugeInt => CreateForBoxedPrimitive<Int128>(),
+
+            _ => default
+        };
+
+        // Above primitives have efficient implementations where the casting
+        // is inlined into the conversion function.
+        if (converter.IsValid)
+            return converter;
+
+        // Decide on what the original (unboxed) type first.
+        converter = CreateForType(null, vector);
+
+        // Nothing available, or the target type is a reference type so no boxing needed.
+        if (!converter.IsValid || !converter.TargetType.IsValueType)
+            return converter;
+
+        // Set up a second indirect call to box the return value 
+        // from the original converter.
+        return UnsafeCreateFromGeneric(CreateBoxingWrapperMethod, 
+                                       converter.TargetType, 
+                                       converter, 
+                                       vector); 
+    }
+
+    private static readonly MethodInfo CreateBoxingWrapperMethod =
+    typeof(BoxingConverter).GetMethod(nameof(BoxingConverter.Create),
+                                      BindingFlags.Static | BindingFlags.NonPublic)!;
+
+    /// <summary>
+    /// Boxes the results of a vector element conversion that returns a value type, 
+    /// when the client requests such.
+    /// </summary>
+    /// <remarks>
+    /// Used internally by <see cref="VectorElementConverter.CreateForBoxedPrimitive{T}" />
+    /// when no more efficient alternative is available.
+    /// </remarks>
+    internal sealed class BoxingConverter
+    {
+        private readonly VectorElementConverter _unboxedConverter;
+        private BoxingConverter(VectorElementConverter unboxedConverter)
+            => _unboxedConverter = unboxedConverter;
+        private static object Convert<T>
+            (BoxingConverter self, in DuckDbVectorInfo vector, int index) where T : struct
+            => (object)self._unboxedConverter.Invoke<T>(vector, index);
+
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+        internal static unsafe VectorElementConverter Create<T>
+            (VectorElementConverter unboxedConverter, in DuckDbVectorInfo _) where T : struct
+            => VectorElementConverter.Create(new BoxingConverter(unboxedConverter), &Convert<T>);
     }
 
     #endregion

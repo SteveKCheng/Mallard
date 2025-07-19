@@ -180,15 +180,31 @@ public class TestCsvData
                 var 調味column = reader.GetColumn<ImmutableArray<string>>(6);
                 var 芡汁column = reader.GetColumn<ImmutableArray<string>>(7);
 
+                var 頁columnBoxed = reader.GetColumn<object>(0);
+                var 菜式columnBoxed = reader.GetColumn<object>(2);
+                var 份量對應人數columnBoxed = reader.GetColumn<object>(3);
+                var 材料columnBoxed = reader.GetColumn<object>(4);
+
                 for (int i = 0; i < reader.Length; ++i)
                 {
+                    var 頁i = 頁column.GetItem(i);
+                    var 菜式i = 菜式column.GetItem(i);
+                    var 份量對應人數i = 份量對應人數column.GetItem(i);
+                    var 材料i = 材料column.GetNullableValue(i);
+
+                    // Check boxed items are equal to unboxed items
+                    Assert.Equal((object)頁i, 頁columnBoxed.GetItem(i));
+                    Assert.Equal((object)菜式i, 菜式columnBoxed.GetItem(i));
+                    Assert.Equal((object)份量對應人數i, 份量對應人數columnBoxed.GetItem(i));
+                    Assert.Equal((IEnumerable<string>?)材料i, (IEnumerable<string>)材料columnBoxed.GetItem(i));
+
                     recipesDb.Add(new Recipe
                     {
-                        頁 = 頁column.GetItem(i),
+                        頁 = 頁i,
                         菜類 = (菜類_enum)菜類column.GetItem(i),
-                        菜式 = 菜式column.GetItem(i),
-                        份量對應人數 = 份量對應人數column.GetItem(i),
-                        材料 = 材料column.GetNullableValue(i).ToValueArray(),
+                        菜式 = 菜式i,
+                        份量對應人數 = 份量對應人數i,
+                        材料 = 材料i.ToValueArray(),
                         醃料 = 醃料column.GetNullableValue(i).ToValueArray(),
                         調味 = 調味column.GetNullableValue(i).ToValueArray(),
                         芡汁 = 芡汁column.GetNullableValue(i).ToValueArray(),
