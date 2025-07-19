@@ -59,11 +59,9 @@ internal unsafe readonly struct VectorElementConverter
     ///   </item>
     ///   <item>
     ///     <term><c>DuckDbVectorInfo*</c> <c>vector</c></term>
-    ///     <description>Information on the vector.  This argument is passed by
-    ///     pointer rather than through <c>in</c> (read-only reference) 
-    ///     only to work around a limitation of C#
-    ///     where reference arguments in function pointers cannot be marked <c>scoped</c>;
-    ///     without restricting the scope the code will not compile.
+    ///     <description>Gives access to the DuckDB vector.  The caller
+    ///     must access the native data with the correct type.
+    ///     </description>
     ///   </item>
     ///   <item>
     ///     <term><c>int</c> <c>index</c></term>
@@ -102,7 +100,7 @@ internal unsafe readonly struct VectorElementConverter
     /// <typeparam name="S">State object type for the conversion function. </typeparam>
     /// <typeparam name="T">The .NET type to convert to. </typeparam>
     public static VectorElementConverter
-        Create<S,T>(S state, delegate*<S, DuckDbVectorInfo*, int, T> function)
+        Create<S,T>(S state, delegate*<S, in DuckDbVectorInfo, int, T> function)
         where S : class
         => new(state, function, typeof(T));
 
@@ -114,7 +112,7 @@ internal unsafe readonly struct VectorElementConverter
     /// When the conversion function is invoked, the first argument will be passed as null.
     /// </remarks>
     public static VectorElementConverter
-        Create<T>(delegate*<object?, DuckDbVectorInfo*, int, T> function)
+        Create<T>(delegate*<object?, in DuckDbVectorInfo, int, T> function)
         => new(null, function, typeof(T));
 
     /// <summary>
@@ -129,13 +127,8 @@ internal unsafe readonly struct VectorElementConverter
         Debug.Assert(typeof(T) == _type,
             "Type passed to Invoke does not match that on creation of VectorElementConverter. ");
 
-        // A ref struct cannot be in GC memory, but nevertheless C# requires
-        // its member to be "fixed" (even though it must be a no-op).
-        fixed (DuckDbVectorInfo* vectorPtr = &vector)
-        {
-            var f = (delegate*<object?, DuckDbVectorInfo*, int, T>)_function;
-            return f(_state, vectorPtr, index);
-        }
+        var f = (delegate*<object?, in DuckDbVectorInfo, int, T>)_function;
+        return f(_state, in vector, index);
     }
 
     /// <summary>

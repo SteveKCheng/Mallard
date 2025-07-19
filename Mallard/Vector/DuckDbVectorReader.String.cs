@@ -81,9 +81,9 @@ public unsafe ref struct DuckDbString
     /// <summary>
     /// Implementation of reading an element for <see cref="DuckDbVectorReader{string}" />.
     /// </summary>
-    internal static string ReadStringFromVector(object? state, DuckDbVectorInfo* vector, int index)
+    internal static string ReadStringFromVector(object? state, in DuckDbVectorInfo vector, int index)
     {
-        var p = (DuckDbString*)vector->DataPointer;
+        var p = (DuckDbString*)vector.DataPointer;
         return Encoding.UTF8.GetString(p[index].AsSpan());
     }
 }

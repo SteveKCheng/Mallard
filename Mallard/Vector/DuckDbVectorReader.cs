@@ -64,14 +64,14 @@ public unsafe readonly ref struct
     /// <remarks>
     /// This function is for setting into <see cref="_converterFunc" />.
     /// </remarks>
-    private static T PrimitiveRead(object? state, DuckDbVectorInfo* vector, int index)
+    private static T PrimitiveRead(object? state, in DuckDbVectorInfo vector, int index)
     {
         // "This takes the address of, gets the size of, or declares a pointer to a managed type"
         // We never call this method for T being a managed type. 
         // Unfortunately we cannot express that constraint in C#, without exhaustively
         // listing the unmanaged types we allow here (which is possible but tedious).
 #pragma warning disable CS8500 
-        var p = (T*)vector->DataPointer;
+        var p = (T*)vector.DataPointer;
 #pragma warning restore CS8500
         return p[index];
     }
