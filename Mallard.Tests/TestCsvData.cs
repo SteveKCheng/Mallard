@@ -37,11 +37,19 @@ internal readonly struct ValueArray<T>(ImmutableArray<T> values)
         => _values.SequenceEqual(other._values);
 }
 
+internal static class ImmutableArrayExtensions
+{
+    public static ValueArray<T>? ToValueArray<T>(this ImmutableArray<T>? values) where T : IEquatable<T> 
+        => values.HasValue ? new ValueArray<T>(values.GetValueOrDefault()) : null;
+    public static ValueArray<T> ToValueArray<T>(this ImmutableArray<T> values) where T : IEquatable<T>
+        => new(values);
+}
+
 // Turn a string from the CSV file into a list of strings, assuming the item separator is ';'
 internal sealed class StringListConverter : DefaultTypeConverter
 {
     public override object? ConvertFromString(string? text, IReaderRow row, MemberMapData memberMapData)
-        => text != null ? new ValueArray<string>(ImmutableArray.Create(text.Split(';'))) : null;
+        => text != null ? ImmutableArray.Create(text.Split(';')).ToValueArray() : null;
 }
 
 // Enum defined consistently with Recipes.sql
@@ -87,11 +95,11 @@ public class TestCsvData
         var arrayBuilder = ImmutableArray.CreateBuilder<string>(listRef.Length);
         for (int i = 0; i < listRef.Length; ++i)
             arrayBuilder.Add(childrenVector.GetItem(listRef.Offset + i));
-        return new ValueArray<string>(arrayBuilder.DrainToImmutable());
+        return arrayBuilder.DrainToImmutable().ToValueArray();
     }
 
     [Fact]
-    public void ReadListVector()
+    public void ReadListVector1()
     {
         var recipesCsv = GetRecipes();
         using var dbConn = new DuckDbConnection("");
@@ -137,6 +145,58 @@ public class TestCsvData
                 return false;
             }, out _);
         } while(hasChunk);
+
+        Assert.Equal(recipesCsv, recipesDb);
+    }
+
+    // Same as ReadListVector1 but without any "raw" conversions
+    [Fact]
+    public void ReadListVector2()
+    {
+        var recipesCsv = GetRecipes();
+        using var dbConn = new DuckDbConnection("");
+
+        // Execute SQL statement in file to parse CSV and create a table from the data
+        var sql = File.ReadAllText(Path.Combine(Program.TestDataDirectory, "Recipes.sql"));
+        sql = sql.Replace("'Recipes.csv'", $"'{Path.Combine(Program.TestDataDirectory, "Recipes.csv")}'");
+        dbConn.ExecuteNonQuery(sql);
+
+        using var dbResult = dbConn.Execute(@"SELECT * FROM 家常小菜 ORDER BY 頁 ASC");
+
+        var recipesDb = new List<Recipe>();
+
+        bool hasChunk;
+        do
+        {
+            hasChunk = dbResult.ProcessNextChunk(false, (in DuckDbChunkReader reader, bool _) =>
+            {
+                var 頁column = reader.GetColumn<int>(0);
+                var 菜類column = reader.GetColumn<byte>(1);
+                var 菜式column = reader.GetColumn<string>(2);
+                var 份量對應人數column = reader.GetColumn<short>(3);
+                var 材料column = reader.GetColumn<ImmutableArray<string>>(4);
+                var 醃料column = reader.GetColumn<ImmutableArray<string>>(5);
+                var 調味column = reader.GetColumn<ImmutableArray<string>>(6);
+                var 芡汁column = reader.GetColumn<ImmutableArray<string>>(7);
+
+                for (int i = 0; i < reader.Length; ++i)
+                {
+                    recipesDb.Add(new Recipe
+                    {
+                        頁 = 頁column.GetItem(i),
+                        菜類 = (菜類_enum)菜類column.GetItem(i),
+                        菜式 = 菜式column.GetItem(i),
+                        份量對應人數 = new decimal(份量對應人數column.GetItem(i)) / 100,
+                        材料 = 材料column.GetNullableValue(i).ToValueArray(),
+                        醃料 = 醃料column.GetNullableValue(i).ToValueArray(),
+                        調味 = 調味column.GetNullableValue(i).ToValueArray(),
+                        芡汁 = 芡汁column.GetNullableValue(i).ToValueArray(),
+                    });
+                }
+
+                return false;
+            }, out _);
+        } while (hasChunk);
 
         Assert.Equal(recipesCsv, recipesDb);
     }
