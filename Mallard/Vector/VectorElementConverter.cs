@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Mallard.Basics;
+using System;
+using System.Collections.Immutable;
 using System.Diagnostics;
 
 namespace Mallard;
@@ -136,6 +138,86 @@ internal unsafe readonly struct VectorElementConverter
     /// </summary>
     public bool IsValid => _function != null;
 
+    #region Converters for primitive types (fixed-length, unmanaged that can be read directly from memory)
+
+    /// <summary>
+    /// Get the type converter that simply reads from the DuckDB vector's data block.
+    /// </summary>
+    /// <typeparam name="T">
+    /// Unmanaged type compatible with the storage format of the DuckDB vector's elements.
+    /// </typeparam>
     public static VectorElementConverter CreateForPrimitive<T>() where T : unmanaged
-        => Create(&DuckDbVectorReader<T>.PrimitiveRead);
+        => Create(&ReadPrimitive<T>);
+
+    /// <summary>
+    /// Read a "primitive" element, i.e. one whose memory representation in DuckDB is exactly
+    /// the same as the .NET type <typeparamref name="T"/>.
+    /// </summary>
+    private static T ReadPrimitive<T>(object? state, in DuckDbVectorInfo vector, int index)
+        where T : unmanaged
+        => ((T*)vector.DataPointer)[index];
+
+    #endregion
+
+    #region Dispatch for conversions of (generic) types
+
+    /// <summary>
+    /// Obtain an instance of <see cref="VectorElementConverter" />
+    /// appropriate for the element type of the vector and the desired .NET type.
+    /// </summary>
+    /// <param name="type">
+    /// The desired .NET type to convert elements to.
+    /// </param>
+    /// <param name="vector">
+    /// Type information for the DuckDB vector.
+    /// </param>
+    /// <returns>
+    /// A converter that works for the combination of <paramref name="type"/> and <paramref name="vector" />,
+    /// or an invalid (default-initialized) instance if there is none suitable.
+    /// </returns>
+    public static VectorElementConverter
+        CreateForType(Type type, in DuckDbVectorInfo vector)
+    {
+        return vector.BasicType switch
+        {
+            // Fortunately "bool" is considered an unmanaged type (of one byte), even though
+            // P/Invoke marshalling does not treat it as such (because BOOL in the Win32 API is a 32-bit integer).
+            // Strictly speaking, the C language does not define its "bool" (or "_Bool") type as one byte,
+            // but common ABIs make it so, to be compatible with C++.
+            DuckDbBasicType.Boolean when type == typeof(bool) => CreateForPrimitive<bool>(),
+
+            DuckDbBasicType.TinyInt when type == typeof(sbyte) => CreateForPrimitive<sbyte>(),
+            DuckDbBasicType.SmallInt when type == typeof(short) => CreateForPrimitive<short>(),
+            DuckDbBasicType.Integer when type == typeof(int) => CreateForPrimitive<int>(),
+            DuckDbBasicType.BigInt when type == typeof(long) => CreateForPrimitive<long>(),
+
+            DuckDbBasicType.UTinyInt when type == typeof(byte) => CreateForPrimitive<byte>(),
+            DuckDbBasicType.USmallInt when type == typeof(ushort) => CreateForPrimitive<ushort>(),
+            DuckDbBasicType.UInteger when type == typeof(uint) => CreateForPrimitive<uint>(),
+            DuckDbBasicType.UBigInt when type == typeof(ulong) => CreateForPrimitive<ulong>(),
+
+            DuckDbBasicType.Float when type == typeof(float) => CreateForPrimitive<float>(),
+            DuckDbBasicType.Double when type == typeof(double) => CreateForPrimitive<double>(),
+
+            DuckDbBasicType.Date when type == typeof(DuckDbDate) => CreateForPrimitive<DuckDbDate>(),
+            DuckDbBasicType.Timestamp when type == typeof(DuckDbTimestamp) => CreateForPrimitive<DuckDbTimestamp>(),
+
+            DuckDbBasicType.Interval when type == typeof(DuckDbInterval) => CreateForPrimitive<DuckDbInterval>(),
+
+            DuckDbBasicType.VarChar when type == typeof(string) => DuckDbString.Converter,
+
+            DuckDbBasicType.UHugeInt when type == typeof(UInt128) => CreateForPrimitive<UInt128>(),
+            DuckDbBasicType.HugeInt when type == typeof(Int128) => CreateForPrimitive<Int128>(),
+
+            DuckDbBasicType.List when type.IsInstanceOfGenericDefinition(typeof(ImmutableArray<>))
+                => ListConverter.ConstructForImmutableArray(type, vector),
+            // N.B. This matches only T[] and not arbitrary System.Array objects
+            // (with arbitrary ranks and lower/upper bounds)
+            DuckDbBasicType.List when type.IsArray => ListConverter.ConstructForArray(type, vector),
+
+            _ => default
+        };
+    }
+
+    #endregion
 }

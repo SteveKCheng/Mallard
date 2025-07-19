@@ -127,7 +127,7 @@ public class TestCsvData
             hasChunk = dbResult.ProcessNextChunk(false, (in DuckDbChunkReader reader, bool _) =>
             {
                 var 頁column = reader.GetColumn<int>(0);
-                var 菜類column = reader.GetColumn<byte>(1);
+                var 菜類column = reader.GetColumnRaw<byte>(1);
                 var 菜式column = reader.GetColumn<string>(2);
                 var 份量對應人數column = reader.GetColumnRaw<short>(3);
                 var 材料column = reader.GetColumnRaw<DuckDbListRef>(4);
@@ -181,7 +181,7 @@ public class TestCsvData
             hasChunk = dbResult.ProcessNextChunk(false, (in DuckDbChunkReader reader, bool _) =>
             {
                 var 頁column = reader.GetColumn<int>(0);
-                var 菜類column = reader.GetColumn<byte>(1);
+                var 菜類column = reader.GetColumnRaw<byte>(1);
                 var 菜式column = reader.GetColumn<string>(2);
                 var 份量對應人數column = reader.GetColumn<short>(3);
                 var 材料column = reader.GetColumn<ImmutableArray<string>>(4);
