@@ -52,7 +52,7 @@ namespace Mallard;
 /// source generation may be overkill and complicated for many applications.
 /// </para>
 /// </remarks>
-public readonly ref struct DuckDbVectorRawReader<T> : IDuckDbVector
+public readonly ref struct DuckDbVectorRawReader<T> : IDuckDbVector<T>
     where T : unmanaged, allows ref struct
 {
     /// <summary>
@@ -100,30 +100,14 @@ public readonly ref struct DuckDbVectorRawReader<T> : IDuckDbVector
     /// <exception cref="InvalidOperationException">The requested element is invalid. </exception>
     public T this[int index] => GetItem(index);
 
-    /// <summary>
-    /// Retrieve a valid element of this vector.
-    /// </summary>
-    /// <param name="index">The index of the element in this vector. </param>
-    /// <returns>The desired element of this vector. </returns>
-    /// <exception cref="IndexOutOfRangeException">The index is out of range for the vector. </exception>
-    /// <exception cref="InvalidOperationException">The requested element is invalid. </exception>
+    /// <inheritdoc cref="IDuckDbVector{T}.GetItem(int)" />
     public unsafe T GetItem(int index)
     {
         _info.VerifyItemIsValid(index);
         return ((T*)_info.DataPointer)[index];
     }
 
-    /// <summary>
-    /// Retrieve an element of this vector, or report that it is invalid.
-    /// </summary>
-    /// <param name="index">The index of the element in this vector. </param>
-    /// <param name="item">The item that is to be read out.  Set to the
-    /// element type's default value when the element is invalid.
-    /// </param>
-    /// <returns>
-    /// Whether the element is valid.
-    /// </returns>
-    /// <exception cref="IndexOutOfRangeException">The index is out of range for the vector. </exception>
+    /// <inheritdoc cref="IDuckDbVector{T}.TryGetItem(int, out T)" />
     public unsafe bool TryGetItem(int index, out T item)
     {
         if (_info.IsItemValid(index))

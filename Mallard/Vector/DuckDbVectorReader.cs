@@ -23,7 +23,7 @@ namespace Mallard;
 /// </remarks>
 public unsafe readonly ref struct 
     DuckDbVectorReader<T> 
-    : IDuckDbVector
+    : IDuckDbVector<T>
 {
     /// <summary>
     /// Type information and native pointers on this DuckDB vector.
@@ -156,6 +156,16 @@ public unsafe readonly ref struct
     /// <inheritdoc cref="IDuckDbVector.Length" />
     public int Length => _info.Length;
 
+    /// <inheritdoc cref="IDuckDbVector{T}.GetItem(int)" />
+    public T GetItem(int index)
+    {
+        if (!TryGetItem(index, out var item))
+            DuckDbVectorInfo.ThrowForInvalidElement(index);
+
+        return item;
+    }
+
+    /// <inheritdoc cref="IDuckDbVector{T}.TryGetItem(int, out T)" />
     public bool TryGetItem(int index, [MaybeNullWhen(returnValue: false)] out T item)
     {
         if (_info.IsItemValid(index))
@@ -171,23 +181,6 @@ public unsafe readonly ref struct
             item = default;
             return false;
         }
-    }
-
-    /// <summary>
-    /// Get an item from the vector at the specified index.
-    /// </summary>
-    /// <param name="vector">The vector to select the item from. </param>
-    /// <param name="index">Index of the item from the vector. </param>
-    /// <returns>
-    /// The desired item.
-    /// </returns>
-    /// <exception cref="IndexOutOfRangeException">The index is out of range for the vector. </exception>
-    public T GetItem(int index)
-    {
-        if (!TryGetItem(index, out var item))
-            DuckDbVectorInfo.ThrowForInvalidElement(index);
-
-        return item;
     }
 }
 
