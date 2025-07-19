@@ -205,7 +205,7 @@ internal unsafe readonly struct DuckDbVectorInfo
             DuckDbBasicType.TinyInt => typeof(T) == typeof(sbyte),
             DuckDbBasicType.SmallInt => typeof(T) == typeof(short),
             DuckDbBasicType.Integer => typeof(T) == typeof(int),
-            DuckDbBasicType.BigInt => typeof(int) == typeof(long),
+            DuckDbBasicType.BigInt => typeof(T) == typeof(long),
             DuckDbBasicType.UTinyInt => typeof(T) == typeof(byte),
             DuckDbBasicType.USmallInt => typeof(T) == typeof(ushort),
             DuckDbBasicType.UInteger => typeof(T) == typeof(uint),
