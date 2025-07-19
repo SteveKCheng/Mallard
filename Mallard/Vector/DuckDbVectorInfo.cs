@@ -1,6 +1,7 @@
 ﻿using Mallard.C_API;
 using System;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 
 namespace Mallard;
 
@@ -130,6 +131,31 @@ internal unsafe readonly struct DuckDbVectorInfo
     public DuckDbBasicType BasicType => (DuckDbBasicType)_basicType;
 
     public DuckDbBasicType StorageType => (DuckDbBasicType)_storageType;
+
+    /// <summary>
+    /// Read an element of the vector from native memory.
+    /// </summary>
+    /// <typeparam name="T">
+    /// .NET type that is layout-compatible with the type of element in the DuckDB vector.
+    /// </typeparam>
+    /// <param name="index">
+    /// The index of the element.  Must be an index for a valid element of the vector.
+    /// </param>
+    /// <remarks>
+    /// This method does no run-time checking whatsoever.  It is used to implement readers
+    /// and converters internally in this library.  Nevertheless use this method when possible,
+    /// instead of indexing <see cref="DataPointer" /> manually, so the places where we read
+    /// from native memory can be easily audited.
+    /// </remarks>
+    /// <remarks>
+    /// Reference to the vector element.  The caller should not modify the returned reference.
+    /// It is not marked <c>readonly</c> only because to prevent unintended conversion, 
+    /// in the C# language, to rvalues.  For certain "ref structs", in particular 
+    /// <see cref="DuckDbString" />, that is critical.
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal ref T UnsafeRead<T>(int index) where T : unmanaged, allows ref struct
+        => ref ((T*)DataPointer)[index];
 
     /// <summary>
     /// Implementation of <see cref="DuckDbVectorReader{T}.ValidityMask" />.

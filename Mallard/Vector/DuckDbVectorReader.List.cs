@@ -2,9 +2,7 @@
 using Mallard.C_API;
 using System;
 using System.Collections.Immutable;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 
@@ -151,7 +149,7 @@ internal sealed class ListConverter
 
     private unsafe static T[] ConvertToArray<T>(ListConverter self, in DuckDbVectorInfo vector, int index)
     {
-        var listRef = ((DuckDbListRef*)vector.DataPointer)[index];
+        var listRef = vector.UnsafeRead<DuckDbListRef>(index);
         var result = new T[listRef.Length];
         for (int i = 0; i < listRef.Length; ++i)
             result[i] = self._childrenConverter.Invoke<T>(self._childrenInfo, listRef.Offset + i);
@@ -161,7 +159,7 @@ internal sealed class ListConverter
     private unsafe static ImmutableArray<T> ConvertToImmutableArray<T>(
         ListConverter self, in DuckDbVectorInfo vector, int index)
     {
-        var listRef = ((DuckDbListRef*)vector.DataPointer)[index];
+        var listRef = vector.UnsafeRead<DuckDbListRef>(index);
         var builder = ImmutableArray.CreateBuilder<T>(initialCapacity: listRef.Length);
         for (int i = 0; i < listRef.Length; ++i)
             builder.Add(self._childrenConverter.Invoke<T>(self._childrenInfo, listRef.Offset + i));

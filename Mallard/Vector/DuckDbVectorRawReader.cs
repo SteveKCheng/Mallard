@@ -113,7 +113,7 @@ public readonly ref struct DuckDbVectorRawReader<T> : IDuckDbVector<T>
     public unsafe T GetItem(int index)
     {
         _info.VerifyItemIsValid(index);
-        return ((T*)_info.DataPointer)[index];
+        return _info.UnsafeRead<T>(index);
     }
 
     /// <inheritdoc cref="IDuckDbVector{T}.TryGetItem(int, out T)" />
@@ -121,7 +121,7 @@ public readonly ref struct DuckDbVectorRawReader<T> : IDuckDbVector<T>
     {
         if (_info.IsItemValid(index))
         {
-            item = ((T*)_info.DataPointer)[index];
+            item = _info.UnsafeRead<T>(index);
             return true;
         }
         else

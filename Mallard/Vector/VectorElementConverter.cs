@@ -155,7 +155,7 @@ internal unsafe readonly struct VectorElementConverter
     /// </summary>
     private static T ReadPrimitive<T>(object? state, in DuckDbVectorInfo vector, int index)
         where T : unmanaged
-        => ((T*)vector.DataPointer)[index];
+        => vector.UnsafeRead<T>(index);
 
     #endregion
 
