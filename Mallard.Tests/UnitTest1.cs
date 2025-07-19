@@ -3,8 +3,10 @@ using System.IO;
 
 namespace Mallard.Tests;
 
-public class UnitTest1
+public class UnitTest1(DatabaseFixture fixture) : IClassFixture<DatabaseFixture>
 {
+    private readonly DatabaseFixture _fixture = fixture;
+
     [Fact]
     public void Test1()
     {
@@ -71,7 +73,7 @@ public class UnitTest1
     [Fact]
     public void Test3()
     {
-        using var dbConn = Program.MakeDbConnectionWithGeneratedData();
+        var dbConn = _fixture.DbConnection;
 
         using var dbResult = dbConn.Execute(@"
             SELECT DISTINCT c_mktsegment FROM customer ORDER BY c_mktsegment ASC");

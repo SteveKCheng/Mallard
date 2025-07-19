@@ -8,15 +8,18 @@ namespace Mallard.Tests;
 
 public class DatabaseFixture : IDisposable
 {
-    public DuckDbConnection DbConnection { get; }
+    private readonly Lazy<DuckDbConnection> _dbConnection =
+        new(Program.MakeDbConnectionWithGeneratedData);
+
+    public DuckDbConnection DbConnection => _dbConnection.Value;
 
     public DatabaseFixture()
     {
-        DbConnection = Program.MakeDbConnectionWithGeneratedData();
     }
 
     public void Dispose()
     {
-        DbConnection.Dispose();
+        if (_dbConnection.IsValueCreated)
+            _dbConnection.Value.Dispose();
     }
 }
