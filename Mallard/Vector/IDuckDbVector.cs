@@ -53,7 +53,7 @@ public interface IDuckDbVector
 /// DuckDB vector readers are "ref structs" so they cannot implement enumerators without
 /// copying and converting element values to GC memory, which is obviously inefficient.
 /// </remarks>
-public interface IDuckDbVector<T> : IDuckDbVector where T: allows ref struct
+public interface IDuckDbVector<T> : IDuckDbVector where T: notnull, allows ref struct
 {
     /// <summary>
     /// Retrieve a valid element of this vector.

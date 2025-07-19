@@ -24,6 +24,7 @@ namespace Mallard;
 public unsafe readonly ref struct 
     DuckDbVectorReader<T> 
     : IDuckDbVector<T>
+    where T : notnull
 {
     /// <summary>
     /// Type information and native pointers on this DuckDB vector.
