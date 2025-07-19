@@ -246,13 +246,20 @@ internal unsafe readonly struct VectorElementConverter
     /// Invoke a factory function, generically parameterized on <paramref name="type" />,
     /// that generates a <see cref="VectorElementConverter" />.
     /// </summary>
+    /// <typeparam name="TArg">
+    /// The type of the argument <paramref name="arg" /> to the factory function.
+    /// </typeparam>
     /// <param name="method">
     /// A static method, with one generic parameter, 
-    /// takes takes as its sole argument, <paramref name="vector" /> by read-only
+    /// takes takes as two arguments, [1] <paramref name="arg" />,
+    /// and [2] <paramref name="vector" /> by read-only
     /// reference, and returns <see cref="VectorElementConverter" />.
     /// </param>
     /// <param name="type">
     /// The type to substitute into the generic parameter of the method.
+    /// </param>
+    /// <param name="arg">
+    /// Arbitrary argument, of known type at compile-time, to pass to the factory function.
     /// </param>
     /// <param name="vector">
     /// The DuckDB vector information to pass to the factory function.
@@ -275,17 +282,6 @@ internal unsafe readonly struct VectorElementConverter
     /// method is "unsafe".
     /// </para>
     /// </remarks>
-    internal unsafe static VectorElementConverter
-        UnsafeCreateFromGeneric(MethodInfo method, Type type, in DuckDbVectorInfo vector)
-    {
-        ArgumentNullException.ThrowIfNull(method);
-        ArgumentNullException.ThrowIfNull(type);
-
-        var f = (delegate*<in DuckDbVectorInfo, VectorElementConverter>)
-                    method.MakeGenericMethod(type).MethodHandle.GetFunctionPointer();
-        return f(vector);
-    }
-
     internal unsafe static VectorElementConverter
         UnsafeCreateFromGeneric<TArg>(MethodInfo method, Type type, TArg arg, in DuckDbVectorInfo vector)
     {
