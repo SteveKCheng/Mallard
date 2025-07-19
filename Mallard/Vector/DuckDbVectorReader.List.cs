@@ -1,5 +1,4 @@
-﻿using Mallard.Basics;
-using Mallard.C_API;
+﻿using Mallard.C_API;
 using System;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
