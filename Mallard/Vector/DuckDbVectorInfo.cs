@@ -201,7 +201,8 @@ internal unsafe readonly struct DuckDbVectorInfo
     {
         return basicType switch
         {
-            DuckDbBasicType.Boolean => typeof(T) == typeof(byte),
+            DuckDbBasicType.Boolean => typeof(T) == typeof(byte) || typeof(T) == typeof(bool),
+
             DuckDbBasicType.TinyInt => typeof(T) == typeof(sbyte),
             DuckDbBasicType.SmallInt => typeof(T) == typeof(short),
             DuckDbBasicType.Integer => typeof(T) == typeof(int),
