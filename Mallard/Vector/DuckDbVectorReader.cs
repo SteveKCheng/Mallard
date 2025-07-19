@@ -144,7 +144,7 @@ public static partial class DuckDbVectorMethods
     /// The value of the selected element, or null (if it is null in the DuckDB vector).
     /// </returns>
     /// <exception cref="IndexOutOfRangeException">The index is out of range for the vector. </exception>
-    public static T? GetNullableValue<T>(in DuckDbVectorReader<T> vector, int index)
+    public static T? GetNullableValue<T>(this in DuckDbVectorReader<T> vector, int index)
         where T : struct
         => vector.TryGetItem(index, out var item) ? item : null;
 
@@ -164,7 +164,7 @@ public static partial class DuckDbVectorMethods
     /// The value of the selected element, or null (if it is null in the DuckDB vector).
     /// </returns>
     /// <exception cref="IndexOutOfRangeException">The index is out of range for the vector. </exception>
-    public static T? GetNullable<T>(in DuckDbVectorReader<T> vector, int index)
+    public static T? GetNullable<T>(this in DuckDbVectorReader<T> vector, int index)
         where T : class
         => vector.TryGetItem(index, out var item) ? item : null;
 }
