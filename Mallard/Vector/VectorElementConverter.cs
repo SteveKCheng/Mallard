@@ -99,10 +99,23 @@ internal unsafe readonly struct VectorElementConverter
     /// <summary>
     /// Create a pointer to a conversion function along with its state.
     /// </summary>
-    /// <typeparam name="T">The .NET type to conver to. </typeparam>
+    /// <typeparam name="S">State object type for the conversion function. </typeparam>
+    /// <typeparam name="T">The .NET type to convert to. </typeparam>
     public static VectorElementConverter
-        Create<T>(object? state, delegate*<object?, DuckDbVectorInfo*, int, T> function)
+        Create<S,T>(S state, delegate*<S, DuckDbVectorInfo*, int, T> function)
+        where S : class
         => new(state, function, typeof(T));
+
+    /// <summary>
+    /// Create a pointer to a stateless conversion function.
+    /// </summary>
+    /// <typeparam name="T">The .NET type to conver to. </typeparam>
+    /// <remarks>
+    /// When the conversion function is invoked, the first argument will be passed as null.
+    /// </remarks>
+    public static VectorElementConverter
+        Create<T>(delegate*<object?, DuckDbVectorInfo*, int, T> function)
+        => new(null, function, typeof(T));
 
     /// <summary>
     /// Safety wrapper to invoke the conversion function (through its pointer).  

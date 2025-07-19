@@ -49,10 +49,10 @@ public unsafe readonly ref struct
     private static VectorElementConverter GetConverter(DuckDbBasicType storageType)
     {
         if (DuckDbVectorInfo.ValidateElementType<T>(storageType))
-            return VectorElementConverter.Create(null, &PrimitiveRead);
+            return VectorElementConverter.Create(&PrimitiveRead);
 
         if (typeof(T) == typeof(string) && storageType == DuckDbBasicType.VarChar)
-            return VectorElementConverter.Create(null, &DuckDbString.ReadStringFromVector);
+            return VectorElementConverter.Create(&DuckDbString.ReadStringFromVector);
 
         return default;
     }
