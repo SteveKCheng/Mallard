@@ -135,4 +135,7 @@ internal unsafe readonly struct VectorElementConverter
     /// Whether this instance specifies a valid converter (the function pointer is not null).
     /// </summary>
     public bool IsValid => _function != null;
+
+    public static VectorElementConverter CreateForPrimitive<T>() where T : unmanaged
+        => Create(&DuckDbVectorReader<T>.PrimitiveRead);
 }

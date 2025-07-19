@@ -40,19 +40,22 @@ public unsafe readonly ref struct
     internal DuckDbVectorReader(scoped in DuckDbVectorInfo info)
     {
         _info = info;
-        _converter = GetConverter(_info.StorageType);
+        _converter = GetConverter(_info.StorageType, info);
 
         if (!_converter.IsValid)
             DuckDbVectorInfo.ThrowForWrongParamType(info.BasicType, info.StorageType, typeof(T));
     }
 
-    private static VectorElementConverter GetConverter(DuckDbBasicType storageType)
+    private static VectorElementConverter GetConverter(DuckDbBasicType storageType, in DuckDbVectorInfo info)
     {
         if (DuckDbVectorInfo.ValidateElementType<T>(storageType))
             return VectorElementConverter.Create(&PrimitiveRead);
 
         if (typeof(T) == typeof(string) && storageType == DuckDbBasicType.VarChar)
-            return VectorElementConverter.Create(&DuckDbString.ReadStringFromVector);
+            return DuckDbString.Converter;
+
+        if (storageType == DuckDbBasicType.List)
+            return ListConverter.CreateElemConverter(storageType, typeof(T), info);
 
         return default;
     }
@@ -64,7 +67,7 @@ public unsafe readonly ref struct
     /// <remarks>
     /// This function is for setting into <see cref="_converterFunc" />.
     /// </remarks>
-    private static T PrimitiveRead(object? state, in DuckDbVectorInfo vector, int index)
+    internal static T PrimitiveRead(object? state, in DuckDbVectorInfo vector, int index)
     {
         // "This takes the address of, gets the size of, or declares a pointer to a managed type"
         // We never call this method for T being a managed type. 
