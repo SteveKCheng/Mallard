@@ -176,7 +176,10 @@ internal unsafe readonly struct VectorElementConverter
     /// <param name="type">
     /// The desired .NET type to convert elements to. 
     /// This should not be a nullable value type.  (Null values are always handled outside
-    /// of the converter function.)
+    /// of the converter function.)  If null, this method selects the most appropriate
+    /// .NET type; this functionality is used to implement boxing conversions.
+    /// The selected .NET type will be set in the <see cref="VectorElementConverter.TargetType" />
+    /// of the return value.
     /// </param>
     /// <param name="vector">
     /// Type information for the DuckDB vector.
