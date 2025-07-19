@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Reflection;
 
 namespace Mallard;
 
@@ -104,17 +105,19 @@ internal unsafe readonly struct VectorElementConverter
     public static VectorElementConverter
         Create<S,T>(S state, delegate*<S, in DuckDbVectorInfo, int, T> function)
         where S : class
+        where T : notnull
         => new(state, function, typeof(T));
 
     /// <summary>
     /// Create a pointer to a stateless conversion function.
     /// </summary>
-    /// <typeparam name="T">The .NET type to conver to. </typeparam>
+    /// <typeparam name="T">The .NET type to convert to. </typeparam>
     /// <remarks>
     /// When the conversion function is invoked, the first argument will be passed as null.
     /// </remarks>
     public static VectorElementConverter
         Create<T>(delegate*<object?, in DuckDbVectorInfo, int, T> function)
+        where T : notnull
         => new(null, function, typeof(T));
 
     /// <summary>
@@ -125,6 +128,7 @@ internal unsafe readonly struct VectorElementConverter
     /// of this instance.
     /// </typeparam>
     public T Invoke<T>(in DuckDbVectorInfo vector, int index)
+        where T : notnull
     {
         Debug.Assert(typeof(T) == _type,
             "Type passed to Invoke does not match that on creation of VectorElementConverter. ");
@@ -166,7 +170,9 @@ internal unsafe readonly struct VectorElementConverter
     /// appropriate for the element type of the vector and the desired .NET type.
     /// </summary>
     /// <param name="type">
-    /// The desired .NET type to convert elements to.
+    /// The desired .NET type to convert elements to. 
+    /// This should not be a nullable value type.  (Null values are always handled outside
+    /// of the converter function.)
     /// </param>
     /// <param name="vector">
     /// Type information for the DuckDB vector.
@@ -219,6 +225,50 @@ internal unsafe readonly struct VectorElementConverter
 
             _ => default
         };
+    }
+
+    /// <summary>
+    /// Invoke a factory function, generically parameterized on <paramref name="type" />,
+    /// that generates a <see cref="VectorElementConverter" />.
+    /// </summary>
+    /// <param name="method">
+    /// A static method, with one generic parameter, 
+    /// takes takes as its sole argument, <paramref name="vector" /> by read-only
+    /// reference, and returns <see cref="VectorElementConverter" />.
+    /// </param>
+    /// <param name="type">
+    /// The type to substitute into the generic parameter of the method.
+    /// </param>
+    /// <param name="vector">
+    /// The DuckDB vector information to pass to the factory function.
+    /// </param>
+    /// <returns>
+    /// The result of calling the factory function.
+    /// </returns>
+    /// <remarks>
+    /// <para>
+    /// This method is a tool to implement vector element converters when the element
+    /// is a generic type or other composite type, where the type parameter cannot be
+    /// extracted (completely) except by run-time reflection.  Then the code that
+    /// does the processing with that type parameter needs to be instantiated 
+    /// with reflection too.  This method encapsulates that logic.
+    /// </para>
+    /// <para>
+    /// For efficiency, the signature of <paramref name="method" /> is not checked
+    /// in anyway.  It is simply assumed to follow the form described above.
+    /// Violating that assumption will corrupt the .NET run-time; that is why this
+    /// method is "unsafe".
+    /// </para>
+    /// </remarks>
+    internal unsafe static VectorElementConverter
+        UnsafeCreateFromGeneric(MethodInfo method, Type type, in DuckDbVectorInfo vector)
+    {
+        ArgumentNullException.ThrowIfNull(method);
+        ArgumentNullException.ThrowIfNull(type);
+
+        var f = (delegate*<in DuckDbVectorInfo, VectorElementConverter>)
+                    method.MakeGenericMethod(type).MethodHandle.GetFunctionPointer();
+        return f(vector);
     }
 
     #endregion

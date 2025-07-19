@@ -107,8 +107,16 @@ internal sealed class ListConverter
         typeof(ListConverter).GetMethod(nameof(ConstructForArrayImpl),
                                         BindingFlags.Static | BindingFlags.NonPublic)!;
 
+    private static readonly MethodInfo ConstructForArrayNullableImplMethod =
+        typeof(ListConverter).GetMethod(nameof(ConstructForArrayNullableImpl),
+                                        BindingFlags.Static | BindingFlags.NonPublic)!;
+
     private static readonly MethodInfo ConstructForImmutableArrayImplMethod =
         typeof(ListConverter).GetMethod(nameof(ConstructForImmutableArrayImpl), 
+                                        BindingFlags.Static | BindingFlags.NonPublic)!;
+
+    private static readonly MethodInfo ConstructForImmutableArrayNullableImplMethod =
+        typeof(ListConverter).GetMethod(nameof(ConstructForImmutableArrayNullableImpl),
                                         BindingFlags.Static | BindingFlags.NonPublic)!;
 
     private ListConverter(Type childType, in DuckDbVectorInfo parent)
@@ -121,50 +129,118 @@ internal sealed class ListConverter
 
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     private unsafe static VectorElementConverter ConstructForArrayImpl<T>(in DuckDbVectorInfo parent)
+        where T : notnull
         => VectorElementConverter.Create(new ListConverter(typeof(T), parent), &ConvertToArray<T>);
 
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+    private unsafe static VectorElementConverter ConstructForArrayNullableImpl<T>(in DuckDbVectorInfo parent)
+        where T : struct
+        => VectorElementConverter.Create(new ListConverter(typeof(T), parent), &ConvertToArrayNullable<T>);
+
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     private unsafe static VectorElementConverter ConstructForImmutableArrayImpl<T>(in DuckDbVectorInfo parent)
+        where T : notnull
         => VectorElementConverter.Create(new ListConverter(typeof(T), parent), &ConvertToImmutableArray<T>);
 
-    public unsafe static VectorElementConverter ConstructForArray(Type listType, in DuckDbVectorInfo parent)
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+    private unsafe static VectorElementConverter ConstructForImmutableArrayNullableImpl<T>(in DuckDbVectorInfo parent)
+        where T : struct
+        => VectorElementConverter.Create(new ListConverter(typeof(T), parent), &ConvertToImmutableArrayNullable<T>);
+
+    public static VectorElementConverter ConstructForArray(Type listType, in DuckDbVectorInfo parent)
     {
         if (!listType.IsArray)
             throw new ArgumentException("The target type must be an array. ", nameof(listType));
 
         var childType = listType.GetElementType()!;
-        var constructFunc = (delegate*<in DuckDbVectorInfo, VectorElementConverter>)
-            ConstructForArrayImplMethod.MakeGenericMethod(childType).MethodHandle.GetFunctionPointer();
-        return constructFunc(parent);
+        var method = ConstructForArrayImplMethod;
+
+        // Decompose nullable
+        if (Nullable.GetUnderlyingType(childType) is Type t)
+        {
+            childType = t;
+            method = ConstructForArrayNullableImplMethod;
+        }
+
+        return VectorElementConverter.UnsafeCreateFromGeneric(method, childType, parent);
     }
 
-    public unsafe static VectorElementConverter ConstructForImmutableArray(Type listType, in DuckDbVectorInfo parent)
+    public static VectorElementConverter ConstructForImmutableArray(Type listType, in DuckDbVectorInfo parent)
     {
         if (!listType.IsInstanceOfGenericDefinition(typeof(ImmutableArray<>)))
             throw new ArgumentException("The target type must be ImmutableArray<T>. ", nameof(listType));
 
         var childType = listType.GetGenericArguments()[0];
-        var constructFunc = (delegate*<in DuckDbVectorInfo, VectorElementConverter>)
-            ConstructForImmutableArrayImplMethod.MakeGenericMethod(childType).MethodHandle.GetFunctionPointer();
-        return constructFunc(parent);
+        var method = ConstructForImmutableArrayImplMethod;
+
+        // Decompose nullable
+        if (Nullable.GetUnderlyingType(childType) is Type t)
+        {
+            childType = t;
+            method = ConstructForImmutableArrayNullableImplMethod;
+        }
+
+        return VectorElementConverter.UnsafeCreateFromGeneric(method, childType, parent);
     }
 
-    private unsafe static T[] ConvertToArray<T>(ListConverter self, in DuckDbVectorInfo vector, int index)
+    private T ConvertChild<T>(int childIndex) where T : notnull
+    {
+        if (_childrenInfo.IsItemValid(childIndex))
+            return _childrenConverter.Invoke<T>(_childrenInfo, childIndex);
+        else if (!typeof(T).IsValueType)
+            return default!;
+        else
+            throw new InvalidOperationException(
+                "Cannot convert element of list because it is null in the database, but the target element type is not nullable. ");
+    }
+
+    private T? ConvertChildNullable<T>(int childIndex) where T : struct
+    {
+        if (_childrenInfo.IsItemValid(childIndex))
+            return _childrenConverter.Invoke<T>(_childrenInfo, childIndex);
+        else
+            return null;
+    }
+
+    private static T[] ConvertToArray<T>(ListConverter self, in DuckDbVectorInfo vector, int index)
+        where T : notnull
     {
         var listRef = vector.UnsafeRead<DuckDbListRef>(index);
         var result = new T[listRef.Length];
         for (int i = 0; i < listRef.Length; ++i)
-            result[i] = self._childrenConverter.Invoke<T>(self._childrenInfo, listRef.Offset + i);
+            result[i] = self.ConvertChild<T>(listRef.Offset + i);
         return result;
     }
 
-    private unsafe static ImmutableArray<T> ConvertToImmutableArray<T>(
-        ListConverter self, in DuckDbVectorInfo vector, int index)
+    private static T?[] ConvertToArrayNullable<T>(ListConverter self, in DuckDbVectorInfo vector, int index)
+        where T : struct
+    {
+        var listRef = vector.UnsafeRead<DuckDbListRef>(index);
+        var result = new T?[listRef.Length];
+        for (int i = 0; i < listRef.Length; ++i)
+            result[i] = self.ConvertChildNullable<T>(listRef.Offset + i);
+        return result;
+    }
+
+    private static ImmutableArray<T> ConvertToImmutableArray<T>(
+        ListConverter self, in DuckDbVectorInfo vector, int index) 
+        where T : notnull
     {
         var listRef = vector.UnsafeRead<DuckDbListRef>(index);
         var builder = ImmutableArray.CreateBuilder<T>(initialCapacity: listRef.Length);
         for (int i = 0; i < listRef.Length; ++i)
-            builder.Add(self._childrenConverter.Invoke<T>(self._childrenInfo, listRef.Offset + i));
+            builder.Add(self.ConvertChild<T>(listRef.Offset + i));
+        return builder.MoveToImmutable();
+    }
+
+    private static ImmutableArray<T?> ConvertToImmutableArrayNullable<T>(
+        ListConverter self, in DuckDbVectorInfo vector, int index)
+        where T : struct
+    {
+        var listRef = vector.UnsafeRead<DuckDbListRef>(index);
+        var builder = ImmutableArray.CreateBuilder<T?>(initialCapacity: listRef.Length);
+        for (int i = 0; i < listRef.Length; ++i)
+            builder.Add(self.ConvertChildNullable<T>(listRef.Offset + i));
         return builder.MoveToImmutable();
     }
 }
