@@ -115,6 +115,8 @@ internal sealed class ListConverter
     {
         _childrenInfo = DuckDbVectorMethods.GetChildrenVectorInfo(parent);
         _childrenConverter = VectorElementConverter.CreateForType(childType, _childrenInfo);
+        if (!_childrenConverter.IsValid)
+            throw new ArgumentException($"The element type of the list/array cannot be converted to .NET type {childType}. ");
     }
 
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
