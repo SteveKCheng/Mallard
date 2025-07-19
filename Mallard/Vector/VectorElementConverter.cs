@@ -1,11 +1,11 @@
-﻿namespace Mallard;
+﻿using System;
+using System.Diagnostics;
+
+namespace Mallard;
 
 /// <summary>
 /// Specifies a converter, to an instance of a .NET type, for an element of a DuckDB vector.
 /// </summary>
-/// <typeparam name="T">
-/// The .NET type to convert to.
-/// </typeparam>
 /// <remarks>
 /// <para>
 /// A function pointer is used instead of a virtual method to avoid
@@ -24,8 +24,16 @@
 /// we do not cast to <see cref="System.Object" /> (unless specifically asked
 /// by the user).  This is important when reading large amounts of data.
 /// </para>
+/// <para>
+/// Yet, to reduce the level of run-time reflection necessary to implement
+/// nested converters --- which is important for ahead-of-time compilation ---
+/// the function pointer is <i>type-erased</i> (to <c>void*</c>),
+/// and then cast back afterwards.  This makes the implementation 
+/// rather "unsafe", but the ultimate goal is still to make the public API
+/// safe.
+/// </para>
 /// </remarks>
-internal unsafe readonly struct VectorElementConverter<T>
+internal unsafe readonly struct VectorElementConverter
 {
     /// <summary>
     /// Opaque (cached) state to pass to <see cref="_function" />.
@@ -34,7 +42,7 @@ internal unsafe readonly struct VectorElementConverter<T>
 
     /// <summary>
     /// Pointer to function that reads an element of the vector and converts it to 
-    /// type <typeparamref name="T" />.
+    /// some .NET type <c>T</c>.
     /// </summary>
     /// <remarks>
     /// <para>
@@ -66,50 +74,55 @@ internal unsafe readonly struct VectorElementConverter<T>
     ///     </description>
     ///   </item>
     /// </list>
+    /// <para>
+    /// The function shall return the element type <c>T</c>.
+    /// </para>
     /// </remarks>
-    private readonly delegate*<object?, DuckDbVectorInfo*, int, T> _function;
+    private readonly void* _function;
 
-    private VectorElementConverter(object? state, delegate*<object?, DuckDbVectorInfo*, int, T> function)
+    /// <summary>
+    /// The .NET type to convert to.
+    /// </summary>
+    /// <remarks>
+    /// Used to verify the consistent types are being passed in while being
+    /// type-erased.
+    /// </remarks>
+    private readonly Type _type;
+
+    private VectorElementConverter(object? state, void* function, Type type)
     {
         _state = state;
         _function = function;
+        _type = type;
     }
 
     /// <summary>
     /// Create a pointer to a conversion function along with its state.
     /// </summary>
-    /// <typeparam name="U"></typeparam>
-    /// <remarks>
-    /// <para>
-    /// This factory method is a work around for a limitation in .NET's generics;
-    /// otherwise we would just use a plain constructor.
-    /// </para>
-    /// <para>
-    /// When trying to "specialize" the code in this class on a specific type 
-    /// <typeparamref name="U" /> (e.g. <c>string</c>) conditional on type tests, 
-    /// the C# compiler and the .NET system deduce that the code that falls under
-    /// the condition has <typeparamref name="T" /> equal to <typeparamref name="U" />,
-    /// and therefore will not allow an assignment of the function pointer for
-    /// conversion of type <typeparamref name="U" /> into a function pointer for
-    /// type <typeparamref name="T" />.  We use this method to cast function pointers
-    /// so the code can compile.  Naturally, <typeparamref name="U" /> must be
-    /// dynamically equal to <typeparamref name="T" /> or else the .NET runtime
-    /// system would be corrupted.
-    /// </para>
-    /// </remarks>
-    public static VectorElementConverter<T> 
-        Create<U>(object? state, delegate*<object?, DuckDbVectorInfo*, int, U> function)
-        => new(state, (delegate*<object?, DuckDbVectorInfo*, int, T>)function);
+    /// <typeparam name="T">The .NET type to conver to. </typeparam>
+    public static VectorElementConverter
+        Create<T>(object? state, delegate*<object?, DuckDbVectorInfo*, int, T> function)
+        => new(state, function, typeof(T));
 
     /// <summary>
     /// Safety wrapper to invoke the conversion function (through its pointer).  
     /// </summary>
-    public T Invoke(in DuckDbVectorInfo vector, int index)
+    /// <typeparam name="T">
+    /// The type to convert to.  This must exactly match the type on creation
+    /// of this instance.
+    /// </typeparam>
+    public T Invoke<T>(in DuckDbVectorInfo vector, int index)
     {
+        Debug.Assert(typeof(T) == _type,
+            "Type passed to Invoke does not match that on creation of VectorElementConverter. ");
+
         // A ref struct cannot be in GC memory, but nevertheless C# requires
         // its member to be "fixed" (even though it must be a no-op).
         fixed (DuckDbVectorInfo* vectorPtr = &vector)
-            return _function(_state, vectorPtr, index);
+        {
+            var f = (delegate*<object?, DuckDbVectorInfo*, int, T>)_function;
+            return f(_state, vectorPtr, index);
+        }
     }
 
     /// <summary>

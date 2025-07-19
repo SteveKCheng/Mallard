@@ -35,7 +35,7 @@ public unsafe readonly ref struct
     /// Makes an indirect call to converts a DuckDB vector element to 
     /// an instance of <typeparamref name="T" />.
     /// </summary>
-    private readonly VectorElementConverter<T> _converter;
+    private readonly VectorElementConverter _converter;
 
     internal DuckDbVectorReader(scoped in DuckDbVectorInfo info)
     {
@@ -46,13 +46,13 @@ public unsafe readonly ref struct
             DuckDbVectorInfo.ThrowForWrongParamType(info.BasicType, info.StorageType, typeof(T));
     }
 
-    private static VectorElementConverter<T> GetConverter(DuckDbBasicType storageType)
+    private static VectorElementConverter GetConverter(DuckDbBasicType storageType)
     {
         if (DuckDbVectorInfo.ValidateElementType<T>(storageType))
-            return VectorElementConverter<T>.Create(null, &PrimitiveRead);
+            return VectorElementConverter.Create(null, &PrimitiveRead);
 
         if (typeof(T) == typeof(string) && storageType == DuckDbBasicType.VarChar)
-            return VectorElementConverter<T>.Create(null, &DuckDbString.ReadStringFromVector);
+            return VectorElementConverter.Create(null, &DuckDbString.ReadStringFromVector);
 
         return default;
     }
@@ -108,7 +108,7 @@ public unsafe readonly ref struct
     {
         if (_info.IsItemValid(index))
         {
-            item = _converter.Invoke(_info, index);
+            item = _converter.Invoke<T>(_info, index);
             return true;
         }
         else
