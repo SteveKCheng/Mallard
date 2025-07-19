@@ -111,10 +111,10 @@ internal sealed class ListConverter
         typeof(ListConverter).GetMethod(nameof(ConstructForImmutableArrayImpl), 
                                         BindingFlags.Static | BindingFlags.NonPublic)!;
 
-    private ListConverter(Type listType, in DuckDbVectorInfo parent)
+    private ListConverter(Type childType, in DuckDbVectorInfo parent)
     {
         _childrenInfo = DuckDbVectorMethods.GetChildrenVectorInfo(parent);
-        _childrenConverter = VectorElementConverter.CreateForType(listType, _childrenInfo);
+        _childrenConverter = VectorElementConverter.CreateForType(childType, _childrenInfo);
     }
 
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
