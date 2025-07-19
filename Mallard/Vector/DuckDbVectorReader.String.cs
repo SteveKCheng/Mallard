@@ -82,10 +82,7 @@ public unsafe ref struct DuckDbString
     /// Implementation of reading an element for <see cref="DuckDbVectorReader{string}" />.
     /// </summary>
     private static string ReadStringFromVector(object? state, in DuckDbVectorInfo vector, int index)
-    {
-        var p = (DuckDbString*)vector.DataPointer;
-        return Encoding.UTF8.GetString(p[index].AsSpan());
-    }
+        => Encoding.UTF8.GetString(vector.UnsafeRead<DuckDbString>(index).AsSpan());
 
     internal static VectorElementConverter Converter => VectorElementConverter.Create(&ReadStringFromVector);
 }
