@@ -184,28 +184,3 @@ public unsafe readonly ref struct
         }
     }
 }
-
-public unsafe static partial class DuckDbVectorMethods 
-{
-    internal static void ThrowOnNullVector(_duckdb_vector* vector)
-    {
-        if (vector == null)
-            throw new InvalidOperationException("Cannot operate on a default instance of DuckDbReadOnlyVector. ");
-    }
-
-    internal static DuckDbBasicType GetVectorElementBasicType(_duckdb_vector* vector)
-    {
-        var nativeType = NativeMethods.duckdb_vector_get_column_type(vector);
-        if (nativeType == null)
-            throw new DuckDbException("Could not query the logical type of a vector from DuckDB. ");
-
-        try
-        {
-            return NativeMethods.duckdb_get_type_id(nativeType);
-        }
-        finally
-        {
-            NativeMethods.duckdb_destroy_logical_type(ref nativeType);
-        }
-    }
-}

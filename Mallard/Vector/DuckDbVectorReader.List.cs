@@ -4,7 +4,7 @@ using System.Runtime.InteropServices;
 
 namespace Mallard;
 
-public unsafe static partial class DuckDbVectorMethods
+public static partial class DuckDbVectorMethods
 {
     /// <summary>
     /// Retrieve the vector containing all the children across all lists in a vector of lists,
@@ -41,17 +41,17 @@ public unsafe static partial class DuckDbVectorMethods
         where T : notnull
         => new(parent.GetChildrenVectorInfo());
 
-    private static DuckDbVectorInfo GetChildrenVectorInfo(in this DuckDbVectorRawReader<DuckDbListRef> parent)
+    private unsafe static DuckDbVectorInfo GetChildrenVectorInfo(in this DuckDbVectorRawReader<DuckDbListRef> parent)
     {
         var parentVector = parent._info.NativeVector;
-        ThrowOnNullVector(parentVector);
+        DuckDbVectorInfo.ThrowOnNullVector(parentVector);
 
         var childVector = NativeMethods.duckdb_list_vector_get_child(parentVector);
         if (childVector == null)
             throw new DuckDbException("Could not get the child vector from a list vector in DuckDB. ");
 
         var totalChildren = NativeMethods.duckdb_list_vector_get_size(parentVector);
-        var childBasicType = GetVectorElementBasicType(childVector);
+        var childBasicType = DuckDbVectorInfo.GetVectorElementBasicType(childVector);
 
         return new DuckDbVectorInfo(childVector, childBasicType, (int)totalChildren);
     }
