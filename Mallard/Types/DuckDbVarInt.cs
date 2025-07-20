@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Numerics;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace Mallard;
@@ -17,7 +16,7 @@ public readonly ref struct DuckDbVarInt
     /// <summary>
     /// The blob that stores the VARINT.
     /// </summary>
-    private readonly DuckDbString _blob;
+    private readonly DuckDbBlob _blob;
 
     /// <summary>
     /// Convert to a .NET <see cref="BigInteger" /> instance.

@@ -205,7 +205,7 @@ internal unsafe readonly partial struct VectorElementConverter
 
             DuckDbBasicType.Interval when Match(type, typeof(DuckDbInterval)) => CreateForPrimitive<DuckDbInterval>(),
 
-            DuckDbBasicType.VarChar when Match(type, typeof(string)) => DuckDbString.Converter,
+            DuckDbBasicType.VarChar when Match(type, typeof(string)) => DuckDbString.VectorElementConverter,
             DuckDbBasicType.VarInt when Match(type, typeof(BigInteger)) => DuckDbVarInt.VectorElementConverter,
 
             DuckDbBasicType.UHugeInt when Match(type, typeof(UInt128)) => CreateForPrimitive<UInt128>(),
