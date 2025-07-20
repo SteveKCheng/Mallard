@@ -119,13 +119,6 @@ internal static unsafe class BigIntegerMarshaller
 
         public void FromManaged(BigInteger input, Span<byte> buffer)
         {
-            var byteCount = input.GetByteCount(isUnsigned: true);
-            if (byteCount > buffer.Length)
-            {
-                _extraBuffer = (byte*)NativeMemory.Alloc((nuint)byteCount);
-                buffer = new Span<byte>(_extraBuffer, byteCount);
-            }
-
             // Abs(BigInteger) exists only since .NET 10.
             // TryWriteBytes below does not allow negative inputs when writing
             // in the "unsigned encoding", even though internally it uses
@@ -139,6 +132,13 @@ internal static unsafe class BigIntegerMarshaller
             // See https://github.com/dotnet/runtime/blob/release/8.0/src/libraries/System.Runtime.Numerics/src/System/Numerics/BigInteger.cs
             // for details.
             var absInput = (input.Sign < 0) ? -input : input;
+
+            var byteCount = absInput.GetByteCount(isUnsigned: true);
+            if (byteCount > buffer.Length)
+            {
+                _extraBuffer = (byte*)NativeMemory.Alloc((nuint)byteCount);
+                buffer = new Span<byte>(_extraBuffer, byteCount);
+            }
 
             absInput.TryWriteBytes(buffer, out var bytesWritten, 
                                    isUnsigned: true, isBigEndian: false);
