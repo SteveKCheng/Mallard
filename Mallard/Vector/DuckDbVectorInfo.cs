@@ -246,7 +246,10 @@ internal unsafe readonly struct DuckDbVectorInfo
             DuckDbBasicType.Interval => typeof(T) == typeof(DuckDbInterval),
 
             DuckDbBasicType.List => typeof(T) == typeof(DuckDbListRef),
+
             DuckDbBasicType.VarChar => typeof(T) == typeof(DuckDbString),
+            DuckDbBasicType.VarInt => typeof(T) == typeof(DuckDbVarInt),
+
             DuckDbBasicType.UHugeInt => typeof(T) == typeof(UInt128),
             DuckDbBasicType.HugeInt => typeof(T) == typeof(Int128),
             DuckDbBasicType.Blob => typeof(T) == typeof(DuckDbString),

@@ -2,6 +2,7 @@
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Numerics;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 
@@ -205,6 +206,7 @@ internal unsafe readonly partial struct VectorElementConverter
             DuckDbBasicType.Interval when Match(type, typeof(DuckDbInterval)) => CreateForPrimitive<DuckDbInterval>(),
 
             DuckDbBasicType.VarChar when Match(type, typeof(string)) => DuckDbString.Converter,
+            DuckDbBasicType.VarInt when Match(type, typeof(BigInteger)) => DuckDbVarInt.VectorElementConverter,
 
             DuckDbBasicType.UHugeInt when Match(type, typeof(UInt128)) => CreateForPrimitive<UInt128>(),
             DuckDbBasicType.HugeInt when Match(type, typeof(Int128)) => CreateForPrimitive<Int128>(),
