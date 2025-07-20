@@ -37,7 +37,7 @@ namespace Mallard;
 /// safe.
 /// </para>
 /// </remarks>
-internal unsafe readonly struct VectorElementConverter
+internal unsafe readonly partial struct VectorElementConverter
 {
     /// <summary>
     /// Opaque (cached) state to pass to <see cref="_function" />.
@@ -144,27 +144,6 @@ internal unsafe readonly struct VectorElementConverter
     /// Whether this instance specifies a valid converter (the function pointer is not null).
     /// </summary>
     public bool IsValid => _function != null;
-
-    #region Converters for primitive types (fixed-length, unmanaged that can be read directly from memory)
-
-    /// <summary>
-    /// Get the type converter that simply reads from the DuckDB vector's data block.
-    /// </summary>
-    /// <typeparam name="T">
-    /// Unmanaged type compatible with the storage format of the DuckDB vector's elements.
-    /// </typeparam>
-    public static VectorElementConverter CreateForPrimitive<T>() where T : unmanaged
-        => Create(&ReadPrimitive<T>);
-
-    /// <summary>
-    /// Read a "primitive" element, i.e. one whose memory representation in DuckDB is exactly
-    /// the same as the .NET type <typeparamref name="T"/>.
-    /// </summary>
-    private static T ReadPrimitive<T>(object? state, in DuckDbVectorInfo vector, int index)
-        where T : unmanaged
-        => vector.UnsafeRead<T>(index);
-
-    #endregion
 
     #region Dispatch for conversions of (generic) types
 
@@ -299,13 +278,6 @@ internal unsafe readonly struct VectorElementConverter
     #endregion
 
     #region Boxing converters
-
-    public static VectorElementConverter CreateForBoxedPrimitive<T>() where T : unmanaged
-        => Create(&ReadPrimitiveAndBox<T>);
-
-    private static object ReadPrimitiveAndBox<T>(object? state, in DuckDbVectorInfo vector, int index)
-        where T : unmanaged
-        => (object)vector.UnsafeRead<T>(index);
 
     private static VectorElementConverter
         CreateForBoxedType(in DuckDbVectorInfo vector)
