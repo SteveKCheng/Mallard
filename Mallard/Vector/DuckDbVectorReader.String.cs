@@ -13,7 +13,7 @@ namespace Mallard;
 /// <para>
 /// This type is only used for reading elements from a DuckDB vector.  It is a "ref struct"
 /// as it may internally point to natively-allocated memory, which must be scoped to the
-/// lifetime of the vector (<see cref="DuckDbVectorReader{T}" />).  
+/// lifetime of the vector (<see cref="DuckDbVectorReader{T}" />).
 /// </para>
 /// <para>Semantically, this structure
 /// is nothing more than <see cref="ReadOnlySpan{byte}" /> on the string or blob data,
@@ -70,11 +70,12 @@ public unsafe ref struct DuckDbString
     /// Pointers to the inline buffer would become dangling when the originating rvalue
     /// disappears.
     /// </remarks>
-    internal static ReadOnlySpan<byte> AsSpan(ref DuckDbString nativeString)
+    internal static ReadOnlySpan<byte> AsSpan(ref readonly DuckDbString nativeString)
     {
-        void* p = (nativeString._length <= InlinedSize) 
-                    ? Unsafe.AsPointer(ref nativeString._inlined[0]) 
-                    : nativeString._ptr;
+        void* p = (nativeString._length <= InlinedSize)
+                ? Unsafe.AsPointer(ref Unsafe.AsRef(in nativeString._inlined[0]))
+                : nativeString._ptr;
+
         return new ReadOnlySpan<byte>(p, checked((int)nativeString._length));
     }
 
@@ -95,17 +96,17 @@ public static partial class DuckDbVectorMethods
     /// <remarks>
     /// <para>
     /// This functionality exists as an extension method rather than an instance method 
-    /// of <see cref="DuckDbString" /> only so that the "ref" qualifier can be
-    /// applied to the argument <paramref name="nativeString" /> in C#.
+    /// of <see cref="DuckDbString" /> only so that the "ref readonly" qualifier can be
+    /// applied to the receiver argument in C#.
     /// </para>
     /// </remarks>
     /// <param name="nativeString">
     /// The native DuckDB structure representing the string or blob.
-    /// The "ref" qualifier is only to ensure that the argument is an lvalue,
+    /// The "ref readonly" qualifier is only to ensure that the argument is an lvalue,
     /// so that the returned span does not point to a rvalue that might disappear
-    /// (go out of scope) before the span does.  This method does
-    /// not actually modify the argument.
+    /// (go out of scope) before the span does.  There is an inlined string buffer
+    /// within <see cref="DuckDbString" /> for short strings which the span may point to.
     /// </param>
-    public static ReadOnlySpan<byte> AsSpan(ref this DuckDbString nativeString) 
-        => DuckDbString.AsSpan(ref nativeString);
+    public static ReadOnlySpan<byte> AsSpan(ref readonly this DuckDbString nativeString)
+        => DuckDbString.AsSpan(in nativeString);
 }

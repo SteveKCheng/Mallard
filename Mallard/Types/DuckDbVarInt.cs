@@ -12,12 +12,12 @@ namespace Mallard;
 /// This structure is only used for reading, not for writing/sending values to DuckDB.
 /// </remarks>
 [StructLayout(LayoutKind.Sequential)]
-public unsafe readonly ref struct DuckDbVarInt
+public readonly ref struct DuckDbVarInt
 {
     /// <summary>
     /// The blob that stores the VARINT.
     /// </summary>
-    private readonly DuckDbString _string;
+    private readonly DuckDbString _blob;
 
     /// <summary>
     /// Convert to a .NET <see cref="BigInteger" /> instance.
@@ -27,7 +27,7 @@ public unsafe readonly ref struct DuckDbVarInt
     /// </returns>
     public BigInteger ToBigInteger()
     {
-        var buffer = Unsafe.AsRef(in _string).AsSpan();
+        var buffer = _blob.AsSpan();
 
         // The format is not described in the public API documentation but can be 
         // determined by reading DuckDB's source code.  Note that this storage format
@@ -102,6 +102,6 @@ public unsafe readonly ref struct DuckDbVarInt
     private static BigInteger ConvertToBigIntegerFromVector(object? state, in DuckDbVectorInfo vector, int index)
         => vector.UnsafeRead<DuckDbVarInt>(index).ToBigInteger();
 
-    internal static VectorElementConverter VectorElementConverter
+    internal unsafe static VectorElementConverter VectorElementConverter
         => VectorElementConverter.Create(&ConvertToBigIntegerFromVector);
 }

@@ -148,13 +148,10 @@ internal unsafe readonly struct DuckDbVectorInfo
     /// from native memory can be easily audited.
     /// </remarks>
     /// <remarks>
-    /// Reference to the vector element.  The caller should not modify the returned reference.
-    /// It is not marked <c>readonly</c> only because to prevent unintended conversion, 
-    /// in the C# language, to rvalues.  For certain "ref structs", in particular 
-    /// <see cref="DuckDbString" />, that is critical.
+    /// Read-only reference to the vector element.  
     /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal ref T UnsafeRead<T>(int index) where T : unmanaged, allows ref struct
+    internal ref readonly T UnsafeRead<T>(int index) where T : unmanaged, allows ref struct
         => ref ((T*)DataPointer)[index];
 
     /// <summary>
