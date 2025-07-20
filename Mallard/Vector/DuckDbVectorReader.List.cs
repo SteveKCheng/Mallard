@@ -167,7 +167,7 @@ internal sealed class ListConverter
         }
 
         var self = new ListConverter(childType, parent);
-        return VectorElementConverter.UnsafeCreateFromGeneric(method, childType, self, parent);
+        return VectorElementConverter.UnsafeCreateFromGeneric(method, self, parent, childType);
     }
 
     public static VectorElementConverter ConstructForArrayOfUnknownType(in DuckDbVectorInfo parent)
@@ -176,7 +176,7 @@ internal sealed class ListConverter
         var childType = self._childrenConverter.TargetType;
         var method = childType.IsValueType ? ConstructForArrayNullableImplMethod
                                            : ConstructForArrayImplMethod;
-        return VectorElementConverter.UnsafeCreateFromGeneric(method, childType, self, parent);
+        return VectorElementConverter.UnsafeCreateFromGeneric(method, self, parent, childType);
     }
 
     public static VectorElementConverter ConstructForImmutableArray(Type listType, in DuckDbVectorInfo parent)
@@ -195,7 +195,7 @@ internal sealed class ListConverter
         }
 
         var self = new ListConverter(childType, parent);
-        return VectorElementConverter.UnsafeCreateFromGeneric(method, childType, self, parent);
+        return VectorElementConverter.UnsafeCreateFromGeneric(method, self, parent, childType);
     }
 
     private T ConvertChild<T>(int childIndex) where T : notnull

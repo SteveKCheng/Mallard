@@ -257,14 +257,16 @@ internal unsafe readonly struct VectorElementConverter
     /// and [2] <paramref name="vector" /> by read-only
     /// reference, and returns <see cref="VectorElementConverter" />.
     /// </param>
-    /// <param name="type">
-    /// The type to substitute into the generic parameter of the method.
-    /// </param>
     /// <param name="arg">
     /// Arbitrary argument, of known type at compile-time, to pass to the factory function.
     /// </param>
     /// <param name="vector">
     /// The DuckDB vector information to pass to the factory function.
+    /// </param>
+    /// <param name="types">
+    /// One or more types to substitute into the generic parameter of the method.
+    /// This argument is passed straight into 
+    /// <see cref="MethodInfo.MakeGenericMethod(Type[])" />.
     /// </param>
     /// <returns>
     /// The result of calling the factory function.
@@ -285,13 +287,12 @@ internal unsafe readonly struct VectorElementConverter
     /// </para>
     /// </remarks>
     internal unsafe static VectorElementConverter
-        UnsafeCreateFromGeneric<TArg>(MethodInfo method, Type type, TArg arg, in DuckDbVectorInfo vector)
+        UnsafeCreateFromGeneric<TArg>(MethodInfo method, TArg arg, in DuckDbVectorInfo vector, params Type[] types)
     {
         ArgumentNullException.ThrowIfNull(method);
-        ArgumentNullException.ThrowIfNull(type);
 
         var f = (delegate*<TArg, in DuckDbVectorInfo, VectorElementConverter>)
-                    method.MakeGenericMethod(type).MethodHandle.GetFunctionPointer();
+                    method.MakeGenericMethod(types).MethodHandle.GetFunctionPointer();
         return f(arg, vector);
     }
 
@@ -352,9 +353,9 @@ internal unsafe readonly struct VectorElementConverter
         // Set up a second indirect call to box the return value 
         // from the original converter.
         return UnsafeCreateFromGeneric(CreateBoxingWrapperMethod, 
-                                       converter.TargetType, 
                                        converter, 
-                                       vector); 
+                                       vector,
+                                       converter.TargetType); 
     }
 
     private static readonly MethodInfo CreateBoxingWrapperMethod =
