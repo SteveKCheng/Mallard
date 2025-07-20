@@ -209,7 +209,7 @@ internal unsafe readonly partial struct VectorElementConverter
             DuckDbBasicType.UHugeInt when Match(type, typeof(UInt128)) => CreateForPrimitive<UInt128>(),
             DuckDbBasicType.HugeInt when Match(type, typeof(Int128)) => CreateForPrimitive<Int128>(),
 
-            DuckDbBasicType.Decimal when Match(type, typeof(Decimal)) => DuckDbDecimal.CreateDecimalConverter(vector),
+            DuckDbBasicType.Decimal when Match(type, typeof(Decimal)) => DuckDbDecimal.GetVectorElementConverter(vector),
 
             DuckDbBasicType.List when type == null => ListConverter.ConstructForArrayOfUnknownType(vector),
 
@@ -306,6 +306,8 @@ internal unsafe readonly partial struct VectorElementConverter
 
             DuckDbBasicType.UHugeInt => CreateForBoxedPrimitive<UInt128>(),
             DuckDbBasicType.HugeInt => CreateForBoxedPrimitive<Int128>(),
+
+            DuckDbBasicType.Decimal => DuckDbDecimal.GetBoxedVectorElementConverter(vector),
 
             _ => default
         };

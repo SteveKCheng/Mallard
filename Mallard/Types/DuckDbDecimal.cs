@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -197,25 +198,46 @@ public readonly struct DuckDbDecimal
 
     #region Type conversions for vector reader
 
-    private static Decimal ConvertToDecimalFromInt16(object? state, in DuckDbVectorInfo vector, int index)
-        => ConvertToDecimal(vector.UnsafeRead<short>(index), vector.DecimalScale);
+    /// <summary>
+    /// Read a decimal value encoded inside a DuckDB vector and converto to a .NET <see cref="Decimal" />.
+    /// </summary>
+    /// <typeparam name="TStorage">
+    /// The storage type of the decimal values inside the DuckDB vector.
+    /// </typeparam>
+    private static Decimal ConvertToDecimalFromVector<TStorage>(object? state, in DuckDbVectorInfo vector, int index)
+    {
+        if (typeof(TStorage) == typeof(Int16))
+            return ConvertToDecimal(vector.UnsafeRead<Int16>(index), vector.DecimalScale);
+        else if (typeof(TStorage) == typeof(Int32))
+            return ConvertToDecimal(vector.UnsafeRead<Int32>(index), vector.DecimalScale);
+        else if (typeof(TStorage) == typeof(Int64))
+            return ConvertToDecimal(vector.UnsafeRead<Int64>(index), vector.DecimalScale);
+        else if (typeof(TStorage) == typeof(Int128))
+            return ConvertToDecimal(vector.UnsafeRead<Int128>(index), vector.DecimalScale);
+        else
+            throw new UnreachableException();
+    }
 
-    private static Decimal ConvertToDecimalFromInt32(object? state, in DuckDbVectorInfo vector, int index)
-        => ConvertToDecimal(vector.UnsafeRead<int>(index), vector.DecimalScale);
+    private static object ConvertToBoxedDecimalFromVector<TStorage>(object? state, in DuckDbVectorInfo vector, int index)
+        => (object)ConvertToDecimalFromVector<TStorage>(state, vector, index);
 
-    private static Decimal ConvertToDecimalFromInt64(object? state, in DuckDbVectorInfo vector, int index)
-        => ConvertToDecimal(vector.UnsafeRead<long>(index), vector.DecimalScale);
-
-    private static Decimal ConvertToDecimalFromInt128(object? state, in DuckDbVectorInfo vector, int index)
-        => ConvertToDecimal(vector.UnsafeRead<Int128>(index), vector.DecimalScale);
-
-    internal unsafe static VectorElementConverter CreateDecimalConverter(in DuckDbVectorInfo vector)
+    internal unsafe static VectorElementConverter GetVectorElementConverter(in DuckDbVectorInfo vector)
         => vector.StorageType switch
         {
-            DuckDbBasicType.SmallInt => VectorElementConverter.Create(&ConvertToDecimalFromInt16),
-            DuckDbBasicType.Integer => VectorElementConverter.Create(&ConvertToDecimalFromInt32),
-            DuckDbBasicType.BigInt => VectorElementConverter.Create(&ConvertToDecimalFromInt64),
-            DuckDbBasicType.HugeInt => VectorElementConverter.Create(&ConvertToDecimalFromInt128),
+            DuckDbBasicType.SmallInt => VectorElementConverter.Create(&ConvertToDecimalFromVector<Int16>),
+            DuckDbBasicType.Integer => VectorElementConverter.Create(&ConvertToDecimalFromVector<Int32>),
+            DuckDbBasicType.BigInt => VectorElementConverter.Create(&ConvertToDecimalFromVector<Int64>),
+            DuckDbBasicType.HugeInt => VectorElementConverter.Create(&ConvertToDecimalFromVector<Int128>),
+            _ => throw new InvalidOperationException("Cannot decode Decimal from a DuckDB vector with the given storage type. ")
+        };
+
+    internal unsafe static VectorElementConverter GetBoxedVectorElementConverter(in DuckDbVectorInfo vector)
+        => vector.StorageType switch
+        {
+            DuckDbBasicType.SmallInt => VectorElementConverter.Create(&ConvertToBoxedDecimalFromVector<Int16>),
+            DuckDbBasicType.Integer => VectorElementConverter.Create(&ConvertToBoxedDecimalFromVector<Int32>),
+            DuckDbBasicType.BigInt => VectorElementConverter.Create(&ConvertToBoxedDecimalFromVector<Int64>),
+            DuckDbBasicType.HugeInt => VectorElementConverter.Create(&ConvertToBoxedDecimalFromVector<Int128>),
             _ => throw new InvalidOperationException("Cannot decode Decimal from a DuckDB vector with the given storage type. ")
         };
 
