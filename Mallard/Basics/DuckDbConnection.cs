@@ -95,9 +95,16 @@ public unsafe class DuckDbConnection : IDisposable
         _database = database;
     }
 
+    #region Executing statements from SQL strings
+
     /// <summary>
     /// Execute a SQL statement, and report only the number of rows changed.
     /// </summary>
+    /// <param name="sql">
+    /// SQL statement(s) in the DuckDB dialect.  Multiple statements
+    /// may be separated/terminated by semicolons.  The number of rows
+    /// changed is always from the last statement.
+    /// </param>
     /// <returns>
     /// The number of rows changed by the execution of the statement.
     /// The result is -1 if the statement did not change any rows, or is otherwise
@@ -113,6 +120,11 @@ public unsafe class DuckDbConnection : IDisposable
     /// <summary>
     /// Execute a SQL statement and return the results (of the query).
     /// </summary>
+    /// <param name="sql">
+    /// SQL statement(s) in the DuckDB dialect.  Multiple statements
+    /// may be separated/terminated by semicolons; the results returned
+    /// are always from the last statement.
+    /// </param>
     /// <returns>
     /// The results of the query execution.
     /// </returns>
@@ -122,6 +134,28 @@ public unsafe class DuckDbConnection : IDisposable
         var status = NativeMethods.duckdb_query(_nativeConn, sql, out var nativeResult);
         return DuckDbResult.CreateFromQuery(status, ref nativeResult);
     }
+
+    /// <summary>
+    /// Execute a SQL query, and return the first item in the results.
+    /// </summary>
+    /// <param name="sql">
+    /// SQL statement(s) in the DuckDB dialect.  Multiple statements
+    /// may be separated/terminated by semicolons; the result returned
+    /// is always from the last statement.
+    /// </param>
+    /// <returns>
+    /// The first row and cell of the results of the statement execution, if any.
+    /// Null is returned if the statement does not produce any results.
+    /// This method is typically for SQL statements that produce a single value.
+    /// </returns>
+    public object? ExecuteScalar(string sql)
+    {
+        using var _ = _refCount.EnterScope(this);
+        var status = NativeMethods.duckdb_query(_nativeConn, sql, out var nativeResult);
+        return DuckDbResult.ExtractFirstCell<object>(status, ref nativeResult);
+    }
+
+    #endregion 
 
     public DuckDbConnection Reopen()
     {

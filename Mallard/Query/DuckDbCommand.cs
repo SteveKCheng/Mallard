@@ -61,6 +61,26 @@ public unsafe class DuckDbCommand : IDisposable
         return DuckDbResult.ExtractNumberOfChangedRows(status, ref nativeResult);
     }
 
+    /// <summary>
+    /// Execute the prepared statement, and return the first item in the results.
+    /// </summary>
+    /// <returns>
+    /// The first row and cell of the results of the statement execution, if any.
+    /// Null is returned if the statement does not produce any results.
+    /// This method is typically for SQL statements that produce a single value.
+    /// </returns>
+    public object? ExecuteScalar()
+    {
+        duckdb_state status;
+        duckdb_result nativeResult;
+        lock (_mutex)
+        {
+            ThrowIfDisposed();
+            status = NativeMethods.duckdb_execute_prepared(_nativeStatement, out nativeResult);
+        }
+        return DuckDbResult.ExtractFirstCell<object>(status, ref nativeResult);
+    }
+
     #endregion
 
     /// <summary>

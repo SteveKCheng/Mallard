@@ -79,6 +79,56 @@ public unsafe sealed class DuckDbResult : IDisposable
         }
     }
 
+    /// <summary>
+    /// Extract the value at the first row and column, if it exists.
+    /// </summary>
+    /// <remarks>
+    /// Used to implement <see cref="DuckDbConnection.ExecuteScalar(string)" />
+    /// and similar methods.
+    /// </remarks>
+    internal static T? ExtractFirstCell<T>(duckdb_state status, ref duckdb_result nativeResult)
+        where T : notnull
+    {
+        try
+        {
+            if (status != duckdb_state.DuckDBSuccess)
+                throw new DuckDbException(NativeMethods.duckdb_result_error(ref nativeResult));
+            var resultType = NativeMethods.duckdb_result_return_type(nativeResult);
+            if (resultType != duckdb_result_type.DUCKDB_RESULT_TYPE_QUERY_RESULT)
+                return default;
+
+            var nativeChunk = NativeMethods.duckdb_fetch_chunk(nativeResult);
+            if (nativeChunk == null)
+                return default;
+
+            try
+            {
+                var length = (int)NativeMethods.duckdb_data_chunk_get_size(nativeChunk);
+                if (length <= 0)
+                    return default;
+
+                var nativeVector = NativeMethods.duckdb_data_chunk_get_vector(nativeChunk, 0);
+                if (nativeVector == null)
+                    return default;
+
+                var basicType = NativeMethods.duckdb_column_type(ref nativeResult, 0);
+                var vectorInfo = new DuckDbVectorInfo(nativeVector, basicType, length);
+
+                var reader = new DuckDbVectorReader<T>(vectorInfo);
+                reader.TryGetItem(0, out var item);
+                return item;
+            }
+            finally
+            {
+                NativeMethods.duckdb_destroy_data_chunk(ref nativeChunk);
+            }
+        }
+        finally
+        {
+            NativeMethods.duckdb_destroy_result(ref nativeResult);
+        }
+    }
+
     private DuckDbResult(ref duckdb_result nativeResult)
     {
         _nativeResult = nativeResult;
