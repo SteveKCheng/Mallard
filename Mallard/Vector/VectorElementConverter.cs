@@ -17,7 +17,7 @@ namespace Mallard;
 /// allocating objects in simple cases (not involving nested/composite types).
 /// </para>
 /// <para>
-/// While for built-in types, an indirect call is not necessary (and in fact 
+/// While for built-in types an indirect call is not necessary (and in fact 
 /// <see cref="DuckDbVectorRawReader{T}" /> uses direct calls), 
 /// it is necessary when dealing with nested
 /// types (necessarily with non-null <see cref="_converterState" />).
@@ -64,7 +64,7 @@ internal unsafe readonly partial struct VectorElementConverter
     ///   </item>
     ///   <item>
     ///     <term><c>DuckDbVectorInfo*</c> <c>vector</c></term>
-    ///     <description>Gives access to the DuckDB vector.  The caller
+    ///     <description>Gives access to the DuckDB vector.  The callee
     ///     must access the native data with the correct type.
     ///     </description>
     ///   </item>
@@ -79,6 +79,8 @@ internal unsafe readonly partial struct VectorElementConverter
     /// </list>
     /// <para>
     /// The function shall return the element type <c>T</c>.
+    /// When <c>T</c> is a reference type or a nullable value type,
+    /// the return value shall not be null.
     /// </para>
     /// </remarks>
     private readonly void* _function;
@@ -127,18 +129,77 @@ internal unsafe readonly partial struct VectorElementConverter
     /// Safety wrapper to invoke the conversion function (through its pointer).  
     /// </summary>
     /// <typeparam name="T">
+    /// </typeparam>
+
+    /// <summary>
+    /// Invoke the converter to convert an element from a DuckDB vector.
+    /// </summary>
+    /// <typeparam name="T">
     /// The type to convert to.  This must exactly match the type on creation
     /// of this instance.
     /// </typeparam>
-    public T Invoke<T>(in DuckDbVectorInfo vector, int index)
-        where T : notnull
+    /// <param name="vector">The DuckDB vector to read from. </param>
+    /// <param name="index">The index of the element within the vector. </param>
+    /// <param name="result">Stores the converted result, or the default value
+    /// if the element is (marked) invalid in the vector.
+    /// </param>
+    /// <exception cref="IndexOutOfRangeException">
+    /// <paramref name="index" /> is out of range for the vector.
+    /// </exception>
+    /// <returns>
+    /// Whether the element in the vector is valid.  (Even when <typeparamref name="T" />
+    /// is a nullable type, validity is reported with respect to the DuckDB vector,
+    /// not with respect to the .NET type.)
+    /// </returns>
+    public bool TryInvoke<T>(in DuckDbVectorInfo vector, int index, [NotNullWhen(true)] out T? result)        
     {
-        Debug.Assert(typeof(T).IsValueType ? typeof(T) == TargetType 
+        Debug.Assert(typeof(T).IsValueType ? typeof(T) == TargetType
                                            : typeof(T).IsAssignableFrom(TargetType),
             "Type passed to Invoke is not compatible with the type that this VectorElementConverter was created for. ");
 
-        var f = (delegate*<object?, in DuckDbVectorInfo, int, T>)_function;
-        return f(_state, in vector, index);
+        if (vector.IsItemValid(index))
+        {
+            var f = (delegate*<object?, in DuckDbVectorInfo, int, T>)_function;
+            result = f(_state, in vector, index)!;
+            Debug.Assert(typeof(T).IsValueType || (object)result != null,
+                        "Converter function returned a null object. ");
+            return true;
+        }
+        else
+        {
+            result = default;
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Invoke the converter to convert an element from a DuckDB vector,
+    /// possibly throwing an exception if the element does not exist.
+    /// </summary>
+    /// <typeparam name="T">
+    /// The type to convert to.  This must exactly match the type on creation
+    /// of this instance.
+    /// </typeparam>
+    /// <param name="vector">The DuckDB vector to read from. </param>
+    /// <param name="index">The index of the element within the vector. </param>
+    /// <param name="requireValid">
+    /// If true, throw an exception if the element is invalid in the DuckDB vector,
+    /// and the <typeparamref name="T" /> is not some <see cref="Nullable{U}" />.
+    /// If false, the default value for <typeparamref name="T" /> is returned
+    /// when the element is invalid.  (When <typeparamref name="T" />
+    /// is <see cref="Nullable{U}" />, this default value is just the "null" value.)
+    /// </param>
+    /// <returns>
+    /// The converted element, or the default value for <typeparamref name="T" /> 
+    /// if the element is invalid in the DuckDB vector.
+    /// </returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public T? Invoke<T>(in DuckDbVectorInfo vector, int index, bool requireValid)
+    {
+        bool isValid = TryInvoke<T>(vector, index, out var result);
+        if (!isValid && requireValid && !typeof(T).IsNullable())
+            DuckDbVectorInfo.ThrowForInvalidElement(index);
+        return result;
     }
 
     /// <summary>
@@ -353,7 +414,7 @@ internal unsafe readonly partial struct VectorElementConverter
             => _unboxedConverter = unboxedConverter;
         private static object Convert<T>
             (BoxingConverter self, in DuckDbVectorInfo vector, int index) where T : struct
-            => (object)self._unboxedConverter.Invoke<T>(vector, index);
+            => (object)self._unboxedConverter.Invoke<T>(vector, index, requireValid: true);
 
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
         internal static unsafe VectorElementConverter Create<T>

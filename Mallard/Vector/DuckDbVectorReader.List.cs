@@ -201,7 +201,7 @@ internal sealed class ListConverter
     private T ConvertChild<T>(int childIndex) where T : notnull
     {
         if (_childrenInfo.IsItemValid(childIndex))
-            return _childrenConverter.Invoke<T>(_childrenInfo, childIndex);
+            return _childrenConverter.Invoke<T>(_childrenInfo, childIndex, requireValid: true)!;
         else if (!typeof(T).IsValueType)
             return default!;
         else
@@ -212,7 +212,7 @@ internal sealed class ListConverter
     private T? ConvertChildNullable<T>(int childIndex) where T : struct
     {
         if (_childrenInfo.IsItemValid(childIndex))
-            return _childrenConverter.Invoke<T>(_childrenInfo, childIndex);
+            return _childrenConverter.Invoke<T>(_childrenInfo, childIndex, requireValid: true)!;
         else
             return null;
     }

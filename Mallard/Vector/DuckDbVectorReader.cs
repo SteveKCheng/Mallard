@@ -53,29 +53,16 @@ public unsafe readonly ref struct
     /// <inheritdoc cref="IDuckDbVector.Length" />
     public int Length => _info.Length;
 
+    public T? GetItemOrDefault(int index)
+        => _converter.Invoke<T>(_info, index, requireValid: false);
+
     /// <inheritdoc cref="IDuckDbVector{T}.GetItem(int)" />
     public T GetItem(int index)
-    {
-        if (!TryGetItem(index, out var item))
-            DuckDbVectorInfo.ThrowForInvalidElement(index);
-
-        return item;
-    }
+        => _converter.Invoke<T>(_info, index, requireValid: true)!;
 
     /// <inheritdoc cref="IDuckDbVector{T}.TryGetItem(int, out T)" />
-    public bool TryGetItem(int index, [MaybeNullWhen(returnValue: false)] out T item)
-    {
-        if (_info.IsItemValid(index))
-        {
-            item = _converter.Invoke<T>(_info, index);
-            return true;
-        }
-        else
-        {
-            item = default;
-            return false;
-        }
-    }
+    public bool TryGetItem(int index, [NotNullWhen(true)] out T? item)
+        => _converter.TryInvoke<T>(_info, index, out item);
 }
 
 /// <summary>
