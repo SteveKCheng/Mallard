@@ -292,13 +292,12 @@ internal unsafe readonly partial struct VectorElementConverter
 
             DuckDbBasicType.Decimal when Match(type, typeof(Decimal)) => DuckDbDecimal.GetVectorElementConverter(vector),
 
-            DuckDbBasicType.List when type == null => ListConverter.ConstructForArrayOfUnknownType(vector),
+            // N.B. This matches only T[] and not arbitrary System.Array objects
+            // (with arbitrary ranks and lower/upper bounds)
+            DuckDbBasicType.List when type == null || type.IsArray => ListConverter.ConstructForArray(type, vector),
 
             DuckDbBasicType.List when type.IsInstanceOfGenericDefinition(typeof(ImmutableArray<>))
                 => ListConverter.ConstructForImmutableArray(type, vector),
-            // N.B. This matches only T[] and not arbitrary System.Array objects
-            // (with arbitrary ranks and lower/upper bounds)
-            DuckDbBasicType.List when type != null && type.IsArray => ListConverter.ConstructForArray(type, vector),
 
             _ => default
         };
