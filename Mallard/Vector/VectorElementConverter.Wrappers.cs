@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 
@@ -44,14 +45,19 @@ internal readonly partial struct VectorElementConverter
         // Above primitives have efficient implementations where the casting
         // is inlined into the conversion function.
         if (converter.IsValid)
+        {
+            Debug.Assert(!converter.TargetType.IsValueType);
             return converter;
+        }
 
-        // Decide on what the original (unboxed) type first.
+        // Decide on what the original (unboxed) type is first.
         converter = CreateForType(null, vector);
 
         // Nothing available, or the target type is a reference type so no boxing needed.
         if (!converter.IsValid || !converter.TargetType.IsValueType)
             return converter;
+
+        Debug.Assert(!converter.TargetType.IsNullable());
 
         // Set up a second indirect call to box the return value 
         // from the original converter.
@@ -73,14 +79,14 @@ internal readonly partial struct VectorElementConverter
     /// Used internally by <see cref="VectorElementConverter.CreateForBoxedPrimitive{T}" />
     /// when no more efficient alternative is available.
     /// </remarks>
-    internal sealed class BoxingConverter
+    private sealed class BoxingConverter
     {
         private readonly VectorElementConverter _unboxedConverter;
         private BoxingConverter(VectorElementConverter unboxedConverter)
             => _unboxedConverter = unboxedConverter;
         private static object Convert<T>
             (BoxingConverter self, in DuckDbVectorInfo vector, int index) where T : struct
-            => (object)self._unboxedConverter.Invoke<T>(vector, index, requireValid: true);
+            => (object)self._unboxedConverter.UnsafeConvert<T>(vector, index);
 
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
         internal static unsafe VectorElementConverter Create<T>

@@ -126,12 +126,6 @@ internal unsafe readonly partial struct VectorElementConverter
         => new(null, function, typeof(T));
 
     /// <summary>
-    /// Safety wrapper to invoke the conversion function (through its pointer).  
-    /// </summary>
-    /// <typeparam name="T">
-    /// </typeparam>
-
-    /// <summary>
     /// Invoke the converter to convert an element from a DuckDB vector.
     /// </summary>
     /// <typeparam name="T">
@@ -151,7 +145,7 @@ internal unsafe readonly partial struct VectorElementConverter
     /// is a nullable type, validity is reported with respect to the DuckDB vector,
     /// not with respect to the .NET type.)
     /// </returns>
-    public bool TryInvoke<T>(in DuckDbVectorInfo vector, int index, [NotNullWhen(true)] out T? result)        
+    public bool TryConvert<T>(in DuckDbVectorInfo vector, int index, [NotNullWhen(true)] out T? result)        
     {
         Debug.Assert(typeof(T).IsValueType ? typeof(T) == TargetType
                                            : typeof(T).IsAssignableFrom(TargetType),
@@ -194,12 +188,34 @@ internal unsafe readonly partial struct VectorElementConverter
     /// if the element is invalid in the DuckDB vector.
     /// </returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public T? Invoke<T>(in DuckDbVectorInfo vector, int index, bool requireValid)
+    public T? Convert<T>(in DuckDbVectorInfo vector, int index, bool requireValid)
     {
-        bool isValid = TryInvoke<T>(vector, index, out var result);
+        bool isValid = TryConvert<T>(vector, index, out var result);
         if (!isValid && requireValid && !typeof(T).IsNullable())
             DuckDbVectorInfo.ThrowForInvalidElement(index);
         return result;
+    }
+
+    /// <summary>
+    /// Same as <see cref="Convert{T}(in DuckDbVectorInfo, int, bool)" />
+    /// but does not checking whatsoever.
+    /// </summary>
+    /// <remarks>
+    /// Used by the boxing and nullable-value wrappers.
+    /// The check for a valid vector index and element should already have been
+    /// executed when the wrapper gets invoked.
+    /// </remarks>
+    /// <typeparam name="T">
+    /// Value type to return (and to be wrapped).
+    /// </typeparam>
+    /// <param name="vector">The vector to read the element from. </param>
+    /// <param name="index">An index for the vector that is in range
+    /// and refers to a valid element. </param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private T UnsafeConvert<T>(in DuckDbVectorInfo vector, int index) where T : struct
+    {
+        var f = (delegate*<object?, in DuckDbVectorInfo, int, T>)_function;
+        return f(_state, in vector, index)!;
     }
 
     /// <summary>
