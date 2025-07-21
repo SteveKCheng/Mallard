@@ -110,7 +110,6 @@ internal unsafe readonly partial struct VectorElementConverter
     public static VectorElementConverter
         Create<S,T>(S state, delegate*<S, in DuckDbVectorInfo, int, T> function)
         where S : class
-        where T : notnull
         => new(state, function, typeof(T));
 
     /// <summary>
@@ -122,7 +121,6 @@ internal unsafe readonly partial struct VectorElementConverter
     /// </remarks>
     public static VectorElementConverter
         Create<T>(delegate*<object?, in DuckDbVectorInfo, int, T> function)
-        where T : notnull
         => new(null, function, typeof(T));
 
     /// <summary>
@@ -251,6 +249,10 @@ internal unsafe readonly partial struct VectorElementConverter
         // function (with type == null) to get the converter for the unboxed type first.
         if (type == typeof(object))
             return CreateForBoxedType(vector);
+
+        // Nullable types handled through a separate dispatch.
+        if (type != null && (Nullable.GetUnderlyingType(type) is Type underlyingType))
+            return CreateForNullableType(underlyingType, vector);
 
         // Allow matching against a null (unknown) type
         static bool Match(Type? type, Type target)

@@ -40,5 +40,23 @@ internal readonly partial struct VectorElementConverter
         return Create(&ReadItemAndBox);
     }
 
+    /// <summary>
+    /// Get the type converter that reads a primitive value from a DuckDB vector,
+    /// then wraps it in <see cref="Nullable{T}" />.
+    /// </summary>
+    /// <typeparam name="T">
+    /// Unmanaged type whose memory representation matches exactly the element type
+    /// of the DuckDB vector.
+    /// </typeparam>
+    /// <remarks>
+    /// Primitive types occur commonly enough that we compile efficient nullable wrappers for them.
+    /// </remarks>
+    private unsafe static VectorElementConverter CreateForNullablePrimitive<T>() where T : unmanaged
+    {
+        static T? ReadItemAndWrap(object? state, in DuckDbVectorInfo vector, int index)
+            => new Nullable<T>(vector.UnsafeRead<T>(index));
+        return Create(&ReadItemAndWrap);
+    }
+
     #endregion
 }

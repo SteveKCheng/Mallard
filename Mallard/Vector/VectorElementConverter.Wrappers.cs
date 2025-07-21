@@ -76,7 +76,7 @@ internal readonly partial struct VectorElementConverter
     /// when the client requests such.
     /// </summary>
     /// <remarks>
-    /// Used internally by <see cref="VectorElementConverter.CreateForBoxedPrimitive{T}" />
+    /// Used internally by <see cref="VectorElementConverter.CreateForBoxedType(in DuckDbVectorInfo){T}" />
     /// when no more efficient alternative is available.
     /// </remarks>
     private sealed class BoxingConverter
@@ -92,6 +92,93 @@ internal readonly partial struct VectorElementConverter
         internal static unsafe VectorElementConverter Create<T>
             (VectorElementConverter unboxedConverter, in DuckDbVectorInfo _) where T : struct
             => VectorElementConverter.Create(new BoxingConverter(unboxedConverter), &Convert<T>);
+    }
+
+    #endregion
+
+    #region Nullable wrapper
+
+    private static VectorElementConverter
+        CreateForNullableType(Type underlyingType, in DuckDbVectorInfo vector)
+    {
+        var converter = vector.BasicType switch
+        {
+            DuckDbBasicType.Boolean => CreateForNullablePrimitive<bool>(),
+
+            DuckDbBasicType.TinyInt => CreateForNullablePrimitive<sbyte>(),
+            DuckDbBasicType.SmallInt => CreateForNullablePrimitive<short>(),
+            DuckDbBasicType.Integer => CreateForNullablePrimitive<int>(),
+            DuckDbBasicType.BigInt => CreateForNullablePrimitive<long>(),
+
+            DuckDbBasicType.UTinyInt => CreateForNullablePrimitive<byte>(),
+            DuckDbBasicType.USmallInt => CreateForNullablePrimitive<ushort>(),
+            DuckDbBasicType.UInteger => CreateForNullablePrimitive<uint>(),
+            DuckDbBasicType.UBigInt => CreateForNullablePrimitive<ulong>(),
+
+            DuckDbBasicType.Float => CreateForNullablePrimitive<float>(),
+            DuckDbBasicType.Double => CreateForNullablePrimitive<double>(),
+
+            DuckDbBasicType.Date => CreateForNullablePrimitive<DuckDbDate>(),
+            DuckDbBasicType.Timestamp => CreateForNullablePrimitive<DuckDbTimestamp>(),
+
+            DuckDbBasicType.Interval => CreateForNullablePrimitive<DuckDbInterval>(),
+
+            DuckDbBasicType.UHugeInt => CreateForNullablePrimitive<UInt128>(),
+            DuckDbBasicType.HugeInt => CreateForNullablePrimitive<Int128>(),
+
+            _ => default
+        };
+
+        // Above primitives have efficient implementations where the wrapping
+        // in Nullable<T> is inlined into the conversion function.
+        if (converter.IsValid)
+        {
+            Debug.Assert(Nullable.GetUnderlyingType(converter.TargetType) == underlyingType);
+            return converter;
+        }
+
+        // Prepare to wrap generic wrapper around converter for original value type.
+        converter = CreateForType(underlyingType, vector);
+
+        // Nothing available.
+        if (!converter.IsValid)
+            return converter;
+
+        Debug.Assert(converter.TargetType.IsValueType);
+
+        // Set up a second indirect call to box the return value 
+        // from the original converter.
+        return UnsafeCreateFromGeneric(CreateNullableWrapperMethod,
+                                       converter,
+                                       vector,
+                                       converter.TargetType);
+    }
+
+    private static readonly MethodInfo CreateNullableWrapperMethod =
+    typeof(NullableConverter).GetMethod(nameof(BoxingConverter.Create),
+                                        BindingFlags.Static | BindingFlags.NonPublic)!;
+
+    /// <summary>
+    /// Wraps the results of a vector element conversion that returns a value type,
+    /// into a nullable.
+    /// </summary>
+    /// <remarks>
+    /// Used internally by <see cref="VectorElementConverter.CreateForNullableType(Type, in DuckDbVectorInfo)" />
+    /// when no more efficient alternative is available.
+    /// </remarks>
+    private sealed class NullableConverter
+    {
+        private readonly VectorElementConverter _underlyingConverter;
+        private NullableConverter(VectorElementConverter underlyingConverter)
+            => _underlyingConverter = underlyingConverter;
+        private static T? Convert<T>
+            (NullableConverter self, in DuckDbVectorInfo vector, int index) where T : struct
+            => new Nullable<T>(self._underlyingConverter.UnsafeConvert<T>(vector, index));
+
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+        internal static unsafe VectorElementConverter Create<T>
+            (VectorElementConverter underlyingConverter, in DuckDbVectorInfo _) where T : struct
+            => VectorElementConverter.Create(new NullableConverter(underlyingConverter), &Convert<T>);
     }
 
     #endregion
