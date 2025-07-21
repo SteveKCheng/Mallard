@@ -24,7 +24,21 @@ public readonly ref struct DuckDbVarInt
     /// <returns>
     /// <see cref="BigInteger" /> with the same numerical value.
     /// </returns>
-    public BigInteger ToBigInteger()
+    public BigInteger ToBigInteger() => ConvertTo<BigInteger>();
+
+    /// <summary>
+    /// Convert to some other binary integer type.
+    /// </summary>
+    /// <typeparam name="T">Binary integer type, typically with a variable-length representation.
+    /// </typeparam>
+    /// <returns>
+    /// Instance of <typeparamref name="T"/> with the same numerical value.
+    /// </returns>
+    /// <exception cref="OverflowException">
+    /// The given type <typeparamref name="T" /> cannot hold the numerical
+    /// value of this variable-length integer from DuckDB.
+    /// </exception>
+    public T ConvertTo<T>() where T : IBinaryInteger<T>
     {
         var buffer = _blob.AsSpan();
 
@@ -62,7 +76,7 @@ public readonly ref struct DuckDbVarInt
 
         if (isPositive)
         {
-            return new BigInteger(valueBuffer, isUnsigned: true, isBigEndian: false);
+            return T.ReadLittleEndian(valueBuffer, isUnsigned: true);
         }
         else
         {
@@ -94,7 +108,7 @@ public readonly ref struct DuckDbVarInt
                 lastWord |= (ulong)(~valueBuffer[numWords * sizeof(ulong) + i] & 0xFF) << (i * 8);
             magnitudeBuffer[numWords] = lastWord;
 
-            return -new BigInteger(MemoryMarshal.AsBytes(magnitudeBuffer), isUnsigned: true, isBigEndian: false);
+            return -T.ReadLittleEndian(MemoryMarshal.AsBytes(magnitudeBuffer), isUnsigned: true);
         }
     }
 
