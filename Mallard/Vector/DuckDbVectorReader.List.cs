@@ -129,7 +129,7 @@ internal sealed class ListConverter
 
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
     private unsafe static VectorElementConverter ConstructForImmutableArrayImpl<T>(ListConverter self, in DuckDbVectorInfo parent)
-        => VectorElementConverter.Create(self, &ConvertToImmutableArray<T>);
+        => VectorElementConverter.Create(self, &ConvertToImmutableArray<T>, defaultValueIsInvalid: true);
 
     public static VectorElementConverter ConstructForArray(Type? listType, in DuckDbVectorInfo parent)
     {
@@ -163,7 +163,7 @@ internal sealed class ListConverter
     }
 
     private T? ConvertChild<T>(int childIndex)
-        => _childrenConverter.Convert<T>(_childrenInfo, childIndex, requireValid: typeof(T).IsValueType);
+        => _childrenConverter.Convert<T>(_childrenInfo, childIndex, requireValid: !_childrenConverter.DefaultValueIsInvalid);
 
     private static T?[] ConvertToArray<T>(ListConverter self, in DuckDbVectorInfo vector, int index)
     {

@@ -95,11 +95,32 @@ internal unsafe readonly partial struct VectorElementConverter
     /// </remarks>
     public Type TargetType { get; init; }
 
-    private VectorElementConverter(object? state, void* function, Type targetType)
+    /// <summary>
+    /// Whether the default value of <see cref="TargetType" /> is considered
+    /// to mark an invalid state.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Converters for a composite type (e.g. an array) may consult this flag to suppress 
+    /// exceptions if individual items within an instance of the composite type are invalid.  
+    /// <see cref="VectorElementConverter" /> itself does not do anything with this flag.
+    /// </para>
+    /// <para>
+    /// The "default" value refers to the default initialization in .NET of a variable
+    /// of that type.
+    /// </para>
+    /// <para>
+    /// This flag is automatically true for reference types and nullable value types.
+    /// </para>
+    /// </remarks>
+    public bool DefaultValueIsInvalid { get; init; }
+
+    private VectorElementConverter(object? state, void* function, Type targetType, bool defaultValueIsInvalid)
     {
         _state = state;
         _function = function;
         TargetType = targetType;
+        DefaultValueIsInvalid = defaultValueIsInvalid;
     }
 
     /// <summary>
@@ -108,9 +129,9 @@ internal unsafe readonly partial struct VectorElementConverter
     /// <typeparam name="S">State object type for the conversion function. </typeparam>
     /// <typeparam name="T">The .NET type to convert to. </typeparam>
     public static VectorElementConverter
-        Create<S,T>(S state, delegate*<S, in DuckDbVectorInfo, int, T> function)
+        Create<S,T>(S state, delegate*<S, in DuckDbVectorInfo, int, T> function, bool defaultValueIsInvalid = false)
         where S : class
-        => new(state, function, typeof(T));
+        => new(state, function, typeof(T), !typeof(T).IsValueType || typeof(T).IsNullable() || defaultValueIsInvalid);
 
     /// <summary>
     /// Create a pointer to a stateless conversion function.
@@ -120,8 +141,8 @@ internal unsafe readonly partial struct VectorElementConverter
     /// When the conversion function is invoked, the first argument will be passed as null.
     /// </remarks>
     public static VectorElementConverter
-        Create<T>(delegate*<object?, in DuckDbVectorInfo, int, T> function)
-        => new(null, function, typeof(T));
+        Create<T>(delegate*<object?, in DuckDbVectorInfo, int, T> function, bool defaultValueIsInvalid = false)
+        => new(null, function, typeof(T), !typeof(T).IsValueType || typeof(T).IsNullable() || defaultValueIsInvalid);
 
     /// <summary>
     /// Invoke the converter to convert an element from a DuckDB vector.
