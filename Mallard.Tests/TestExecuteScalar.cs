@@ -33,6 +33,18 @@ public class TestExecuteScalar
         using var ps = dbConn.CreatePreparedStatement("SELECT $1");
         Span<byte> buffer = stackalloc byte[1024];
 
+        void Check(Span<byte> bytes, bool isNegative)
+        {
+            var magnitude = new BigInteger(bytes, isUnsigned: true, isBigEndian: false);
+            var value = isNegative ? -magnitude : magnitude;
+
+            ps.BindParameter(1, value);
+
+            object? valueOut = ps.ExecuteScalar();
+            Assert.IsType<BigInteger>(valueOut);
+            Assert.StrictEqual(value, (BigInteger)valueOut);
+        }
+
         // Try different values
         foreach (int q in new[] { 127, 131, 163, 521, -127, -131, -163, -521 })
         {
@@ -48,14 +60,21 @@ public class TestExecuteScalar
             int len = (p >> 3) + 1;
             buffer[len..].Clear();
 
-            var magnitude = new BigInteger(buffer[0..len], isUnsigned: true, isBigEndian: false);
-            var value = (q >= 0) ? magnitude : -magnitude;
+            Check(buffer[..len], q < 0);
+        }
 
-            ps.BindParameter(1, value);
+        // The Mersenne numbers have a simple pattern in memory that is
+        // easy to recognize when debugging.  Now try some complex cases with
+        // "random" bytes to ensure that we are not interpreting the bytes backwards, etc.
+        var random = new Random(Seed: 37);
+        foreach (int p in new[] { 16, 32, 64, 128, 256 })
+        {
+            int len = (p >> 3) + 1;
+            random.NextBytes(buffer[..len]);
+            buffer[(p >> 3)] &= (byte)((1u << (1 + (p & 7))) - 1);
+            buffer[len..].Clear();
 
-            object? valueOut = ps.ExecuteScalar();
-            Assert.IsType<BigInteger>(valueOut);
-            Assert.StrictEqual(value, (BigInteger)valueOut);
+            Check(buffer[..len], false);
         }
     }
 }
