@@ -87,7 +87,6 @@ public unsafe sealed class DuckDbResult : IDisposable
     /// and similar methods.
     /// </remarks>
     internal static T? ExtractFirstCell<T>(duckdb_state status, ref duckdb_result nativeResult)
-        where T : notnull
     {
         try
         {

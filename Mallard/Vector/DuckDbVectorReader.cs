@@ -22,7 +22,7 @@ namespace Mallard;
 /// </para>
 /// </remarks>
 public unsafe readonly ref struct 
-    DuckDbVectorReader<T> : IDuckDbVector<T> where T : notnull
+    DuckDbVectorReader<T> : IDuckDbVector<T>
 {
     /// <summary>
     /// Type information and native pointers on this DuckDB vector.
@@ -53,6 +53,7 @@ public unsafe readonly ref struct
     /// <inheritdoc cref="IDuckDbVector.Length" />
     public int Length => _info.Length;
 
+    /// <inheritdoc cref="IDuckDbVector{T}.GetItemOrDefault(int)" />
     public T? GetItemOrDefault(int index)
         => _converter.Convert<T>(_info, index, requireValid: false);
 

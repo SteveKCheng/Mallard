@@ -53,8 +53,20 @@ public interface IDuckDbVector
 /// DuckDB vector readers are "ref structs" so they cannot implement enumerators without
 /// copying and converting element values to GC memory, which is obviously inefficient.
 /// </remarks>
-public interface IDuckDbVector<T> : IDuckDbVector where T: notnull, allows ref struct
+public interface IDuckDbVector<T> : IDuckDbVector where T: allows ref struct
 {
+    /// <summary>
+    /// Retrieve an element of this vector, returning the default value if it is invalid.
+    /// </summary>
+    /// <param name="index">The index of the element to select. </param>
+    /// <returns>The desired element of this vector. </returns>
+    /// <exception cref="IndexOutOfRangeException">The index is out of range for the vector. </exception>
+    /// <remarks>
+    /// The "default" value refers to the default-initialized value of a variable of
+    /// tyoe <typeparamref name="T" />.
+    /// </remarks>
+    T? GetItemOrDefault(int index);
+
     /// <summary>
     /// Retrieve a valid element of this vector.
     /// </summary>
@@ -62,6 +74,27 @@ public interface IDuckDbVector<T> : IDuckDbVector where T: notnull, allows ref s
     /// <returns>The desired element of this vector. </returns>
     /// <exception cref="IndexOutOfRangeException">The index is out of range for the vector. </exception>
     /// <exception cref="InvalidOperationException">The requested element is invalid. </exception>
+    /// <remarks>
+    /// <para>
+    /// For the purposes of this method, an element that is missing in the DuckDB vector
+    /// but is materialized as an instance of <see cref="Nullable{U}" /> is considered
+    /// "valid", i.e. this method will not throw an exception.  
+    /// </para>
+    /// <para>
+    /// (Otherwise, there would be no point
+    /// in substituting a nullable value type for <typeparamref name="T" />.  Consistency would
+    /// argue that nullable reference types be treated the same way, but in .NET, reference 
+    /// nullability are only compiler-driven annotations and not part of the run-time type
+    /// system, so an implementation of this interface generally cannot detect whether
+    /// <typeparamref name="T" /> is <c>U</c> or <c>U?</c> for reference types <c>U</c>.
+    /// So, if <typeparamref name="T" /> is a reference type, this method throws an exception
+    /// if the source element in the DuckDB vector is missing.)
+    /// </para>
+    /// <para>
+    /// Clients that want to basically assume all the elements of the vector are valid
+    /// would call this method.
+    /// </para>
+    /// </remarks>
     T GetItem(int index);
 
     /// <summary>

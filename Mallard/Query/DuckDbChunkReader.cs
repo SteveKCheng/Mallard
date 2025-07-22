@@ -74,7 +74,7 @@ public unsafe readonly ref struct DuckDbChunkReader
     /// <exception cref="IndexOutOfRangeException">
     /// <paramref name="columnIndex"/> is out of range, or this instance is default-initialized.
     /// </exception>
-    public DuckDbVectorReader<T> GetColumn<T>(int columnIndex) where T : notnull
+    public DuckDbVectorReader<T> GetColumn<T>(int columnIndex)
         => new(GetVectorInfo(columnIndex));
 
     private DuckDbVectorInfo GetVectorInfo(int columnIndex)

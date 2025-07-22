@@ -109,6 +109,13 @@ public readonly ref struct DuckDbVectorRawReader<T> : IDuckDbVector<T>
     /// <exception cref="InvalidOperationException">The requested element is invalid. </exception>
     public T this[int index] => GetItem(index);
 
+    /// <inheritdoc cref="IDuckDbVector{T}.GetItemOrDefault(int)" />
+    public T GetItemOrDefault(int index)
+    {
+        TryGetItem(index, out var result);
+        return result;
+    }
+
     /// <inheritdoc cref="IDuckDbVector{T}.GetItem(int)" />
     public unsafe T GetItem(int index)
     {

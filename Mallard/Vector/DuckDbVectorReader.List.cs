@@ -41,7 +41,6 @@ public static partial class DuckDbVectorMethods
     /// </returns>
     /// <exception cref="DuckDbException"></exception>
     public static DuckDbVectorReader<T> GetChildrenVector<T>(in this DuckDbVectorRawReader<DuckDbListRef> parent)
-        where T : notnull
         => new(parent._info.GetChildrenVectorInfo());
 
     internal unsafe static DuckDbVectorInfo GetChildrenVectorInfo(in this DuckDbVectorInfo parent)
