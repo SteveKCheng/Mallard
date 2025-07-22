@@ -1,19 +1,28 @@
 ﻿using Mallard.C_API;
 using System;
 using System.Collections.Generic;
-using System.Threading;
 
 namespace Mallard;
 
 /// <summary>
 /// Prepared statement.
 /// </summary>
+/// <remarks>
+/// <para>
+/// Objects of this class may not be accessed from multiple threads simultaneously.
+/// If that is attempted, exceptions will be thrown.
+/// Binding parameters to values obviously mutates state which would require
+/// callers to synchronize anyway.  Furthermore, the underlying object in the DuckDB
+/// native library that implements execution of prepared statements is not thread-safe.
+/// To execute the same prepared statement (possibly with different parameters) from
+/// multiple threads, each thread must work with its own instance of this class.
+/// </para>
+/// </remarks>
 public unsafe class DuckDbCommand : IDisposable
 {
     private _duckdb_prepared_statement* _nativeStatement;
     private readonly int _numParams;
-    private readonly Lock _mutex = new();
-    private bool _isDisposed;
+    private Barricade _barricade;
 
     #region Statement execution
 
@@ -27,10 +36,9 @@ public unsafe class DuckDbCommand : IDisposable
     {
         duckdb_state status;
         duckdb_result nativeResult;
-        lock (_mutex)
+        
+        using (var _ = _barricade.EnterScope(this))
         {
-            ThrowIfDisposed();
-
             // N.B. DuckDB captures the "client context" from the database connection
             // when NativeMethods.duckdb_prepare is called, and holds it with shared ownership.
             // Thus the connection object is not needed to execute the prepared statement,
@@ -53,11 +61,12 @@ public unsafe class DuckDbCommand : IDisposable
     {
         duckdb_state status;
         duckdb_result nativeResult;
-        lock (_mutex)
+
+        using (var _ = _barricade.EnterScope(this))
         {
-            ThrowIfDisposed();
             status = NativeMethods.duckdb_execute_prepared(_nativeStatement, out nativeResult);
         }
+
         return DuckDbResult.ExtractNumberOfChangedRows(status, ref nativeResult);
     }
 
@@ -94,11 +103,12 @@ public unsafe class DuckDbCommand : IDisposable
     {
         duckdb_state status;
         duckdb_result nativeResult;
-        lock (_mutex)
+
+        using (var _ = _barricade.EnterScope(this))
         {
-            ThrowIfDisposed();
             status = NativeMethods.duckdb_execute_prepared(_nativeStatement, out nativeResult);
         }
+
         return DuckDbResult.ExtractFirstCell<T>(status, ref nativeResult);
     }
 
@@ -163,35 +173,31 @@ public unsafe class DuckDbCommand : IDisposable
     {
         ThrowIfParamIndexOutOfRange(index);
 
-        lock (_mutex)
-        {
-            ThrowIfDisposed();
-            return NativeMethods.duckdb_parameter_name(_nativeStatement, index);
-        }
+        using var _ = _barricade.EnterScope(this);
+        return NativeMethods.duckdb_parameter_name(_nativeStatement, index);
     }
 
     public DuckDbBasicType GetParameterBasicType(int index)
     {
         ThrowIfParamIndexOutOfRange(index);
 
-        lock (_mutex)
-        {
-            ThrowIfDisposed();
-            return NativeMethods.duckdb_param_type(_nativeStatement, index);
-        }
+        using var _ = _barricade.EnterScope(this);
+        return NativeMethods.duckdb_param_type(_nativeStatement, index);
     }
 
     public int GetParameterIndexForName(string name)
     {
         long index;
         duckdb_state status;
-        lock (_mutex)
+
+        using (var _ = _barricade.EnterScope(this))
         {
-            ThrowIfDisposed();
             status = NativeMethods.duckdb_bind_parameter_index(_nativeStatement, out index, name);
         }
+
         if (status != duckdb_state.DuckDBSuccess)
             throw new KeyNotFoundException($"Parameter with the given name was not found. Name: {name}");
+
         return (int)index;
     }
 
@@ -210,7 +216,8 @@ public unsafe class DuckDbCommand : IDisposable
         try
         {
             duckdb_state status;
-            lock (_mutex)
+
+            using (var _ = _barricade.EnterScope(this))
             {
                 status = NativeMethods.duckdb_bind_value(_nativeStatement, index, nativeValue);
             }
@@ -227,14 +234,10 @@ public unsafe class DuckDbCommand : IDisposable
 
     private void DisposeImpl(bool disposing)
     {
-        lock (_mutex)
-        {
-            if (_isDisposed)
-                return;
+        if (!_barricade.PrepareToDisposeOwner())
+            return;
 
-            _isDisposed = true;
-            NativeMethods.duckdb_destroy_prepare(ref _nativeStatement);
-        }
+        NativeMethods.duckdb_destroy_prepare(ref _nativeStatement);
     }
 
     ~DuckDbCommand()
@@ -247,12 +250,6 @@ public unsafe class DuckDbCommand : IDisposable
     {
         DisposeImpl(disposing: true);
         GC.SuppressFinalize(this);
-    }
-
-    private void ThrowIfDisposed()
-    {
-        if (_isDisposed)
-            throw new ObjectDisposedException("Cannot operate on this object after it has been disposed. ");
     }
 
     #endregion

@@ -7,9 +7,8 @@ namespace Mallard;
 
 public unsafe sealed class DuckDbResult : IDisposable
 {
-    private readonly Lock _mutex = new();
+    private Barricade _barricade;
     private duckdb_result _nativeResult;
-    private bool isDisposed;
     private readonly ColumnInfo[] _columnInfo;
 
     internal readonly struct ColumnInfo
@@ -159,19 +158,14 @@ public unsafe sealed class DuckDbResult : IDisposable
 
     private void DisposeImpl(bool disposing)
     {
-        lock (_mutex)
-        {
-            if (isDisposed)
-                return;
+        if (!_barricade.PrepareToDisposeOwner())
+            return;
 
-            isDisposed = true;
-            NativeMethods.duckdb_destroy_result(ref _nativeResult);
-        }
+        NativeMethods.duckdb_destroy_result(ref _nativeResult);
     }
 
     ~DuckDbResult()
     {
-        // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
         DisposeImpl(disposing: false);
     }
 
@@ -181,18 +175,11 @@ public unsafe sealed class DuckDbResult : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    private void ThrowIfDisposed()
-    {
-        if (isDisposed)
-            throw new ObjectDisposedException("Cannot operate on this object after it has been disposed. ");
-    }
-
     public DuckDbResultChunk? FetchNextChunk()
     {
         _duckdb_data_chunk* nativeChunk;
-        lock (_mutex)
+        using (var _ = _barricade.EnterScope(this))
         {
-            ThrowIfDisposed();
             nativeChunk = NativeMethods.duckdb_fetch_chunk(_nativeResult);
         }
 
@@ -215,9 +202,8 @@ public unsafe sealed class DuckDbResult : IDisposable
                                                   [MaybeNullWhen(false)] out TResult result)
     {
         _duckdb_data_chunk* nativeChunk;
-        lock (_mutex)
+        using (var _ = _barricade.EnterScope(this))
         {
-            ThrowIfDisposed();
             nativeChunk = NativeMethods.duckdb_fetch_chunk(_nativeResult);
         }
 
@@ -301,4 +287,3 @@ public unsafe class DuckDbResultChunk : IDisposable
         return func(reader, state);
     }
 }
-
