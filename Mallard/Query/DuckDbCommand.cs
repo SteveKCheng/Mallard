@@ -70,6 +70,27 @@ public unsafe class DuckDbCommand : IDisposable
     /// This method is typically for SQL statements that produce a single value.
     /// </returns>
     public object? ExecuteScalar()
+        => ExecuteValue<object>();
+
+    /// <summary>
+    /// Execute the prepared statement, and return the first item in the results.
+    /// </summary>
+    /// <returns>
+    /// <para>
+    /// The first row and cell of the results of the statement execution, if any.
+    /// This method is typically for SQL statements that produce a single value.
+    /// </para>
+    /// <para>
+    /// The default value for <typeparamref name="T" /> is produced 
+    /// when the SQL execution does not produce any results, unless
+    /// the default value can be confused with a valid value, specifically
+    /// when <typeparamref name="T" /> is a non-nullable value type.
+    /// (This exception in behavior exists to avoid silently reading the
+    /// wrong values.)  If <typeparamref name="T" /> is a reference type
+    /// or nullable value type, the default value means "null".
+    /// </para>
+    /// </returns>
+    public T? ExecuteValue<T>()
     {
         duckdb_state status;
         duckdb_result nativeResult;
@@ -78,7 +99,7 @@ public unsafe class DuckDbCommand : IDisposable
             ThrowIfDisposed();
             status = NativeMethods.duckdb_execute_prepared(_nativeStatement, out nativeResult);
         }
-        return DuckDbResult.ExtractFirstCell<object>(status, ref nativeResult);
+        return DuckDbResult.ExtractFirstCell<T>(status, ref nativeResult);
     }
 
     #endregion

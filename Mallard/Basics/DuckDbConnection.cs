@@ -155,6 +155,36 @@ public unsafe class DuckDbConnection : IDisposable
         return DuckDbResult.ExtractFirstCell<object>(status, ref nativeResult);
     }
 
+    /// <summary>
+    /// Execute a SQL query, and return the first item in the results.
+    /// </summary>
+    /// <param name="sql">
+    /// SQL statement(s) in the DuckDB dialect.  Multiple statements
+    /// may be separated/terminated by semicolons; the result returned
+    /// is always from the last statement.
+    /// </param>
+    /// <returns>
+    /// <para>
+    /// The first row and cell of the results of the statement execution, if any.
+    /// This method is typically for SQL statements that produce a single value.
+    /// </para>
+    /// <para>
+    /// The default value for <typeparamref name="T" /> is produced 
+    /// when the SQL execution does not produce any results, unless
+    /// the default value can be confused with a valid value, specifically
+    /// when <typeparamref name="T" /> is a non-nullable value type.
+    /// (This exception in behavior exists to avoid silently reading the
+    /// wrong values.)  If <typeparamref name="T" /> is a reference type
+    /// or nullable value type, the default value means "null".
+    /// </para>
+    /// </returns>
+    public T? ExecuteValue<T>(string sql)
+    {
+        using var _ = _refCount.EnterScope(this);
+        var status = NativeMethods.duckdb_query(_nativeConn, sql, out var nativeResult);
+        return DuckDbResult.ExtractFirstCell<T>(status, ref nativeResult);
+    }
+
     #endregion 
 
     public DuckDbConnection Reopen()

@@ -114,7 +114,16 @@ public unsafe sealed class DuckDbResult : IDisposable
                 var vectorInfo = new DuckDbVectorInfo(nativeVector, basicType, length);
 
                 var reader = new DuckDbVectorReader<T>(vectorInfo);
-                reader.TryGetItem(0, out var item);
+                bool isValid = reader.TryGetItem(0, out var item);
+                if (!isValid && !reader.DefaultValueIsInvalid)
+                {
+                    throw new InvalidOperationException(
+                        "The DuckDB query returned null, which cannot be represented" +
+                        "as an instance of the type T that the generic method " +
+                        "ExecuteValue<T> has been invoked with.  Consider replacing " +
+                        "the generic parameter with T? (System.Nullable<T>) instead. ");
+                }
+
                 return item;
             }
             finally

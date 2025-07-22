@@ -35,6 +35,8 @@ public unsafe readonly ref struct
     /// </summary>
     private readonly VectorElementConverter _converter;
 
+    internal bool DefaultValueIsInvalid => _converter.DefaultValueIsInvalid;
+
     internal DuckDbVectorReader(scoped in DuckDbVectorInfo info)
     {
         _info = info;
