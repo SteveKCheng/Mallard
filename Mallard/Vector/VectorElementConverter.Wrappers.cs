@@ -38,6 +38,7 @@ internal readonly partial struct VectorElementConverter
             DuckDbBasicType.HugeInt => CreateForBoxedPrimitive<Int128>(),
 
             DuckDbBasicType.Decimal => DuckDbDecimal.GetBoxedVectorElementConverter(vector),
+            DuckDbBasicType.VarInt => DuckDbVarInt.BoxedVectorElementConverter,
 
             _ => default
         };
@@ -125,6 +126,9 @@ internal readonly partial struct VectorElementConverter
 
             DuckDbBasicType.UHugeInt => CreateForNullablePrimitive<UInt128>(),
             DuckDbBasicType.HugeInt => CreateForNullablePrimitive<Int128>(),
+
+            DuckDbBasicType.Decimal => DuckDbDecimal.GetNullableVectorElementConverter(vector),
+            DuckDbBasicType.VarInt => DuckDbVarInt.NullableVectorElementConverter,
 
             _ => default
         };

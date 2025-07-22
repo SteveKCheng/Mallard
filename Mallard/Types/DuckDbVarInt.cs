@@ -114,7 +114,15 @@ public readonly ref struct DuckDbVarInt
 
     private static BigInteger ConvertToBigIntegerFromVector(object? state, in DuckDbVectorInfo vector, int index)
         => vector.UnsafeRead<DuckDbVarInt>(index).ToBigInteger();
+    private static object ConvertToBoxedBigIntegerFromVector(object? state, in DuckDbVectorInfo vector, int index)
+        => (object)ConvertToBigIntegerFromVector(state, vector, index);
+    private static BigInteger? ConvertToNullableBigIntegerFromVector(object? state, in DuckDbVectorInfo vector, int index)
+        => new Nullable<BigInteger>(ConvertToBigIntegerFromVector(state, vector, index));
 
     internal unsafe static VectorElementConverter VectorElementConverter
         => VectorElementConverter.Create(&ConvertToBigIntegerFromVector);
+    internal unsafe static VectorElementConverter BoxedVectorElementConverter
+        => VectorElementConverter.Create(&ConvertToBoxedBigIntegerFromVector);
+    internal unsafe static VectorElementConverter NullableVectorElementConverter
+        => VectorElementConverter.Create(&ConvertToBoxedBigIntegerFromVector);
 }

@@ -221,6 +221,9 @@ public readonly struct DuckDbDecimal
     private static object ConvertToBoxedDecimalFromVector<TStorage>(object? state, in DuckDbVectorInfo vector, int index)
         => (object)ConvertToDecimalFromVector<TStorage>(state, vector, index);
 
+    private static Decimal? ConvertToNullableDecimalFromVector<TStorage>(object? state, in DuckDbVectorInfo vector, int index)
+        => new Nullable<Decimal>(ConvertToDecimalFromVector<TStorage>(state, vector, index));
+
     internal unsafe static VectorElementConverter GetVectorElementConverter(in DuckDbVectorInfo vector)
         => vector.StorageType switch
         {
@@ -238,6 +241,16 @@ public readonly struct DuckDbDecimal
             DuckDbBasicType.Integer => VectorElementConverter.Create(&ConvertToBoxedDecimalFromVector<Int32>),
             DuckDbBasicType.BigInt => VectorElementConverter.Create(&ConvertToBoxedDecimalFromVector<Int64>),
             DuckDbBasicType.HugeInt => VectorElementConverter.Create(&ConvertToBoxedDecimalFromVector<Int128>),
+            _ => throw new InvalidOperationException("Cannot decode Decimal from a DuckDB vector with the given storage type. ")
+        };
+
+    internal unsafe static VectorElementConverter GetNullableVectorElementConverter(in DuckDbVectorInfo vector)
+        => vector.StorageType switch
+        {
+            DuckDbBasicType.SmallInt => VectorElementConverter.Create(&ConvertToNullableDecimalFromVector<Int16>),
+            DuckDbBasicType.Integer => VectorElementConverter.Create(&ConvertToNullableDecimalFromVector<Int32>),
+            DuckDbBasicType.BigInt => VectorElementConverter.Create(&ConvertToNullableDecimalFromVector<Int64>),
+            DuckDbBasicType.HugeInt => VectorElementConverter.Create(&ConvertToNullableDecimalFromVector<Int128>),
             _ => throw new InvalidOperationException("Cannot decode Decimal from a DuckDB vector with the given storage type. ")
         };
 
