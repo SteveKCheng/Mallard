@@ -35,6 +35,55 @@ without intermediate copying or heavy conversions involving GC objects.  I think
 useful in applications involving machine learning or data science.  An ADO.NET-based interface would just 
 not be performant enough, and so I do not put high priority on it.
 
+## What works today (as of July 22, 2025)
+
+  - [X] Executing SQL queries and reading results incrementally
+  - [X] Prepared statements with parameter binding
+  - [X] Reading values from DuckDB columns with strong typing and no boxing (unless explicitly requested)
+  - [X] Type checks are done once per column not for each value read (high performance)
+  - DuckDB types supported
+    - [X] all fixed-width integers
+    - [X] floating-point numbers
+    - [X] variable-length integers (VARINT → ``System.Numerics.BigInteger``)
+    - [X] decimals (DECIMAL → ``System.Decimal``)
+    - [X] enumerations 
+    - [X] strings (VARCHAR → ``System.String``)
+    - [X] variable-length lists (LIST → .NET array or ``System.Collections.ImmutableArray<T>``)
+    - [X] date (DATE → ``System.Date``)
+    - [X] timestamp (TIMESTAMP → ``System.DateTime``)
+    - [X] time intervals
+  - [X] Null values in database can be checked explicitly or flagged implicitly with ``System.Nullable<T>`` element types
+  - [X] Thread-safe and memory-safe public API 
+    - If you do not use unsafe code, then even improper use of the public API should not crash the .NET run-time
+    - ``ref struct`` is used to carefully control lifetime so user sees no dangling pointers to DuckDB native objects
+  - [X] Design minimizes unnecessary GC allocations
+
+## Major features missing
+
+  - DuckDB types
+    - TIME
+    - timestamps in units other than microseconds
+    - STRUCT
+    - arrays (fixed-length)
+    - bit-strings
+  - Not all types whose values can be read (from DuckDB vectors) can be bound to parameters in prepared statements
+  - ``System.Data`` (ADO.NET) -compatible interfaces
+  - Caching of objects
+    - Open DuckDB database objects
+    - Certain converters (e.g. for enums) that are heavy to construct
+  - User-defined functions
+  - Appenders (DuckDB's API to insert many values quickly into a table)
+  - Proper NuGet packaging
+  - Adapters for ``Microsoft.Data.Analysis.DataFrame``
+  - Error reporting (exceptions) needs to be regularized
+  - Not all features that work have been thoroughly tested
+  - Not completely compatible with AOT compilation
+    - Reflection is required at least for conversion of composite types, e.g. ``MyEnum[]``
+    - Does not use MSIL code generation but does instantiate generic methods for types only known at run-time
+    - Conversion for primitive types does not require reflection; all code is statically visible to the compiler
+  - Only tested on Windows so far
+    - Although the .NET library makes no Windows-specific assumptions and should be portable to all the desktop platforms supported by .NET
+
 ## About the name
 
   - *Mallard* is a species of wild duck.  I think the *wild* moniker is quite appropriate.
