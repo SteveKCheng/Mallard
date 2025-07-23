@@ -317,6 +317,10 @@ internal unsafe static partial class NativeMethods
     [LibraryImport(LibraryName)]
     internal static partial uint duckdb_enum_dictionary_size(_duckdb_logical_type* type);
 
+    [LibraryImport(LibraryName)]
+    [return: MarshalUsing(typeof(Utf8StringMarshallerWithFree))]
+    internal static partial string duckdb_enum_dictionary_value(_duckdb_logical_type* type, idx_t index);
+
     #endregion
 
     #region Objects for single values

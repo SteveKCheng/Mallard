@@ -278,7 +278,7 @@ internal unsafe readonly partial struct VectorElementConverter
         // Allow matching against a null (unknown) type
         static bool Match(Type? type, Type target)
             => type == null || type == target;
- 
+
         return vector.BasicType switch
         {
             // Fortunately "bool" is considered an unmanaged type (of one byte), even though
@@ -319,6 +319,14 @@ internal unsafe readonly partial struct VectorElementConverter
 
             DuckDbBasicType.List when type.IsInstanceOfGenericDefinition(typeof(ImmutableArray<>))
                 => ListConverter.ConstructForImmutableArray(type, vector),
+
+            DuckDbBasicType.Enum when type != null && type.IsEnum => EnumConverter.CreateElementConverter(vector, type),
+            DuckDbBasicType.Enum when vector.StorageType == DuckDbBasicType.UTinyInt
+                                   && Match(type, typeof(byte)) => CreateForPrimitive<byte>(),
+            DuckDbBasicType.Enum when vector.StorageType == DuckDbBasicType.USmallInt
+                                   && Match(type, typeof(ushort)) => CreateForPrimitive<ushort>(),
+            DuckDbBasicType.Enum when vector.StorageType == DuckDbBasicType.UInteger
+                                   && Match(type, typeof(ulong)) => CreateForPrimitive<ulong>(),
 
             _ => default
         };
