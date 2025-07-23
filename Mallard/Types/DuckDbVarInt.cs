@@ -124,5 +124,5 @@ public readonly ref struct DuckDbVarInt
     internal unsafe static VectorElementConverter BoxedVectorElementConverter
         => VectorElementConverter.Create(&ConvertToBoxedBigIntegerFromVector);
     internal unsafe static VectorElementConverter NullableVectorElementConverter
-        => VectorElementConverter.Create(&ConvertToBoxedBigIntegerFromVector);
+        => VectorElementConverter.Create(&ConvertToNullableBigIntegerFromVector);
 }
