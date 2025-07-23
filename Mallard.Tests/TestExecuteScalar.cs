@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -77,4 +78,44 @@ public class TestExecuteScalar
             Check(buffer[..len], false);
         }
     }
+
+    [Fact]
+    public void BitString()
+    {
+        using var dbConn = new DuckDbConnection("");
+        using var ps = dbConn.CreatePreparedStatement("SELECT $1::BITSTRING");
+
+        Span<byte> buffer = stackalloc byte[512];
+        var random = new Random(Seed: 37);
+
+        // Generate bit strings of various lengths to test
+        foreach (int len in new[] { 1, 4, 7, 8, 15, 16, 1023, 1024, 1025 })
+        {
+            int numBytes = (len + 7) / 8;
+            random.NextBytes(buffer[..numBytes]);
+
+            // Mask off bits beyond the logical end of the bit string
+            if ((len & 7) != 0)
+                buffer[numBytes - 1] &= (byte)((1u << (len & 7)) - 1);
+
+            var bitArray = new BitArray(buffer[..numBytes].ToArray());
+
+            // Create a string for the value to send into SQL
+            ps.BindParameter(1, CreateStringFromBitArray(bitArray, 0, len));
+
+            var bitArray2 = ps.ExecuteValue<BitArray>();
+            Assert.NotNull(bitArray2);
+
+            // BitArray does not do structural equality, so convert to IEnumerable<bool> first 
+            Assert.Equal(bitArray.Cast<bool>().Take(len), bitArray2.Cast<bool>());
+        }
+    }
+
+    private static string CreateStringFromBitArray(BitArray a, int start, int length)
+        => string.Create(length, (a, start), static (buffer, state) =>
+        {
+            (BitArray a, int start) = state;
+            for (int i = 0; i < buffer.Length; ++i)
+                buffer[i] = a[i + start] ? '1' : '0';
+        });
 }

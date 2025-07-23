@@ -246,11 +246,11 @@ internal unsafe readonly struct DuckDbVectorInfo
 
             DuckDbBasicType.VarChar => typeof(T) == typeof(DuckDbString),
             DuckDbBasicType.VarInt => typeof(T) == typeof(DuckDbVarInt),
+            DuckDbBasicType.Bit => typeof(T) == typeof(DuckDbBitString),
 
             DuckDbBasicType.UHugeInt => typeof(T) == typeof(UInt128),
             DuckDbBasicType.HugeInt => typeof(T) == typeof(Int128),
             DuckDbBasicType.Blob => typeof(T) == typeof(DuckDbBlob),
-            DuckDbBasicType.Bit => typeof(T) == typeof(DuckDbBlob),
             DuckDbBasicType.Uuid => typeof(T) == typeof(UInt128),
             DuckDbBasicType.Decimal => typeof(T) == typeof(short) ||
                                        typeof(T) == typeof(int) ||

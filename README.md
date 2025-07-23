@@ -35,7 +35,7 @@ without intermediate copying or heavy conversions involving GC objects.  I think
 useful in applications involving machine learning or data science.  An ADO.NET-based interface would just 
 not be performant enough, and so I do not put high priority on it.
 
-## What works today (as of July 22, 2025)
+## What works today (as of July 23, 2025)
 
   - [X] Executing SQL queries and reading results incrementally
   - [X] Prepared statements with parameter binding
@@ -48,6 +48,7 @@ not be performant enough, and so I do not put high priority on it.
     - [X] decimals (DECIMAL → ``System.Decimal``)
     - [X] enumerations 
     - [X] strings (VARCHAR → ``System.String``)
+    - [X] bit strings (BITSTRING → ``System.Collections.BitArray``)
     - [X] variable-length lists (LIST → .NET array or ``System.Collections.ImmutableArray<T>``)
     - [X] date (DATE → ``System.Date``)
     - [X] timestamp (TIMESTAMP → ``System.DateTime``)
@@ -65,7 +66,6 @@ not be performant enough, and so I do not put high priority on it.
     - timestamps in units other than microseconds
     - STRUCT
     - arrays (fixed-length)
-    - bit-strings
   - Not all types whose values can be read (from DuckDB vectors) can be bound to parameters in prepared statements
   - ``System.Data`` (ADO.NET) -compatible interfaces
   - Caching of objects
