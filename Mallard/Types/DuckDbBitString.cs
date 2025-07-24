@@ -199,9 +199,9 @@ public readonly ref struct DuckDbBitString
         // Reverse the bits in each byte within a 64-bit word
         static ulong ReverseBitsInBytes(ulong v)
         {
-            v = ((v >> 1) & 0x5555555555555555UL) | ((v & 0x5555555555555555UL) << 1);
-            v = ((v >> 2) & 0x3333333333333333UL) | ((v & 0x3333333333333333UL) << 2);
-            v = ((v >> 4) & 0x0F0F0F0F0F0F0F0FUL) | ((v & 0x0F0F0F0F0F0F0F0FUL) << 4);
+            v = ((v >> 1) & 0x5555555555555555UL) | ((v & 0x5555555555555555UL) << 1);  // flip adjacent bits
+            v = ((v >> 2) & 0x3333333333333333UL) | ((v & 0x3333333333333333UL) << 2);  // flip adjacent pairs of bits
+            v = ((v >> 4) & 0x0F0F0F0F0F0F0F0FUL) | ((v & 0x0F0F0F0F0F0F0F0FUL) << 4);  // flip adjacent nibbles
             return v;
         }
 
