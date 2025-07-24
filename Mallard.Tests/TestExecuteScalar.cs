@@ -94,9 +94,10 @@ public class TestExecuteScalar
             int numBytes = (len + 7) / 8;
             random.NextBytes(buffer[..numBytes]);
 
-            // Mask off bits beyond the logical end of the bit string
-            if ((len & 7) != 0)
-                buffer[numBytes - 1] &= (byte)((1u << (len & 7)) - 1);
+            // Mask off bits beyond the logical end of the bit string.
+            // Does nothing if (len & 7) == 0, because shift amounts are masked,
+            // which is what we want.
+            buffer[numBytes - 1] &= (byte)(uint.MaxValue >> (32 - (len & 7)));
 
             var bitArray = new BitArray(buffer[..numBytes].ToArray());
 

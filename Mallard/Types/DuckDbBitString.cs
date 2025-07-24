@@ -229,7 +229,9 @@ public readonly ref struct DuckDbBitString
             v = w >> slackBits;
         }
 
-        // Mask off unused bits
+        // Mask off unused bits.  N.B. the shift amount on ulong is always masked with
+        // 0x3F (== 63 == BitsPerWord-1) in .NET, so this line does no masking if
+        // length & (BitsPerWord-1) == 0, which is what we want.
         v &= ulong.MaxValue >> (BitsPerWord - (length & (BitsPerWord - 1)));
 
         // Write out the last word
