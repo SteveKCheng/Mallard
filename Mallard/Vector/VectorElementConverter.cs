@@ -310,6 +310,8 @@ internal unsafe readonly partial struct VectorElementConverter
             DuckDbBasicType.VarInt when Match(type, typeof(BigInteger)) => DuckDbVarInt.VectorElementConverter,
             DuckDbBasicType.Bit when Match(type, typeof(BitArray)) => DuckDbBitString.VectorElementConverter,
 
+            DuckDbBasicType.Blob when Match(type, typeof(byte[])) => DuckDbBlob.VectorElementConverter,
+
             DuckDbBasicType.UHugeInt when Match(type, typeof(UInt128)) => CreateForPrimitive<UInt128>(),
             DuckDbBasicType.HugeInt when Match(type, typeof(Int128)) => CreateForPrimitive<Int128>(),
 

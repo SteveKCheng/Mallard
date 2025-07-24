@@ -49,6 +49,7 @@ not be performant enough, and so I do not put high priority on it.
     - [X] enumerations 
     - [X] strings (VARCHAR → ``System.String``)
     - [X] bit strings (BITSTRING → ``System.Collections.BitArray``)
+    - [X] blobs (BLOB → ``byte[]``)
     - [X] variable-length lists (LIST → .NET array or ``System.Collections.ImmutableArray<T>``)
     - [X] date (DATE → ``System.Date``)
     - [X] timestamp (TIMESTAMP → ``System.DateTime``)

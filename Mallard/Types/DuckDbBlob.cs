@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -78,6 +79,16 @@ public unsafe ref struct DuckDbBlob
 
         return new ReadOnlySpan<byte>(p, checked((int)blob._length));
     }
+
+    #region Vector element converter
+
+    private static byte[] ConvertToByteArrayFromVector(object? state, in DuckDbVectorInfo vector, int index)
+        => vector.UnsafeRead<DuckDbBlob>(index).AsSpan().ToArray();
+
+    internal unsafe static VectorElementConverter VectorElementConverter
+        => VectorElementConverter.Create(&ConvertToByteArrayFromVector);
+
+    #endregion
 }
 
 public static partial class DuckDbVectorMethods
