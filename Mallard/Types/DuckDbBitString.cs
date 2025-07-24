@@ -142,7 +142,7 @@ public readonly ref struct DuckDbBitString
     /// <summary>
     /// Copy out the consecutive bits in the bit string.
     /// </summary>
-    /// <param name="buffer">
+    /// <param name="destination">
     /// Buffer to store the extracted bits.  Little-endian encoding is used.
     /// </param>
     /// <param name="offset">
@@ -152,7 +152,7 @@ public readonly ref struct DuckDbBitString
     /// The number of bits to extract.
     /// </param>
     /// <returns>
-    /// Number of bytes written to the beginning of <paramref name="buffer" />.
+    /// Number of bytes written to the beginning of <paramref name="destination" />.
     /// </returns>
     /// <remarks>
     /// This method is an efficient alternative to converting the data to 
@@ -161,26 +161,26 @@ public readonly ref struct DuckDbBitString
     /// <exception cref="IndexOutOfRangeException">
     /// The requested range of bits to extract is out of range for this bit string.
     /// </exception>
-    public int GetSegment(Span<byte> buffer, int offset, int length)
+    public int GetSegment(Span<byte> destination, int offset, int length)
     {
         const int BitsPerByte = 8;
         const int BitsPerWord = BitsPerByte * sizeof(ulong);
 
-        var span = _blob.AsSpan();
-        int numPaddingBits = buffer[0];
-        int totalNumBits = BitsPerByte * (buffer.Length - 1) - numPaddingBits;
+        var source = _blob.AsSpan();
+        int numPaddingBits = source[0];
+        int totalSourceBits = BitsPerByte * (source.Length - 1) - numPaddingBits;
         
-        if (offset < 0 || offset >= totalNumBits)
+        if (offset < 0 || offset >= totalSourceBits)
             throw new IndexOutOfRangeException("Index is out of range for this bit string. ");
 
-        if (length < 0 || offset + length >= totalNumBits)
+        if (length < 0 || offset + length >= totalSourceBits)
             throw new IndexOutOfRangeException("The given length plus offset extends beyond the end of this bit string. ");
 
         if (length == 0)
             return 0;
 
         int countBytes = (length + (BitsPerByte - 1)) / BitsPerByte;
-        if (buffer.Length < countBytes)
+        if (destination.Length < countBytes)
             throw new ArgumentException("The buffer is inadequately sized for the requested output. ");
 
         // Read a 64-bit word, unaligned from "bytes".  If the buffer is too short, 
@@ -206,27 +206,27 @@ public readonly ref struct DuckDbBitString
         }
 
         int sourceIndex = offset + numPaddingBits;
-        int slackBits = sourceIndex & (BitsPerByte - 1);
+        int numSlackBits = sourceIndex & (BitsPerByte - 1);
 
         // Read first word, and then shift out bits that are located before desired offset
-        span = span[(sourceIndex / BitsPerByte + 1)..]; // +1 is to skip past header byte
-        ulong v = ReverseBitsInBytes(ReadWord(span)) >> slackBits;
+        source = source[(sourceIndex / BitsPerByte + 1)..]; // +1 is to skip past header byte
+        ulong v = ReverseBitsInBytes(ReadWord(source)) >> numSlackBits;
 
         // Process subsequent words
         int i;
         for (i = sizeof(ulong); i < countBytes; i += sizeof(ulong))
         {
-            ulong w = ReverseBitsInBytes(ReadWord(span[i..]));
+            ulong w = ReverseBitsInBytes(ReadWord(source[i..]));
 
             // Paste in low bits from current word into high bits of previous word
             // that are missing
-            v |= w << (BitsPerWord - slackBits);
+            v |= w << (BitsPerWord - numSlackBits);
 
             // Write out the previous word to the output
-            BinaryPrimitives.WriteUInt64LittleEndian(buffer[(i - sizeof(ulong))..], v);
+            BinaryPrimitives.WriteUInt64LittleEndian(destination[(i - sizeof(ulong))..], v);
 
             // Shift out bits for the next iteration
-            v = w >> slackBits;
+            v = w >> numSlackBits;
         }
 
         // Mask off unused bits.  N.B. the shift amount on ulong is always masked with
@@ -237,7 +237,7 @@ public readonly ref struct DuckDbBitString
         // Write out the last word
         for (i -= sizeof(ulong); i < countBytes; ++i)
         {
-            buffer[i] = (byte)(v & 0xFFUL);
+            destination[i] = (byte)(v & 0xFFUL);
             v >>= BitsPerByte;
         }
 
