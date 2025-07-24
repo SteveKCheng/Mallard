@@ -1,7 +1,7 @@
 ﻿using System;
+using System.Buffers.Binary;
 using System.Collections;
 using System.Diagnostics;
-using System.Numerics;
 using System.Runtime.InteropServices;
 
 namespace Mallard;
@@ -137,6 +137,109 @@ public readonly ref struct DuckDbBitString
             int len = (buffer.Length - 1) * 8 - numPaddingBits;
             return len;
         }
+    }
+
+    /// <summary>
+    /// Copy out the consecutive bits in the bit string.
+    /// </summary>
+    /// <param name="buffer">
+    /// Buffer to store the extracted bits.  Little-endian encoding is used.
+    /// </param>
+    /// <param name="offset">
+    /// The zero-based index of the position to start extracting bits.
+    /// </param>
+    /// <param name="length">
+    /// The number of bits to extract.
+    /// </param>
+    /// <returns>
+    /// Number of bytes written to the beginning of <paramref name="buffer" />.
+    /// </returns>
+    /// <remarks>
+    /// This method is an efficient alternative to converting the data to 
+    /// <see cref="BitArray" />.
+    /// </remarks>
+    /// <exception cref="IndexOutOfRangeException">
+    /// The requested range of bits to extract is out of range for this bit string.
+    /// </exception>
+    public int GetSegment(Span<byte> buffer, int offset, int length)
+    {
+        const int BitsPerByte = 8;
+        const int BitsPerWord = BitsPerByte * sizeof(ulong);
+
+        var span = _blob.AsSpan();
+        int numPaddingBits = buffer[0];
+        int totalNumBits = BitsPerByte * (buffer.Length - 1) - numPaddingBits;
+        
+        if (offset < 0 || offset >= totalNumBits)
+            throw new IndexOutOfRangeException("Index is out of range for this bit string. ");
+
+        if (length < 0 || offset + length >= totalNumBits)
+            throw new IndexOutOfRangeException("The given length plus offset extends beyond the end of this bit string. ");
+
+        if (length == 0)
+            return 0;
+
+        int countBytes = (length + (BitsPerByte - 1)) / BitsPerByte;
+        if (buffer.Length < countBytes)
+            throw new ArgumentException("The buffer is inadequately sized for the requested output. ");
+
+        // Read a 64-bit word, unaligned from "bytes".  If the buffer is too short, 
+        // read the word as if the buffer were extended at the end with bytes of zeroes. 
+        static ulong ReadWord(ReadOnlySpan<byte> bytes)
+        {
+            if (bytes.Length >= sizeof(ulong))
+                return BinaryPrimitives.ReadUInt64LittleEndian(bytes);
+
+            ulong v = 0;
+            for (int i = 0; i < bytes.Length; ++i)
+                v |= (ulong)bytes[i] << (i * BitsPerByte);
+            return v;
+        }
+
+        // Reverse the bits in each byte within a 64-bit word
+        static ulong ReverseBitsInBytes(ulong v)
+        {
+            v = ((v >> 1) & 0x5555555555555555UL) | ((v & 0x5555555555555555UL) << 1);
+            v = ((v >> 2) & 0x3333333333333333UL) | ((v & 0x3333333333333333UL) << 2);
+            v = ((v >> 4) & 0x0F0F0F0F0F0F0F0FUL) | ((v & 0x0F0F0F0F0F0F0F0FUL) << 4);
+            return v;
+        }
+
+        int sourceIndex = offset + numPaddingBits;
+        int slackBits = sourceIndex & (BitsPerByte - 1);
+
+        // Read first word, and then shift out bits that are located before desired offset
+        span = span[(sourceIndex / BitsPerByte + 1)..]; // +1 is to skip past header byte
+        ulong v = ReverseBitsInBytes(ReadWord(span)) >> slackBits;
+
+        // Process subsequent words
+        int i;
+        for (i = sizeof(ulong); i < countBytes; i += sizeof(ulong))
+        {
+            ulong w = ReverseBitsInBytes(ReadWord(span[i..]));
+
+            // Paste in low bits from current word into high bits of previous word
+            // that are missing
+            v |= w << (BitsPerWord - slackBits);
+
+            // Write out the previous word to the output
+            BinaryPrimitives.WriteUInt64LittleEndian(buffer[(i - sizeof(ulong))..], v);
+
+            // Shift out bits for the next iteration
+            v = w >> slackBits;
+        }
+
+        // Mask off unused bits
+        v &= ulong.MaxValue >> (BitsPerWord - (length & (BitsPerWord - 1)));
+
+        // Write out the last word
+        for (i -= sizeof(ulong); i < countBytes; ++i)
+        {
+            buffer[i] = (byte)(v & 0xFFUL);
+            v >>= BitsPerByte;
+        }
+
+        return countBytes;
     }
 
     #region Vector element converter
