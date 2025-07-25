@@ -207,6 +207,15 @@ public readonly ref struct DuckDbBitString
             return v;
         }
 
+        static byte ReverseBitsInByte(byte v)
+        {
+            uint w = v;
+            w = ((w >> 1) & 0x55U) | ((w & 0x55U) << 1);
+            w = ((w >> 2) & 0x33U) | ((w & 0x33U) << 2);
+            w = ((w >> 4) & 0x0FU) | ((w & 0x0FU) << 4);
+            return (byte)w;
+        }
+
         int sourceIndex = offset + numPaddingBits;
         int numSlackBits = sourceIndex & (BitsPerByte - 1);
 
@@ -231,10 +240,15 @@ public readonly ref struct DuckDbBitString
             v = w >> numSlackBits;
         }
 
-        // Mask off unused bits.  N.B. the shift amount on ulong is always masked with
-        // 0x3F (== 63 == BitsPerWord-1) in .NET, so this line does no masking if
-        // length & (BitsPerWord-1) == 0, which is what we want.
-        v &= ulong.MaxValue >> (BitsPerWord - (length & (BitsPerWord - 1)));
+        int numBitsToMaskOut = (BitsPerWord - (length & (BitsPerWord - 1))) & ~BitsPerWord;
+
+        // Need to read one more source byte if slack bits in the last word do not get masked off.
+        // We do not read unconditionally to avoid edge case of reading past the end of the source span.
+        if (numSlackBits > numBitsToMaskOut)
+            v |= (ulong)ReverseBitsInByte(source[i]) << (BitsPerWord - numSlackBits);
+
+        // Mask off unused bits in the last word.
+        v &= ulong.MaxValue >> numBitsToMaskOut;
 
         // Write out the last word
         for (i -= sizeof(ulong); i < countBytes; ++i)
