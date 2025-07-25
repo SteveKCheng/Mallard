@@ -37,7 +37,7 @@ public readonly ref struct DuckDbString
     private static string ReadStringFromVector(object? state, in DuckDbVectorInfo vector, int index)
         => vector.UnsafeRead<DuckDbString>(index).ToString();
 
-    internal unsafe static VectorElementConverter VectorElementConverter 
+    internal unsafe static VectorElementConverter VectorElementConverter
         => VectorElementConverter.Create(&ReadStringFromVector);
 
     /// <summary>
