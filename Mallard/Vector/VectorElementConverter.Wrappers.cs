@@ -12,33 +12,33 @@ internal readonly partial struct VectorElementConverter
     private static VectorElementConverter
         CreateForBoxedType(in DuckDbVectorInfo vector)
     {
-        var converter = vector.BasicType switch
+        var converter = vector.ValueKind switch
         {
-            DuckDbBasicType.Boolean => CreateForBoxedPrimitive<bool>(),
+            DuckDbValueKind.Boolean => CreateForBoxedPrimitive<bool>(),
 
-            DuckDbBasicType.TinyInt => CreateForBoxedPrimitive<sbyte>(),
-            DuckDbBasicType.SmallInt => CreateForBoxedPrimitive<short>(),
-            DuckDbBasicType.Integer => CreateForBoxedPrimitive<int>(),
-            DuckDbBasicType.BigInt => CreateForBoxedPrimitive<long>(),
+            DuckDbValueKind.TinyInt => CreateForBoxedPrimitive<sbyte>(),
+            DuckDbValueKind.SmallInt => CreateForBoxedPrimitive<short>(),
+            DuckDbValueKind.Integer => CreateForBoxedPrimitive<int>(),
+            DuckDbValueKind.BigInt => CreateForBoxedPrimitive<long>(),
 
-            DuckDbBasicType.UTinyInt => CreateForBoxedPrimitive<byte>(),
-            DuckDbBasicType.USmallInt => CreateForBoxedPrimitive<ushort>(),
-            DuckDbBasicType.UInteger => CreateForBoxedPrimitive<uint>(),
-            DuckDbBasicType.UBigInt => CreateForBoxedPrimitive<ulong>(),
+            DuckDbValueKind.UTinyInt => CreateForBoxedPrimitive<byte>(),
+            DuckDbValueKind.USmallInt => CreateForBoxedPrimitive<ushort>(),
+            DuckDbValueKind.UInteger => CreateForBoxedPrimitive<uint>(),
+            DuckDbValueKind.UBigInt => CreateForBoxedPrimitive<ulong>(),
 
-            DuckDbBasicType.Float => CreateForBoxedPrimitive<float>(),
-            DuckDbBasicType.Double => CreateForBoxedPrimitive<double>(),
+            DuckDbValueKind.Float => CreateForBoxedPrimitive<float>(),
+            DuckDbValueKind.Double => CreateForBoxedPrimitive<double>(),
 
-            DuckDbBasicType.Date => CreateForBoxedPrimitive<DuckDbDate>(),
-            DuckDbBasicType.Timestamp => CreateForBoxedPrimitive<DuckDbTimestamp>(),
+            DuckDbValueKind.Date => CreateForBoxedPrimitive<DuckDbDate>(),
+            DuckDbValueKind.Timestamp => CreateForBoxedPrimitive<DuckDbTimestamp>(),
 
-            DuckDbBasicType.Interval => CreateForBoxedPrimitive<DuckDbInterval>(),
+            DuckDbValueKind.Interval => CreateForBoxedPrimitive<DuckDbInterval>(),
 
-            DuckDbBasicType.UHugeInt => CreateForBoxedPrimitive<UInt128>(),
-            DuckDbBasicType.HugeInt => CreateForBoxedPrimitive<Int128>(),
+            DuckDbValueKind.UHugeInt => CreateForBoxedPrimitive<UInt128>(),
+            DuckDbValueKind.HugeInt => CreateForBoxedPrimitive<Int128>(),
 
-            DuckDbBasicType.Decimal => DuckDbDecimal.GetBoxedVectorElementConverter(vector),
-            DuckDbBasicType.VarInt => DuckDbVarInt.BoxedVectorElementConverter,
+            DuckDbValueKind.Decimal => DuckDbDecimal.GetBoxedVectorElementConverter(vector),
+            DuckDbValueKind.VarInt => DuckDbVarInt.BoxedVectorElementConverter,
 
             _ => default
         };
@@ -102,33 +102,33 @@ internal readonly partial struct VectorElementConverter
     private static VectorElementConverter
         CreateForNullableType(Type underlyingType, in DuckDbVectorInfo vector)
     {
-        var converter = vector.BasicType switch
+        var converter = vector.ValueKind switch
         {
-            DuckDbBasicType.Boolean => CreateForNullablePrimitive<bool>(),
+            DuckDbValueKind.Boolean => CreateForNullablePrimitive<bool>(),
 
-            DuckDbBasicType.TinyInt => CreateForNullablePrimitive<sbyte>(),
-            DuckDbBasicType.SmallInt => CreateForNullablePrimitive<short>(),
-            DuckDbBasicType.Integer => CreateForNullablePrimitive<int>(),
-            DuckDbBasicType.BigInt => CreateForNullablePrimitive<long>(),
+            DuckDbValueKind.TinyInt => CreateForNullablePrimitive<sbyte>(),
+            DuckDbValueKind.SmallInt => CreateForNullablePrimitive<short>(),
+            DuckDbValueKind.Integer => CreateForNullablePrimitive<int>(),
+            DuckDbValueKind.BigInt => CreateForNullablePrimitive<long>(),
 
-            DuckDbBasicType.UTinyInt => CreateForNullablePrimitive<byte>(),
-            DuckDbBasicType.USmallInt => CreateForNullablePrimitive<ushort>(),
-            DuckDbBasicType.UInteger => CreateForNullablePrimitive<uint>(),
-            DuckDbBasicType.UBigInt => CreateForNullablePrimitive<ulong>(),
+            DuckDbValueKind.UTinyInt => CreateForNullablePrimitive<byte>(),
+            DuckDbValueKind.USmallInt => CreateForNullablePrimitive<ushort>(),
+            DuckDbValueKind.UInteger => CreateForNullablePrimitive<uint>(),
+            DuckDbValueKind.UBigInt => CreateForNullablePrimitive<ulong>(),
 
-            DuckDbBasicType.Float => CreateForNullablePrimitive<float>(),
-            DuckDbBasicType.Double => CreateForNullablePrimitive<double>(),
+            DuckDbValueKind.Float => CreateForNullablePrimitive<float>(),
+            DuckDbValueKind.Double => CreateForNullablePrimitive<double>(),
 
-            DuckDbBasicType.Date => CreateForNullablePrimitive<DuckDbDate>(),
-            DuckDbBasicType.Timestamp => CreateForNullablePrimitive<DuckDbTimestamp>(),
+            DuckDbValueKind.Date => CreateForNullablePrimitive<DuckDbDate>(),
+            DuckDbValueKind.Timestamp => CreateForNullablePrimitive<DuckDbTimestamp>(),
 
-            DuckDbBasicType.Interval => CreateForNullablePrimitive<DuckDbInterval>(),
+            DuckDbValueKind.Interval => CreateForNullablePrimitive<DuckDbInterval>(),
 
-            DuckDbBasicType.UHugeInt => CreateForNullablePrimitive<UInt128>(),
-            DuckDbBasicType.HugeInt => CreateForNullablePrimitive<Int128>(),
+            DuckDbValueKind.UHugeInt => CreateForNullablePrimitive<UInt128>(),
+            DuckDbValueKind.HugeInt => CreateForNullablePrimitive<Int128>(),
 
-            DuckDbBasicType.Decimal => DuckDbDecimal.GetNullableVectorElementConverter(vector),
-            DuckDbBasicType.VarInt => DuckDbVarInt.NullableVectorElementConverter,
+            DuckDbValueKind.Decimal => DuckDbDecimal.GetNullableVectorElementConverter(vector),
+            DuckDbValueKind.VarInt => DuckDbVarInt.NullableVectorElementConverter,
 
             _ => default
         };

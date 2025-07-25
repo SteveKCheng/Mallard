@@ -177,7 +177,7 @@ public unsafe class DuckDbCommand : IDisposable
         return NativeMethods.duckdb_parameter_name(_nativeStatement, index);
     }
 
-    public DuckDbBasicType GetParameterBasicType(int index)
+    public DuckDbValueKind GetParameterValueKind(int index)
     {
         ThrowIfParamIndexOutOfRange(index);
 

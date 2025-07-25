@@ -28,7 +28,7 @@ public unsafe sealed class DuckDbResult : IDisposable
     {
         public string Name { get; init; }
 
-        public DuckDbBasicType BasicType { get; init; }
+        public DuckDbValueKind ValueKind { get; init; }
     }
 
     /// <summary>
@@ -122,8 +122,8 @@ public unsafe sealed class DuckDbResult : IDisposable
                 if (nativeVector == null)
                     return default;
 
-                var basicType = NativeMethods.duckdb_column_type(ref nativeResult, 0);
-                var vectorInfo = new DuckDbVectorInfo(nativeVector, basicType, length);
+                var valueKind = NativeMethods.duckdb_column_type(ref nativeResult, 0);
+                var vectorInfo = new DuckDbVectorInfo(nativeVector, valueKind, length);
 
                 var reader = new DuckDbVectorReader<T>(vectorInfo);
                 bool isValid = reader.TryGetItem(0, out var item);
@@ -161,7 +161,7 @@ public unsafe sealed class DuckDbResult : IDisposable
             _columnInfo[i] = new ColumnInfo
             {
                 Name = NativeMethods.duckdb_column_name(ref _nativeResult, i),
-                BasicType = NativeMethods.duckdb_column_type(ref _nativeResult, i)
+                ValueKind = NativeMethods.duckdb_column_type(ref _nativeResult, i)
             };
         }
 
@@ -441,7 +441,7 @@ public unsafe sealed class DuckDbResult : IDisposable
 
     public string GetColumnName(int columnIndex) => _columnInfo[columnIndex].Name;
 
-    public DuckDbBasicType GetColumnBasicType(int columnIndex) => _columnInfo[columnIndex].BasicType;
+    public DuckDbValueKind GetColumnValueKind(int columnIndex) => _columnInfo[columnIndex].ValueKind;
 }
 
 public unsafe class DuckDbResultChunk : IDisposable

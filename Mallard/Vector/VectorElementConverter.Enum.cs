@@ -99,9 +99,9 @@ internal sealed class EnumConverter
     internal static VectorElementConverter CreateElementConverter(in DuckDbVectorInfo vector, Type enumType)
         => vector.StorageType switch
            {
-               DuckDbBasicType.UTinyInt => CreateStage1<byte>(vector, enumType),
-               DuckDbBasicType.USmallInt => CreateStage1<ushort>(vector, enumType),
-               DuckDbBasicType.UInteger => CreateStage1<uint>(vector, enumType),
+               DuckDbValueKind.UTinyInt => CreateStage1<byte>(vector, enumType),
+               DuckDbValueKind.USmallInt => CreateStage1<ushort>(vector, enumType),
+               DuckDbValueKind.UInteger => CreateStage1<uint>(vector, enumType),
                _ => throw new InvalidOperationException("Cannot decode enumeration from a DuckDB vector with the given storage type. ")
            };
 }

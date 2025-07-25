@@ -207,7 +207,7 @@ internal unsafe static partial class NativeMethods
     internal static partial string duckdb_column_name(ref duckdb_result result, idx_t col);
 
     [LibraryImport(LibraryName)]
-    internal static partial DuckDbBasicType duckdb_column_type(ref duckdb_result result, idx_t col);
+    internal static partial DuckDbValueKind duckdb_column_type(ref duckdb_result result, idx_t col);
 
     [LibraryImport(LibraryName)]
     internal static partial idx_t duckdb_rows_changed(ref duckdb_result result);
@@ -280,7 +280,7 @@ internal unsafe static partial class NativeMethods
     internal static partial string duckdb_parameter_name(_duckdb_prepared_statement* parepared_statement, idx_t index);
 
     [LibraryImport(LibraryName)]
-    internal static partial DuckDbBasicType duckdb_param_type(_duckdb_prepared_statement* parepared_statement, idx_t param_idx);
+    internal static partial DuckDbValueKind duckdb_param_type(_duckdb_prepared_statement* parepared_statement, idx_t param_idx);
 
     [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
     internal static partial duckdb_state duckdb_bind_parameter_index(_duckdb_prepared_statement* prepared_statement,
@@ -300,7 +300,7 @@ internal unsafe static partial class NativeMethods
     internal static partial void duckdb_destroy_logical_type(ref _duckdb_logical_type* type);
 
     [LibraryImport(LibraryName)]
-    internal static partial DuckDbBasicType duckdb_get_type_id(_duckdb_logical_type* type);
+    internal static partial DuckDbValueKind duckdb_get_type_id(_duckdb_logical_type* type);
 
     [LibraryImport(LibraryName)]
     internal static partial byte duckdb_decimal_width(_duckdb_logical_type* type);
@@ -309,10 +309,10 @@ internal unsafe static partial class NativeMethods
     internal static partial byte duckdb_decimal_scale(_duckdb_logical_type* type);
 
     [LibraryImport(LibraryName)]
-    internal static partial DuckDbBasicType duckdb_decimal_internal_type(_duckdb_logical_type* type);
+    internal static partial DuckDbValueKind duckdb_decimal_internal_type(_duckdb_logical_type* type);
 
     [LibraryImport(LibraryName)]
-    internal static partial DuckDbBasicType duckdb_enum_internal_type(_duckdb_logical_type* type);
+    internal static partial DuckDbValueKind duckdb_enum_internal_type(_duckdb_logical_type* type);
 
     [LibraryImport(LibraryName)]
     internal static partial uint duckdb_enum_dictionary_size(_duckdb_logical_type* type);

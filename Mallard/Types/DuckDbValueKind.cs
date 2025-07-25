@@ -1,6 +1,6 @@
 ﻿namespace Mallard;
 
-public enum DuckDbBasicType : int
+public enum DuckDbValueKind : int
 {
     Invalid = 0,
 

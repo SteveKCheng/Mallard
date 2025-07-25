@@ -15,7 +15,7 @@ namespace Mallard;
 ///     <description>Corresponding .NET types</description>
 ///   </listheader>
 ///   <item>
-///     <term><see cref="DuckDbBasicType.Boolean"/></term>
+///     <term><see cref="DuckDbValueKind.Boolean"/></term>
 ///     <description><see cref="System.Byte"/></description>
 ///   </item>
 ///   <item>
@@ -42,8 +42,8 @@ namespace Mallard;
 /// </para>
 /// <para>
 /// This "raw" data may be difficult to consume, particularly for elements that are 
-/// higher-level like <see cref="DuckDbBasicType.Decimal" /> or nested ones like
-/// <see cref="DuckDbBasicType.List" />.  Results that are easier to consume can
+/// higher-level like <see cref="DuckDbValueKind.Decimal" /> or nested ones like
+/// <see cref="DuckDbValueKind.List" />.  Results that are easier to consume can
 /// be produced by the non-raw <see cref="DuckDbVectorReader{T}" /> instead
 /// at the expense of some efficiency.
 /// </para>
@@ -65,7 +65,7 @@ public readonly ref struct DuckDbVectorRawReader<T> : IDuckDbVector<T>
     {
         _info = info;
         if (!ValidateParamType(_info.StorageType))
-            DuckDbVectorInfo.ThrowForWrongParamType(_info.BasicType, _info.StorageType, typeof(T));
+            DuckDbVectorInfo.ThrowForWrongParamType(_info.ValueKind, _info.StorageType, typeof(T));
     }
 
     /// <inheritdoc cref="IDuckDbVector.ValidityMask" />
@@ -79,7 +79,7 @@ public readonly ref struct DuckDbVectorRawReader<T> : IDuckDbVector<T>
 
     /// <summary>
     /// The number of digits after the decimal point, when the logical type is
-    /// <see cref="DuckDbBasicType.Decimal" />.
+    /// <see cref="DuckDbValueKind.Decimal" />.
     /// </summary>
     /// <remarks>
     /// Set to zero if inapplicable. 
@@ -91,15 +91,15 @@ public readonly ref struct DuckDbVectorRawReader<T> : IDuckDbVector<T>
     /// data array obtained from DuckDB.
     /// </summary>
     /// <typeparam name="T">The .NET type to check. </typeparam>
-    /// <param name="basicType">The basic type of the DuckDB data array
+    /// <param name="valueKind">The basic type of the DuckDB data array
     /// desired to be accessed. </param>
     /// <returns>
     /// True if the .NET type is correct; false if incorrect or
-    /// the <paramref name="basicType" /> does not refer to data
+    /// the <paramref name="valueKind" /> does not refer to data
     /// that can be directly interpreted from .NET.
     /// </returns>
-    public static bool ValidateParamType(DuckDbBasicType basicType)
-        => DuckDbVectorInfo.ValidateElementType<T>(basicType);
+    public static bool ValidateParamType(DuckDbValueKind valueKind)
+        => DuckDbVectorInfo.ValidateElementType<T>(valueKind);
 
     /// <summary>
     /// Same as <see cref="GetItem" />: retrieve a valid element of this vector.

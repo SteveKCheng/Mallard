@@ -280,57 +280,57 @@ internal unsafe readonly partial struct VectorElementConverter
         static bool Match(Type? type, Type target)
             => type == null || type == target;
 
-        return vector.BasicType switch
+        return vector.ValueKind switch
         {
             // Fortunately "bool" is considered an unmanaged type (of one byte), even though
             // P/Invoke marshalling does not treat it as such (because BOOL in the Win32 API is a 32-bit integer).
             // Strictly speaking, the C language does not define its "bool" (or "_Bool") type as one byte,
             // but common ABIs make it so, to be compatible with C++.
-            DuckDbBasicType.Boolean when Match(type, typeof(bool)) => CreateForPrimitive<bool>(),
+            DuckDbValueKind.Boolean when Match(type, typeof(bool)) => CreateForPrimitive<bool>(),
 
-            DuckDbBasicType.TinyInt when Match(type, typeof(sbyte)) => CreateForPrimitive<sbyte>(),
-            DuckDbBasicType.SmallInt when Match(type, typeof(short)) => CreateForPrimitive<short>(),
-            DuckDbBasicType.Integer when Match(type, typeof(int)) => CreateForPrimitive<int>(),
-            DuckDbBasicType.BigInt when Match(type, typeof(long)) => CreateForPrimitive<long>(),
+            DuckDbValueKind.TinyInt when Match(type, typeof(sbyte)) => CreateForPrimitive<sbyte>(),
+            DuckDbValueKind.SmallInt when Match(type, typeof(short)) => CreateForPrimitive<short>(),
+            DuckDbValueKind.Integer when Match(type, typeof(int)) => CreateForPrimitive<int>(),
+            DuckDbValueKind.BigInt when Match(type, typeof(long)) => CreateForPrimitive<long>(),
 
-            DuckDbBasicType.UTinyInt when Match(type, typeof(byte)) => CreateForPrimitive<byte>(),
-            DuckDbBasicType.USmallInt when Match(type, typeof(ushort)) => CreateForPrimitive<ushort>(),
-            DuckDbBasicType.UInteger when Match(type, typeof(uint)) => CreateForPrimitive<uint>(),
-            DuckDbBasicType.UBigInt when Match(type, typeof(ulong)) => CreateForPrimitive<ulong>(),
+            DuckDbValueKind.UTinyInt when Match(type, typeof(byte)) => CreateForPrimitive<byte>(),
+            DuckDbValueKind.USmallInt when Match(type, typeof(ushort)) => CreateForPrimitive<ushort>(),
+            DuckDbValueKind.UInteger when Match(type, typeof(uint)) => CreateForPrimitive<uint>(),
+            DuckDbValueKind.UBigInt when Match(type, typeof(ulong)) => CreateForPrimitive<ulong>(),
 
-            DuckDbBasicType.Float when Match(type, typeof(float)) => CreateForPrimitive<float>(),
-            DuckDbBasicType.Double when Match(type, typeof(double)) => CreateForPrimitive<double>(),
+            DuckDbValueKind.Float when Match(type, typeof(float)) => CreateForPrimitive<float>(),
+            DuckDbValueKind.Double when Match(type, typeof(double)) => CreateForPrimitive<double>(),
 
-            DuckDbBasicType.Date when Match(type, typeof(DuckDbDate)) => CreateForPrimitive<DuckDbDate>(),
-            DuckDbBasicType.Timestamp when Match(type, typeof(DuckDbTimestamp)) => CreateForPrimitive<DuckDbTimestamp>(),
+            DuckDbValueKind.Date when Match(type, typeof(DuckDbDate)) => CreateForPrimitive<DuckDbDate>(),
+            DuckDbValueKind.Timestamp when Match(type, typeof(DuckDbTimestamp)) => CreateForPrimitive<DuckDbTimestamp>(),
 
-            DuckDbBasicType.Interval when Match(type, typeof(DuckDbInterval)) => CreateForPrimitive<DuckDbInterval>(),
+            DuckDbValueKind.Interval when Match(type, typeof(DuckDbInterval)) => CreateForPrimitive<DuckDbInterval>(),
 
-            DuckDbBasicType.VarChar when Match(type, typeof(string)) => DuckDbString.VectorElementConverter,
-            DuckDbBasicType.VarInt when Match(type, typeof(BigInteger)) => DuckDbVarInt.VectorElementConverter,
-            DuckDbBasicType.Bit when Match(type, typeof(BitArray)) => DuckDbBitString.VectorElementConverter,
+            DuckDbValueKind.VarChar when Match(type, typeof(string)) => DuckDbString.VectorElementConverter,
+            DuckDbValueKind.VarInt when Match(type, typeof(BigInteger)) => DuckDbVarInt.VectorElementConverter,
+            DuckDbValueKind.Bit when Match(type, typeof(BitArray)) => DuckDbBitString.VectorElementConverter,
 
-            DuckDbBasicType.Blob when Match(type, typeof(byte[])) => DuckDbBlob.VectorElementConverter,
+            DuckDbValueKind.Blob when Match(type, typeof(byte[])) => DuckDbBlob.VectorElementConverter,
 
-            DuckDbBasicType.UHugeInt when Match(type, typeof(UInt128)) => CreateForPrimitive<UInt128>(),
-            DuckDbBasicType.HugeInt when Match(type, typeof(Int128)) => CreateForPrimitive<Int128>(),
+            DuckDbValueKind.UHugeInt when Match(type, typeof(UInt128)) => CreateForPrimitive<UInt128>(),
+            DuckDbValueKind.HugeInt when Match(type, typeof(Int128)) => CreateForPrimitive<Int128>(),
 
-            DuckDbBasicType.Decimal when Match(type, typeof(Decimal)) => DuckDbDecimal.GetVectorElementConverter(vector),
+            DuckDbValueKind.Decimal when Match(type, typeof(Decimal)) => DuckDbDecimal.GetVectorElementConverter(vector),
 
             // N.B. This matches only T[] and not arbitrary System.Array objects
             // (with arbitrary ranks and lower/upper bounds)
-            DuckDbBasicType.List when type == null || type.IsArray 
+            DuckDbValueKind.List when type == null || type.IsArray 
                 => ListConverter.ConstructForArray(type?.GetElementType(), vector),
 
-            DuckDbBasicType.List when type.GetGenericUnderlyingType(typeof(ImmutableArray<>)) is Type elementType
+            DuckDbValueKind.List when type.GetGenericUnderlyingType(typeof(ImmutableArray<>)) is Type elementType
                 => ListConverter.ConstructForImmutableArray(elementType, vector),
 
-            DuckDbBasicType.Enum when type != null && type.IsEnum => EnumConverter.CreateElementConverter(vector, type),
-            DuckDbBasicType.Enum when vector.StorageType == DuckDbBasicType.UTinyInt
+            DuckDbValueKind.Enum when type != null && type.IsEnum => EnumConverter.CreateElementConverter(vector, type),
+            DuckDbValueKind.Enum when vector.StorageType == DuckDbValueKind.UTinyInt
                                    && Match(type, typeof(byte)) => CreateForPrimitive<byte>(),
-            DuckDbBasicType.Enum when vector.StorageType == DuckDbBasicType.USmallInt
+            DuckDbValueKind.Enum when vector.StorageType == DuckDbValueKind.USmallInt
                                    && Match(type, typeof(ushort)) => CreateForPrimitive<ushort>(),
-            DuckDbBasicType.Enum when vector.StorageType == DuckDbBasicType.UInteger
+            DuckDbValueKind.Enum when vector.StorageType == DuckDbValueKind.UInteger
                                    && Match(type, typeof(ulong)) => CreateForPrimitive<ulong>(),
 
             _ => default

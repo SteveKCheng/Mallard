@@ -19,7 +19,7 @@ public class TestPreparedStatement(DatabaseFixture fixture) : IClassFixture<Data
         using var ps = DbConnection.CreatePreparedStatement($"SELECT * FROM customer WHERE c_mktsegment = ${paramName} LIMIT {limitRows}");
 
         Assert.Equal(paramName, ps.GetParameterName(1));
-        Assert.Equal(DuckDbBasicType.VarChar, ps.GetParameterBasicType(1));
+        Assert.Equal(DuckDbValueKind.VarChar, ps.GetParameterValueKind(1));
         Assert.Equal(1, ps.ParameterCount);
         Assert.Equal(1, ps.GetParameterIndexForName(paramName));
 

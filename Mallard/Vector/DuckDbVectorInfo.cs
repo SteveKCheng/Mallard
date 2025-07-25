@@ -51,16 +51,16 @@ internal unsafe readonly struct DuckDbVectorInfo
 
     /// <summary>
     /// The actual DuckDB type used for storage, when the logical type is
-    /// <see cref="DuckDbBasicType.Enum" /> or <see cref="DuckDbBasicType.Decimal" />.
+    /// <see cref="DuckDbValueKind.Enum" /> or <see cref="DuckDbValueKind.Decimal" />.
     /// </summary>
     /// <remarks>
-    /// Set to zero (<see cref="DuckDbBasicType.Invalid" /> if inapplicable. 
+    /// Set to zero (<see cref="DuckDbValueKind.Invalid" /> if inapplicable. 
     /// </remarks>
     private readonly byte _storageType;
 
     /// <summary>
     /// The number of digits after the decimal point, when the logical type is
-    /// <see cref="DuckDbBasicType.Decimal" />.
+    /// <see cref="DuckDbValueKind.Decimal" />.
     /// </summary>
     /// <remarks>
     /// Set to zero if inapplicable. 
@@ -68,7 +68,7 @@ internal unsafe readonly struct DuckDbVectorInfo
     internal readonly byte DecimalScale;
 
     internal DuckDbVectorInfo(_duckdb_vector* nativeVector,
-                              DuckDbBasicType basicType,
+                              DuckDbValueKind valueKind,
                               int length)
     {
         NativeVector = nativeVector;
@@ -76,15 +76,15 @@ internal unsafe readonly struct DuckDbVectorInfo
         _validityMask = NativeMethods.duckdb_vector_get_validity(NativeVector);
 
         Length = length;
-        _basicType = (byte)basicType;
+        _basicType = (byte)valueKind;
 
-        if (basicType == DuckDbBasicType.Decimal)
+        if (valueKind == DuckDbValueKind.Decimal)
         {
             var (scale, storageType) = GetDecimalStorageInfo(NativeVector);
             DecimalScale = scale;
             _storageType = (byte)storageType;
         }
-        else if (basicType == DuckDbBasicType.Enum)
+        else if (valueKind == DuckDbValueKind.Enum)
         {
             var storageType = GetEnumStorageType(NativeVector);
             _storageType = (byte)storageType;
@@ -95,7 +95,7 @@ internal unsafe readonly struct DuckDbVectorInfo
         }
     }
 
-    private static (byte Scale, DuckDbBasicType StorageType) GetDecimalStorageInfo(_duckdb_vector* vector)
+    private static (byte Scale, DuckDbValueKind StorageType) GetDecimalStorageInfo(_duckdb_vector* vector)
     {
         var nativeType = NativeMethods.duckdb_vector_get_column_type(vector);
         if (nativeType == null)
@@ -112,7 +112,7 @@ internal unsafe readonly struct DuckDbVectorInfo
         }
     }
 
-    private static DuckDbBasicType GetEnumStorageType(_duckdb_vector* vector)
+    private static DuckDbValueKind GetEnumStorageType(_duckdb_vector* vector)
     {
         var nativeType = NativeMethods.duckdb_vector_get_column_type(vector);
         if (nativeType == null)
@@ -128,9 +128,9 @@ internal unsafe readonly struct DuckDbVectorInfo
         }
     }
 
-    public DuckDbBasicType BasicType => (DuckDbBasicType)_basicType;
+    public DuckDbValueKind ValueKind => (DuckDbValueKind)_basicType;
 
-    public DuckDbBasicType StorageType => (DuckDbBasicType)_storageType;
+    public DuckDbValueKind StorageType => (DuckDbValueKind)_storageType;
 
     /// <summary>
     /// Read an element of the vector from native memory.
@@ -191,19 +191,19 @@ internal unsafe readonly struct DuckDbVectorInfo
     }
 
     [DoesNotReturn]
-    internal static void ThrowForWrongParamType(DuckDbBasicType basicType, 
-                                                DuckDbBasicType storageType,
+    internal static void ThrowForWrongParamType(DuckDbValueKind valueKind, 
+                                                DuckDbValueKind storageType,
                                                 Type paramType)
     {
-        if (basicType == storageType)
+        if (valueKind == storageType)
         {
             throw new ArgumentException(
-                $"Generic type {paramType.Name} does not match the DuckDB basic type {basicType} of the elements in the desired column.");
+                $"Generic type {paramType.Name} does not match the DuckDB basic type {valueKind} of the elements in the desired column.");
         }
         else
         {
             throw new ArgumentException(
-                $"Generic type {paramType.Name} does not match the DuckDB basic type {basicType} [{storageType}] of the elements in the desired column.");
+                $"Generic type {paramType.Name} does not match the DuckDB basic type {valueKind} [{storageType}] of the elements in the desired column.");
         }
     }
 
@@ -212,59 +212,59 @@ internal unsafe readonly struct DuckDbVectorInfo
     /// data array obtained from DuckDB.
     /// </summary>
     /// <typeparam name="T">The .NET type to check. </typeparam>
-    /// <param name="basicType">The basic type of the DuckDB data array
+    /// <param name="valueKind">The basic type of the DuckDB data array
     /// desired to be accessed. </param>
     /// <returns>
     /// True if the .NET type is correct; false if incorrect or
-    /// the <paramref name="basicType" /> does not refer to data
+    /// the <paramref name="valueKind" /> does not refer to data
     /// that can be directly interpreted from .NET.
     /// </returns>
-    internal static bool ValidateElementType<T>(DuckDbBasicType basicType) 
+    internal static bool ValidateElementType<T>(DuckDbValueKind valueKind) 
         where T : allows ref struct
     {
-        return basicType switch
+        return valueKind switch
         {
-            DuckDbBasicType.Boolean => typeof(T) == typeof(byte) || typeof(T) == typeof(bool),
+            DuckDbValueKind.Boolean => typeof(T) == typeof(byte) || typeof(T) == typeof(bool),
 
-            DuckDbBasicType.TinyInt => typeof(T) == typeof(sbyte),
-            DuckDbBasicType.SmallInt => typeof(T) == typeof(short),
-            DuckDbBasicType.Integer => typeof(T) == typeof(int),
-            DuckDbBasicType.BigInt => typeof(T) == typeof(long),
-            DuckDbBasicType.UTinyInt => typeof(T) == typeof(byte),
-            DuckDbBasicType.USmallInt => typeof(T) == typeof(ushort),
-            DuckDbBasicType.UInteger => typeof(T) == typeof(uint),
-            DuckDbBasicType.UBigInt => typeof(T) == typeof(ulong),
-            DuckDbBasicType.Float => typeof(T) == typeof(float),
-            DuckDbBasicType.Double => typeof(T) == typeof(double),
+            DuckDbValueKind.TinyInt => typeof(T) == typeof(sbyte),
+            DuckDbValueKind.SmallInt => typeof(T) == typeof(short),
+            DuckDbValueKind.Integer => typeof(T) == typeof(int),
+            DuckDbValueKind.BigInt => typeof(T) == typeof(long),
+            DuckDbValueKind.UTinyInt => typeof(T) == typeof(byte),
+            DuckDbValueKind.USmallInt => typeof(T) == typeof(ushort),
+            DuckDbValueKind.UInteger => typeof(T) == typeof(uint),
+            DuckDbValueKind.UBigInt => typeof(T) == typeof(ulong),
+            DuckDbValueKind.Float => typeof(T) == typeof(float),
+            DuckDbValueKind.Double => typeof(T) == typeof(double),
 
-            DuckDbBasicType.Date => typeof(T) == typeof(DuckDbDate),
-            DuckDbBasicType.Timestamp => typeof(T) == typeof(DuckDbTimestamp),
+            DuckDbValueKind.Date => typeof(T) == typeof(DuckDbDate),
+            DuckDbValueKind.Timestamp => typeof(T) == typeof(DuckDbTimestamp),
 
-            DuckDbBasicType.Interval => typeof(T) == typeof(DuckDbInterval),
+            DuckDbValueKind.Interval => typeof(T) == typeof(DuckDbInterval),
 
-            DuckDbBasicType.List => typeof(T) == typeof(DuckDbListRef),
-            DuckDbBasicType.Array => typeof(T) == typeof(DuckDbArrayRef),
+            DuckDbValueKind.List => typeof(T) == typeof(DuckDbListRef),
+            DuckDbValueKind.Array => typeof(T) == typeof(DuckDbArrayRef),
 
-            DuckDbBasicType.VarChar => typeof(T) == typeof(DuckDbString),
-            DuckDbBasicType.VarInt => typeof(T) == typeof(DuckDbVarInt),
-            DuckDbBasicType.Bit => typeof(T) == typeof(DuckDbBitString),
+            DuckDbValueKind.VarChar => typeof(T) == typeof(DuckDbString),
+            DuckDbValueKind.VarInt => typeof(T) == typeof(DuckDbVarInt),
+            DuckDbValueKind.Bit => typeof(T) == typeof(DuckDbBitString),
 
-            DuckDbBasicType.UHugeInt => typeof(T) == typeof(UInt128),
-            DuckDbBasicType.HugeInt => typeof(T) == typeof(Int128),
-            DuckDbBasicType.Blob => typeof(T) == typeof(DuckDbBlob),
-            DuckDbBasicType.Uuid => typeof(T) == typeof(UInt128),
-            DuckDbBasicType.Decimal => typeof(T) == typeof(short) ||
+            DuckDbValueKind.UHugeInt => typeof(T) == typeof(UInt128),
+            DuckDbValueKind.HugeInt => typeof(T) == typeof(Int128),
+            DuckDbValueKind.Blob => typeof(T) == typeof(DuckDbBlob),
+            DuckDbValueKind.Uuid => typeof(T) == typeof(UInt128),
+            DuckDbValueKind.Decimal => typeof(T) == typeof(short) ||
                                        typeof(T) == typeof(int) ||
                                        typeof(T) == typeof(long) ||
                                        typeof(T) == typeof(Int128),
-            DuckDbBasicType.Enum => typeof(T) == typeof(byte) ||
+            DuckDbValueKind.Enum => typeof(T) == typeof(byte) ||
                                     typeof(T) == typeof(ushort) ||
                                     typeof(T) == typeof(uint),
             _ => false,
         };
     }
 
-    internal static DuckDbBasicType GetVectorElementBasicType(_duckdb_vector* vector)
+    internal static DuckDbValueKind GetVectorElementValueKind(_duckdb_vector* vector)
     {
         var nativeType = NativeMethods.duckdb_vector_get_column_type(vector);
         if (nativeType == null)

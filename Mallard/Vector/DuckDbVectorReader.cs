@@ -43,7 +43,7 @@ public unsafe readonly ref struct
         _converter = VectorElementConverter.CreateForType(typeof(T), _info);
 
         if (!_converter.IsValid)
-            DuckDbVectorInfo.ThrowForWrongParamType(info.BasicType, info.StorageType, typeof(T));
+            DuckDbVectorInfo.ThrowForWrongParamType(info.ValueKind, info.StorageType, typeof(T));
     }
 
     /// <inheritdoc cref="IDuckDbVector.ValidityMask" />

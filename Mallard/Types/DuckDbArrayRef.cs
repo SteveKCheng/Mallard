@@ -45,8 +45,8 @@ public static partial class DuckDbVectorMethods
         // FIXME The array length needs to be exposed as a public property or method in
         //       DuckDbVectorRawReader<DuckDbArrayRef>.  Need some code re-organization to do so.
         var totalChildren = checked((int)(parent.Length * DuckDbArrayRef.GetArraySize(parent)));
-        var childBasicType = DuckDbVectorInfo.GetVectorElementBasicType(childVector);
+        var childValueKind = DuckDbVectorInfo.GetVectorElementValueKind(childVector);
 
-        return new DuckDbVectorInfo(childVector, childBasicType, totalChildren);
+        return new DuckDbVectorInfo(childVector, childValueKind, totalChildren);
     }
 }
