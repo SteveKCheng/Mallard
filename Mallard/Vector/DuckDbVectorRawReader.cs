@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Mallard;
 
@@ -119,6 +120,9 @@ public readonly ref struct DuckDbVectorRawReader<T> : IDuckDbVector<T>
     /// <inheritdoc cref="IDuckDbVector{T}.GetItem(int)" />
     public unsafe T GetItem(int index)
     {
+        if (typeof(T) == typeof(DuckDbArrayRef))
+            DuckDbVectorMethods.ThrowForAccessingNonexistentItems(typeof(T));
+
         _info.VerifyItemIsValid(index);
         return _info.UnsafeRead<T>(index);
     }
@@ -126,6 +130,9 @@ public readonly ref struct DuckDbVectorRawReader<T> : IDuckDbVector<T>
     /// <inheritdoc cref="IDuckDbVector{T}.TryGetItem(int, out T)" />
     public unsafe bool TryGetItem(int index, out T item)
     {
+        if (typeof(T) == typeof(DuckDbArrayRef))
+            DuckDbVectorMethods.ThrowForAccessingNonexistentItems(typeof(T));
+
         if (_info.IsItemValid(index))
         {
             item = _info.UnsafeRead<T>(index);
@@ -156,6 +163,23 @@ public static partial class DuckDbVectorMethods
     /// Note that elements of the vector that are invalid, may be "garbage" or un-initialized when
     /// indexed using the returned span. 
     /// </returns>
+    /// <exception cref="InvalidOperationException">
+    /// When <typeparamref name="T" /> is <see cref="DuckDbArrayRef" />.  
+    /// A DuckDB vector of such type does not have directly have elements, and therefore
+    /// no span can be made available.  The contents of vector are made available in the
+    /// "children vector".
+    /// </exception>
     public unsafe static ReadOnlySpan<T> AsSpan<T>(in this DuckDbVectorRawReader<T> vector) where T : unmanaged
-        => new(vector._info.DataPointer, vector._info.Length);
+    {
+        if (typeof(T) == typeof(DuckDbArrayRef))
+            ThrowForAccessingNonexistentItems(typeof(T));
+
+        return new(vector._info.DataPointer, vector._info.Length);
+    }
+
+    [DoesNotReturn]
+    internal static void ThrowForAccessingNonexistentItems(Type t)
+    {
+        throw new InvalidOperationException($"There are no items that can be directly accesed on DuckDbVectorRawReader<T> for T = {t.Name}. ");
+    }
 }

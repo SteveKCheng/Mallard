@@ -31,7 +31,7 @@ internal sealed class ListConverter
 
     private ListConverter(Type? childType, in DuckDbVectorInfo parent)
     {
-        _childrenInfo = parent.GetChildrenVectorInfo();
+        _childrenInfo = parent.GetListChildrenVectorInfo();
         _childrenConverter = VectorElementConverter.CreateForType(childType, _childrenInfo);
         if (!_childrenConverter.IsValid)
         {

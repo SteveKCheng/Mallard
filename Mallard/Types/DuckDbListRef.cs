@@ -22,7 +22,7 @@ public static partial class DuckDbVectorMethods
     /// <exception cref="DuckDbException"></exception>
     public static DuckDbVectorRawReader<T> GetChildrenRawVector<T>(in this DuckDbVectorRawReader<DuckDbListRef> parent)
         where T : unmanaged, allows ref struct
-        => new(parent._info.GetChildrenVectorInfo());
+        => new(parent._info.GetListChildrenVectorInfo());
 
     /// <summary>
     /// Retrieve the vector containing all the children across all lists in a vector of lists.
@@ -38,9 +38,9 @@ public static partial class DuckDbVectorMethods
     /// </returns>
     /// <exception cref="DuckDbException"></exception>
     public static DuckDbVectorReader<T> GetChildrenVector<T>(in this DuckDbVectorRawReader<DuckDbListRef> parent)
-        => new(parent._info.GetChildrenVectorInfo());
+        => new(parent._info.GetListChildrenVectorInfo());
 
-    internal unsafe static DuckDbVectorInfo GetChildrenVectorInfo(in this DuckDbVectorInfo parent)
+    internal unsafe static DuckDbVectorInfo GetListChildrenVectorInfo(in this DuckDbVectorInfo parent)
     {
         var parentVector = parent.NativeVector;
         DuckDbVectorInfo.ThrowOnNullVector(parentVector);
