@@ -1,5 +1,8 @@
 ﻿using System;
+using System.Collections;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
 
 namespace Mallard.Tests;
 
@@ -106,4 +109,47 @@ public class UnitTest1(DatabaseFixture fixture) : IClassFixture<DatabaseFixture>
 
     private static bool IsAsciiString(string s)
         => s.AsSpan().ContainsAnyExceptInRange('\u0020', '\u007E') == false;
+
+    // Test "raw" way of reading bit strings
+    [Fact]
+    public void BitStringRaw()
+    {
+        using var dbConn = new DuckDbConnection("");
+        using var ps = dbConn.CreatePreparedStatement("SELECT $1::BITSTRING");
+
+        // Same code as in TestExecutionScalar.BitString to generate a random BitArray
+        Span<byte> buffer = stackalloc byte[512];
+        var random = new Random(Seed: 37);
+        int numBits = 1029;
+        int numBytes = (numBits + 7) / 8;
+        random.NextBytes(buffer[..numBytes]);
+        buffer[numBytes - 1] &= (byte)(uint.MaxValue >> (32 - (numBits & 7)));
+
+        var bitArray = new BitArray(buffer[..numBytes].ToArray());
+        var bitStringAsString = TestExecuteScalar.CreateStringFromBitArray(bitArray, 0, numBits);
+        ps.BindParameter(1, bitStringAsString);
+
+        using var dbResult = ps.Execute();
+        dbResult.ProcessAllChunks(false, (in DuckDbChunkReader reader, bool _) =>
+        {
+            var column = reader.GetColumnRaw<DuckDbBitString>(0);
+            var bitString = column.GetItem(0);
+
+            Span<byte> segment = stackalloc byte[512];
+            foreach ((int offset, int length) in new[] { (0, numBits), (5, 56), (numBits, 0), (800, 229), (768, 256)})
+            {
+                int countBytes = bitString.GetSegment(segment, offset, length);
+                Assert.Equal((length + 7) / 8, countBytes);
+
+                // Check that each bit in segment matches corresponding bit in original bitArray
+                for (int i = 0; i < length; ++i)
+                {
+                    bool bit = (segment[i / 8] & (1 << (i % 8))) != 0;
+                    Assert.Equal(bitArray[i + offset], bit);
+                }
+            }
+
+            return true;    // unused return value
+        });
+    }
 }

@@ -112,7 +112,7 @@ public class TestExecuteScalar
         }
     }
 
-    private static string CreateStringFromBitArray(BitArray a, int start, int length)
+    internal static string CreateStringFromBitArray(BitArray a, int start, int length)
         => string.Create(length, (a, start), static (buffer, state) =>
         {
             (BitArray a, int start) = state;
