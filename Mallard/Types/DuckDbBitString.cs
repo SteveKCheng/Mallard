@@ -168,13 +168,15 @@ public readonly ref struct DuckDbBitString
 
         var source = _blob.AsSpan();
         int numPaddingBits = source[0];
-        int totalSourceBits = BitsPerByte * (source.Length - 1) - numPaddingBits;
-        
-        if (offset < 0 || offset >= totalSourceBits)
-            throw new IndexOutOfRangeException("Index is out of range for this bit string. ");
+        Debug.Assert(numPaddingBits <= 7);
 
-        if (length < 0 || offset + length >= totalSourceBits)
-            throw new IndexOutOfRangeException("The given length plus offset extends beyond the end of this bit string. ");
+        int totalSourceBits = BitsPerByte * (source.Length - 1) - numPaddingBits;
+
+        ArgumentOutOfRangeException.ThrowIfLessThan(offset, 0);
+        ArgumentOutOfRangeException.ThrowIfLessThan(length, 0);
+
+        if (offset + length > totalSourceBits)
+            throw new IndexOutOfRangeException("The given offset plus length extends beyond the end of this bit string. ");
 
         if (length == 0)
             return 0;
