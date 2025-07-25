@@ -223,8 +223,8 @@ public unsafe sealed class DuckDbResult : IDisposable
     /// <typeparam name="TState">
     /// Type of arbitrary state to pass into the caller-specified function.
     /// </typeparam>
-    /// <typeparam name="TResult">
-    /// The type of result returned by the caller-specified function.
+    /// <typeparam name="TReturn">
+    /// The type of value returned by the caller-specified function.
     /// </typeparam>
     /// <param name="state">
     /// The state object or structure to pass into <paramref name="function" />.
@@ -266,9 +266,9 @@ public unsafe sealed class DuckDbResult : IDisposable
     /// to process all chunks of the result.
     /// </para>
     /// </remarks>
-    public bool ProcessNextChunk<TState, TResult>(TState state, 
-                                                  DuckDbChunkReadingFunc<TState, TResult> function,
-                                                  [MaybeNullWhen(false)] out TResult result)
+    public bool ProcessNextChunk<TState, TReturn>(TState state, 
+                                                  DuckDbChunkReadingFunc<TState, TReturn> function,
+                                                  [MaybeNullWhen(false)] out TReturn result)
         where TState : allows ref struct
     {
         _duckdb_data_chunk* nativeChunk;
@@ -303,8 +303,8 @@ public unsafe sealed class DuckDbResult : IDisposable
     /// <typeparam name="TState">
     /// Type of arbitrary state to pass into the caller-specified function.
     /// </typeparam>
-    /// <typeparam name="TResult">
-    /// The type of result returned by the caller-specified function.
+    /// <typeparam name="TReturn">
+    /// The type of value returned by the caller-specified function.
     /// </typeparam>
     /// <param name="state">
     /// The state object or structure to pass into <paramref name="function" />.
@@ -347,11 +347,11 @@ public unsafe sealed class DuckDbResult : IDisposable
     /// scope.
     /// </para>
     /// </remarks>
-    public TResult? ProcessAllChunks<TState, TResult>(TState state, 
-                                                      DuckDbChunkReadingFunc<TState, TResult> function)
+    public TReturn? ProcessAllChunks<TState, TReturn>(TState state, 
+                                                      DuckDbChunkReadingFunc<TState, TReturn> function)
         where TState : allows ref struct
     {
-        TResult? result;
+        TReturn? result;
         bool hasChunk;
         do
         {
@@ -359,6 +359,79 @@ public unsafe sealed class DuckDbResult : IDisposable
         } while (hasChunk);
 
         return result;
+    }
+
+    /// <summary>
+    /// Process all the following chunks of results from the present query in DuckDB, 
+    /// by invocating a caller-specified function on each, 
+    /// and accumulate return values across invocations.
+    /// </summary>
+    /// <typeparam name="TState">
+    /// Type of arbitrary state to pass into the caller-specified function.
+    /// </typeparam>
+    /// <typeparam name="TReturn">
+    /// The type of value returned by the caller-specified function.
+    /// </typeparam>
+    /// <param name="state">
+    /// The state object or structure to pass into <paramref name="function" />.
+    /// </param>
+    /// <param name="function">
+    /// The caller-specified function that receives the results from the next chunk
+    /// and may do any processing on it.
+    /// </param>
+    /// <param name="accumulate">
+    /// The function to accumulate (or aggregate, or "reduce") the return values
+    /// from successive invocations of <paramref name="function" />.  The first
+    /// argument is the previous accumulated value; the second argument is the
+    /// return value from the next chunk.  For the first invocation, the first
+    /// argument is <paramref name="seed" />.
+    /// </param>
+    /// <param name="seed">
+    /// The initial value for the accumulation of return values from <paramref name="function" />.
+    /// </param>
+    /// <returns>
+    /// The accumulated value of the return values from the chunks.
+    /// </returns>
+    /// <remarks>
+    /// <para>
+    /// This method offers fast, direct access to the native memory backing the 
+    /// DuckDB vectors (columns) of the results.  
+    /// However, to make these operations safe (allowing no dangling pointers), 
+    /// this library must be able to bound the scope of access.  Thus, the code
+    /// to consume the vectors' data must be encapsulated in a function that this
+    /// method invokes. 
+    /// </para>
+    /// <para>
+    /// The chunks processed by this method are discarded afterwards.
+    /// To work with the results again, the query must be re-executed anew.
+    /// </para>
+    /// <para>
+    /// This method is equivalent to calling <see cref="ProcessNextChunk" />
+    /// in a loop until that method returns false.
+    /// </para>
+    /// </remarks>
+    public TReturn ProcessAllChunks<TState, TReturn>(TState state,
+                                                     DuckDbChunkReadingFunc<TState, TReturn> function,
+                                                     Func<TReturn, TReturn, TReturn> accumulate,
+                                                     TReturn seed)
+
+        where TState : allows ref struct
+    {
+        TReturn result = seed;
+        while (true)
+        {
+            bool hasChunk = ProcessNextChunk(state, function, out var value);
+            if (!hasChunk)
+                break;
+
+            // About the null-silencing operator here:  Not sure why the C# compiler is not
+            // seeing that when this line is executed, hasChunk is true and therefore TReturn
+            // from ProcessNextChunk should not be null (for the purposes of null ref. analysis).
+            result = accumulate(result, value!);
+        }
+
+        return result;
+
     }
 
     /// <summary>

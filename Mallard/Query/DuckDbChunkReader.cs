@@ -12,7 +12,7 @@ namespace Mallard;
 /// for the user-defined code to leak out dangling pointers to inside the current chunk
 /// (unless unsafe code is used).
 /// </typeparam>
-/// <typeparam name="TResult">
+/// <typeparam name="TReturn">
 /// Arbitrary return type from the user-defined function.  This type may not be a
 /// "ref struct", to prevent dangling pointers to inside the current chunk from being
 /// returned.  (The presence of the return value is for convenience; even if this delegate
@@ -30,7 +30,7 @@ namespace Mallard;
 /// Whatever is desired.  Typically the return value would be the 
 /// result of some transformation in the chunk's data.
 /// </returns>
-public delegate TResult DuckDbChunkReadingFunc<in TState, out TResult>(in DuckDbChunkReader chunk, TState state)
+public delegate TReturn DuckDbChunkReadingFunc<in TState, out TReturn>(in DuckDbChunkReader chunk, TState state)
     where TState : allows ref struct;
 
 /// <summary>
