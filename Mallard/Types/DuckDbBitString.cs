@@ -234,8 +234,9 @@ public readonly ref struct DuckDbBitString
             ulong w = ReverseBitsInBytes(ReadWord(source[i..]));
 
             // Paste in low bits from current word into high bits of previous word
-            // that are missing
-            v |= w << (BitsPerWord - numSlackBits);
+            // that are missing.  The test (numSlackBits > 0) is necessary because
+            // shift amounts in .NET are masked (to (BitsPerWord-1) for ulong values).
+            v |= (numSlackBits > 0) ? w << (BitsPerWord - numSlackBits) : 0;
 
             // Write out the previous word to the output
             BinaryPrimitives.WriteUInt64LittleEndian(destination[(i - sizeof(ulong))..], v);
@@ -247,9 +248,9 @@ public readonly ref struct DuckDbBitString
         // Equivalent to (BitsPerWord - (length & (BitsPerWord-1))) & (BitsPerWord - 1)
         int numBitsToMaskOut = (-length) & (BitsPerWord - 1);
 
-        // We need to read one more source byte if the slack bits in the last word are not getting
-        // masked off.  We read only conditionally, to take care of the edge case that i is
-        // already past the end of the source span.
+        // We need to read one more source byte if the slack bits in the last word are not
+        // all getting masked off.  We read only conditionally, to take care of the boundary
+        // cases that i is already past the end of the source span, or numSlackBits == 0.
         if (numSlackBits > numBitsToMaskOut)
             v |= (ulong)ReverseBitsInByte(source[i]) << (BitsPerWord - numSlackBits);
 

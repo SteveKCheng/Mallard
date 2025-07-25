@@ -136,7 +136,7 @@ public class UnitTest1(DatabaseFixture fixture) : IClassFixture<DatabaseFixture>
             var bitString = column.GetItem(0);
 
             Span<byte> segment = stackalloc byte[512];
-            foreach ((int offset, int length) in new[] { (0, numBits), (5, 56), (numBits, 0), (800, 229), (768, 256)})
+            foreach ((int offset, int length) in new[] { (0, numBits), (5, 56), (61, 64), (numBits, 0), (800, 229), (768, 256)})
             {
                 int countBytes = bitString.GetSegment(segment, offset, length);
                 Assert.Equal((length + 7) / 8, countBytes);
