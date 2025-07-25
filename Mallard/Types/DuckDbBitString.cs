@@ -63,11 +63,9 @@ public readonly ref struct DuckDbBitString
         // whole bit string, but we really want to avoid allocating GC memory during
         // conversion.
         //
-        // DuckDB's wacky encoding does not help; converting it to the more normal
-        // encoding used by BitArray, is not so trivial if we want to try to convert
-        // at the level of (groups of) bytes.
-        //
-        // We stick to the naïve algorithm until needs prove otherwise.
+        // We stick to the naïve algorithm until needs prove otherwise.  Users not
+        // satisfied with the performance of BitArray can always use the method
+        // GetSegment below.
 
         byte dataByte = buffer[1];
         byte bitMask = (byte)(1u << (7 - numPaddingBits));
@@ -140,16 +138,22 @@ public readonly ref struct DuckDbBitString
     }
 
     /// <summary>
-    /// Copy out the consecutive bits in the bit string.
+    /// Copy out consecutive bits in the bit string.
     /// </summary>
     /// <param name="destination">
-    /// Buffer to store the extracted bits.  Little-endian encoding is used.
+    /// Buffer to extract the bits into.  The bits will be presented in the same little-endian encoding 
+    /// read by <see cref="BitArray.BitArray(byte[])" />: the value of the bit at output position 
+    /// <c>i</c> (corresponding to source position <c>i + offset</c>) is 
+    /// <c>(destination[i/8] &amp; (1 << (i%8))) != 0</c>.  Unused bits in the last byte
+    /// of the output are always set to zero.  The value of the bytes in the buffer 
+    /// beyond the last byte needed for the output will be indeterminate. 
     /// </param>
     /// <param name="offset">
-    /// The zero-based index of the position to start extracting bits.
+    /// The zero-based index of the position in this bit string to start extracting bits.
+    /// Must not be negative.
     /// </param>
     /// <param name="length">
-    /// The number of bits to extract.
+    /// The number of bits to extract.  Must not be negative.
     /// </param>
     /// <returns>
     /// Number of bytes written to the beginning of <paramref name="destination" />.
@@ -168,7 +172,7 @@ public readonly ref struct DuckDbBitString
 
         var source = _blob.AsSpan();
         int numPaddingBits = source[0];
-        Debug.Assert(numPaddingBits <= 7);
+        Debug.Assert(numPaddingBits < BitsPerByte);
 
         int totalSourceBits = BitsPerByte * (source.Length - 1) - numPaddingBits;
 
@@ -219,7 +223,7 @@ public readonly ref struct DuckDbBitString
         int sourceIndex = offset + numPaddingBits;
         int numSlackBits = sourceIndex & (BitsPerByte - 1);
 
-        // Read first word, and then shift out bits that are located before desired offset
+        // Read first word, and then shift out the bits that are located before desired offset
         source = source[(sourceIndex / BitsPerByte + 1)..]; // +1 is to skip past header byte
         ulong v = ReverseBitsInBytes(ReadWord(source)) >> numSlackBits;
 
@@ -240,10 +244,12 @@ public readonly ref struct DuckDbBitString
             v = w >> numSlackBits;
         }
 
-        int numBitsToMaskOut = (BitsPerWord - (length & (BitsPerWord - 1))) & ~BitsPerWord;
+        // Equivalent to (BitsPerWord - (length & (BitsPerWord-1))) & (BitsPerWord - 1)
+        int numBitsToMaskOut = (-length) & (BitsPerWord - 1);
 
-        // Need to read one more source byte if slack bits in the last word do not get masked off.
-        // We do not read unconditionally to avoid edge case of reading past the end of the source span.
+        // We need to read one more source byte if the slack bits in the last word are not getting
+        // masked off.  We read only conditionally, to take care of the edge case that i is
+        // already past the end of the source span.
         if (numSlackBits > numBitsToMaskOut)
             v |= (ulong)ReverseBitsInByte(source[i]) << (BitsPerWord - numSlackBits);
 
