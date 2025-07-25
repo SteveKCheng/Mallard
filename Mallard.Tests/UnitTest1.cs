@@ -78,36 +78,30 @@ public class UnitTest1(DatabaseFixture fixture) : IClassFixture<DatabaseFixture>
         using var dbResult = dbConn.Execute(@"
             SELECT DISTINCT c_mktsegment FROM customer ORDER BY c_mktsegment ASC");
 
-        bool hasChunk;
         int totalRows = 0;
-        int numChunks = -1;
+        int numChunks = 0;
         string? prevString = null;
 
-        do
-        {
-            numChunks++;
+        dbResult.ProcessAllChunks(false, (in DuckDbChunkReader reader, bool _) => {
+            var strings = reader.GetColumn<string>(0);
 
-            hasChunk = dbResult.ProcessNextChunk(false, (in DuckDbChunkReader reader, bool _) =>
+            for (int i = 0; i < reader.Length; ++i)
             {
-                var strings = reader.GetColumn<string>(0);
+                var thisString = strings.GetItem(i);
+                Assert.NotNull(thisString);
 
-                for (int i = 0; i < reader.Length; ++i)
-                {
-                    var thisString = strings.GetItem(i);
-                    Assert.NotNull(thisString);
+                Assert.True(IsAsciiString(thisString),
+                            $"String contains non-ASCII characters; it may be corrupt");
+                Assert.True(prevString == null || string.CompareOrdinal(prevString, thisString) < 0,
+                            $"Strings are not in ascending order");
+                prevString = thisString;
+            }
 
-                    Assert.True(IsAsciiString(thisString),
-                                $"String contains non-ASCII characters; it may be corrupt");
-                    Assert.True(prevString == null || string.CompareOrdinal(prevString, thisString) < 0,
-                                $"Strings are not in ascending order");
-                    prevString = thisString;
-                }
+            numChunks++;
+            totalRows += reader.Length;
 
-                return reader.Length;
-            }, out var numRows);
-
-            totalRows += numRows;
-        } while (hasChunk);
+            return true;    // unused return value
+        });
     }
 
     private static bool IsAsciiString(string s)

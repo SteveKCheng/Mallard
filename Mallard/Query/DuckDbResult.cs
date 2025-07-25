@@ -1,10 +1,23 @@
 ﻿using Mallard.C_API;
 using System;
 using System.Diagnostics.CodeAnalysis;
-using System.Threading;
 
 namespace Mallard;
 
+/// <summary>
+/// Grants access to the results of a SQL execution by DuckDB.
+/// </summary>
+/// <remarks>
+/// <para>
+/// The results are always presented in chunks by DuckDB.  
+/// Each chunk can be requested in succession (allowing streaming queries).
+/// </para>
+/// <para>
+/// Since retrieving a chunk advances the internal state of this result object,
+/// i.e. mutating that state, this object may not be accessed from multiple threads
+/// simultaneously.  Any attempt to do so will cause exceptions.
+/// </para>
+/// </remarks>
 public unsafe sealed class DuckDbResult : IDisposable
 {
     private Barricade _barricade;
@@ -117,7 +130,7 @@ public unsafe sealed class DuckDbResult : IDisposable
                 if (!isValid && !reader.DefaultValueIsInvalid)
                 {
                     throw new InvalidOperationException(
-                        "The DuckDB query returned null, which cannot be represented" +
+                        "The DuckDB query returned null, which cannot be represented " +
                         "as an instance of the type T that the generic method " +
                         "ExecuteValue<T> has been invoked with.  Consider replacing " +
                         "the generic parameter with T? (System.Nullable<T>) instead. ");
@@ -175,6 +188,12 @@ public unsafe sealed class DuckDbResult : IDisposable
         GC.SuppressFinalize(this);
     }
 
+    /// <summary>
+    /// Retrieve the next chunk of results from the present query in DuckDB.
+    /// </summary>
+    /// <returns>
+    /// Object containing the next chunk, or null if there are no more chunks.
+    /// </returns>
     public DuckDbResultChunk? FetchNextChunk()
     {
         _duckdb_data_chunk* nativeChunk;
@@ -197,9 +216,60 @@ public unsafe sealed class DuckDbResult : IDisposable
         }
     }
 
+    /// <summary>
+    /// Process the next chunk of results from the present query in DuckDB, 
+    /// with a caller-specified function. 
+    /// </summary>
+    /// <typeparam name="TState">
+    /// Type of arbitrary state to pass into the caller-specified function.
+    /// </typeparam>
+    /// <typeparam name="TResult">
+    /// The type of result returned by the caller-specified function.
+    /// </typeparam>
+    /// <param name="state">
+    /// The state object or structure to pass into <paramref name="function" />.
+    /// </param>
+    /// <param name="function">
+    /// The caller-specified function that receives the results from the next chunk
+    /// and may do any processing on it.
+    /// </param>
+    /// <param name="result">
+    /// On return, set to the whatever <paramref name="function" /> returns.
+    /// If there is no next chunk, this argument is set to the default value
+    /// for its type.
+    /// </param>
+    /// <returns>
+    /// True when a chunk has been successfully processed.  False when
+    /// there are no more chunks.
+    /// </returns>
+    /// <remarks>
+    /// <para>
+    /// This method offers fast, direct access to the native memory backing the 
+    /// DuckDB vectors (columns) of the results.  
+    /// However, to make these operations safe (allowing no dangling pointers), 
+    /// this library must be able to bound the scope of access.  Thus, the code
+    /// to consume the vectors' data must be encapsulated in a function that this
+    /// method invokes. 
+    /// </para>
+    /// <para>
+    /// A chunk processed by this method is discarded immediately afterwards
+    /// (even if <paramref name="function" /> fails with an exception).
+    /// To work with the same chunk again, the query must be re-executed anew.
+    /// </para>
+    /// <para>
+    /// Alternatively, use the method <see cref="FetchNextChunk" /> instead
+    /// which returns the next chunk as a standalone object, 
+    /// that can be processed over and over again.
+    /// </para>
+    /// <para>
+    /// This method can be called continually, until it returns false, 
+    /// to process all chunks of the result.
+    /// </para>
+    /// </remarks>
     public bool ProcessNextChunk<TState, TResult>(TState state, 
-                                                  DuckDbChunkReadingFunc<TState, TResult> action,
+                                                  DuckDbChunkReadingFunc<TState, TResult> function,
                                                   [MaybeNullWhen(false)] out TResult result)
+        where TState : allows ref struct
     {
         _duckdb_data_chunk* nativeChunk;
         using (var _ = _barricade.EnterScope(this))
@@ -217,7 +287,7 @@ public unsafe sealed class DuckDbResult : IDisposable
         {
             var length = (int)NativeMethods.duckdb_data_chunk_get_size(nativeChunk);
             var reader = new DuckDbChunkReader(nativeChunk, _columnInfo, length);
-            result = action(reader, state);
+            result = function(reader, state);
             return true;
         }
         finally
@@ -226,6 +296,74 @@ public unsafe sealed class DuckDbResult : IDisposable
         }
     }
 
+    /// <summary>
+    /// Process all the following chunks of results from the present query in DuckDB, 
+    /// with a caller-specified function. 
+    /// </summary>
+    /// <typeparam name="TState">
+    /// Type of arbitrary state to pass into the caller-specified function.
+    /// </typeparam>
+    /// <typeparam name="TResult">
+    /// The type of result returned by the caller-specified function.
+    /// </typeparam>
+    /// <param name="state">
+    /// The state object or structure to pass into <paramref name="function" />.
+    /// </param>
+    /// <param name="function">
+    /// The caller-specified function that receives the results from the next chunk
+    /// and may do any processing on it.
+    /// </param>
+    /// <returns>
+    /// The return value is whatever <paramref name="function" /> returns
+    /// for the last chunk (if successful).  
+    /// If there are no more chunks, this argument is set to the default value
+    /// for its type.
+    /// </returns>
+    /// <remarks>
+    /// <para>
+    /// This method offers fast, direct access to the native memory backing the 
+    /// DuckDB vectors (columns) of the results.  
+    /// However, to make these operations safe (allowing no dangling pointers), 
+    /// this library must be able to bound the scope of access.  Thus, the code
+    /// to consume the vectors' data must be encapsulated in a function that this
+    /// method invokes. 
+    /// </para>
+    /// <para>
+    /// The chunks processed by this method are discarded afterwards.
+    /// To work with the results again, the query must be re-executed anew.
+    /// </para>
+    /// <para>
+    /// This method is equivalent to calling <see cref="ProcessNextChunk" />
+    /// in a loop until that method returns false.
+    /// </para>
+    /// <para>
+    /// The return values of <paramref name="function" /> for every chunk
+    /// except the last are discarded.  To communicate information between
+    /// successive invocations of <paramref name="function" />, pass in either
+    /// a reference type, or a "ref struct" containing managed pointers,
+    /// for <typeparamref name="TState" /> so that <paramref name="function" />
+    /// can modify the referents.  Or, of course, the code for <paramref name="function" />
+    /// could also be written to close over individual variables from its surrounding
+    /// scope.
+    /// </para>
+    /// </remarks>
+    public TResult? ProcessAllChunks<TState, TResult>(TState state, 
+                                                      DuckDbChunkReadingFunc<TState, TResult> function)
+        where TState : allows ref struct
+    {
+        TResult? result;
+        bool hasChunk;
+        do
+        {
+            hasChunk = ProcessNextChunk(state, function, out result);
+        } while (hasChunk);
+
+        return result;
+    }
+
+    /// <summary>
+    /// The number of columns present in the result.
+    /// </summary>
     public int ColumnCount => _columnInfo.Length;
 
     public string GetColumnName(int columnIndex) => _columnInfo[columnIndex].Name;
@@ -281,6 +419,7 @@ public unsafe class DuckDbResultChunk : IDisposable
     public int Length => _length;
 
     public TResult ProcessContents<TState, TResult>(TState state, DuckDbChunkReadingFunc<TState, TResult> func)
+        where TState : allows ref struct
     {
         using var _ = _refCount.EnterScope(this);
         var reader = new DuckDbChunkReader(_nativeChunk, _columnInfo, _length);
