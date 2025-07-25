@@ -319,10 +319,11 @@ internal unsafe readonly partial struct VectorElementConverter
 
             // N.B. This matches only T[] and not arbitrary System.Array objects
             // (with arbitrary ranks and lower/upper bounds)
-            DuckDbBasicType.List when type == null || type.IsArray => ListConverter.ConstructForArray(type, vector),
+            DuckDbBasicType.List when type == null || type.IsArray 
+                => ListConverter.ConstructForArray(type?.GetElementType(), vector),
 
-            DuckDbBasicType.List when type.IsInstanceOfGenericDefinition(typeof(ImmutableArray<>))
-                => ListConverter.ConstructForImmutableArray(type, vector),
+            DuckDbBasicType.List when type.GetGenericUnderlyingType(typeof(ImmutableArray<>)) is Type elementType
+                => ListConverter.ConstructForImmutableArray(elementType, vector),
 
             DuckDbBasicType.Enum when type != null && type.IsEnum => EnumConverter.CreateElementConverter(vector, type),
             DuckDbBasicType.Enum when vector.StorageType == DuckDbBasicType.UTinyInt

@@ -43,42 +43,47 @@ internal sealed class ListConverter
     }
 
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-    private unsafe static VectorElementConverter ConstructForArrayImpl<T>(ListConverter self, in DuckDbVectorInfo parent)
+    private unsafe static VectorElementConverter ConstructForArrayImpl<T>(ListConverter self, in DuckDbVectorInfo _)
         => VectorElementConverter.Create(self, &ConvertToArray<T>);
 
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-    private unsafe static VectorElementConverter ConstructForImmutableArrayImpl<T>(ListConverter self, in DuckDbVectorInfo parent)
+    private unsafe static VectorElementConverter ConstructForImmutableArrayImpl<T>(ListConverter self, in DuckDbVectorInfo _)
         => VectorElementConverter.Create(self, &ConvertToImmutableArray<T>, defaultValueIsInvalid: true);
 
-    public static VectorElementConverter ConstructForArray(Type? listType, in DuckDbVectorInfo parent)
+    /// <summary>
+    /// Get the element converter for a .NET array of the specified type.
+    /// </summary>
+    /// <param name="elementType">
+    /// The element type of the array.  If null, it will be implied from <paramref name="vector" />
+    /// via the default rules.
+    /// </param>
+    /// <param name="vector">
+    /// The list-valued DuckDB vector to convert to a .NET array.
+    /// </param>
+    public static VectorElementConverter ConstructForArray(Type? childType, in DuckDbVectorInfo vector)
     {
-        Type? childType = null;
-
-        if (listType != null)
-        {
-            if (!listType.IsArray)
-                throw new ArgumentException("The target type must be an array. ", nameof(listType));
-
-            childType = listType.GetElementType()!;
-        }
-
-        var self = new ListConverter(childType, parent);
+        var self = new ListConverter(childType, vector);
         childType = self._childrenConverter.TargetType;
 
         return VectorElementConverter.UnsafeCreateFromGeneric(ConstructForArrayImplMethod, 
-                                                              self, parent, childType);
+                                                              self, vector, childType);
     }
 
-    public static VectorElementConverter ConstructForImmutableArray(Type listType, in DuckDbVectorInfo parent)
+    /// <summary>
+    /// Get the element converter for an instantiation of <see cref="ImmutableArray{T}" />.
+    /// </summary>
+    /// <param name="elementType">
+    /// The element type of <see cref="ImmutableArray{T}" />.
+    /// </param>
+    /// <param name="vector">
+    /// The list-valued DuckDB vector to convert to <see cref="ImmutableArray{T}" />.
+    /// </param>
+    public static VectorElementConverter ConstructForImmutableArray(Type elementType, in DuckDbVectorInfo vector)
     {
-        if (!listType.IsInstanceOfGenericDefinition(typeof(ImmutableArray<>)))
-            throw new ArgumentException("The target type must be ImmutableArray<T>. ", nameof(listType));
-
-        var childType = listType.GetGenericArguments()[0];
-        var self = new ListConverter(childType, parent);
+        var self = new ListConverter(elementType, vector);
 
         return VectorElementConverter.UnsafeCreateFromGeneric(ConstructForImmutableArrayImplMethod, 
-                                                              self, parent, childType);
+                                                              self, vector, elementType);
     }
 
     private T? ConvertChild<T>(int childIndex)

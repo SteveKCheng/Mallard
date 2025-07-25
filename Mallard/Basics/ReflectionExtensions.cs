@@ -5,8 +5,31 @@ namespace Mallard;
 
 internal static class ReflectionExtensions
 {
-    public static bool IsInstanceOfGenericDefinition(this Type targetType, Type genericType)
-        => targetType.GetGenericTypeDefinition() == genericType;
+    /// <summary>
+    /// Extract the type parameter from an instance of a generic type,
+    /// if the generic type matches the one given.
+    /// </summary>
+    /// <param name="targetType">
+    /// The (closed) type to match against.
+    /// </param>
+    /// <param name="genericType">
+    /// Open generic type of one type parameter.
+    /// </param>
+    /// <returns>
+    /// The sole type parameter if <paramref name="targetType" /> matches
+    /// <paramref name="genericType" />, or null if it does not match.
+    /// </returns>
+    public static Type? GetGenericUnderlyingType(this Type targetType, Type genericType)
+    {
+        if (targetType.GetGenericTypeDefinition() == genericType)
+        {
+            var paramTypes = targetType.GetGenericArguments();
+            if (paramTypes.Length == 1)
+                return paramTypes[0];
+        }
+
+        return null;
+    }
 
     /// <summary>
     /// Determine whether a type is a nullable value type.
