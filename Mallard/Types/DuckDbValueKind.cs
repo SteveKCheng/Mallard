@@ -1,17 +1,52 @@
 ﻿namespace Mallard;
 
+/// <summary>
+/// The kinds of values that can be read from or stored into DuckDB.
+/// </summary>
+/// <remarks>
+/// <para>
+/// The word "type" is deliberately avoided for the name of this enumeration 
+/// to avoid confusion with DuckDB's logical types, or .NET types.
+/// (Nevertheless, in DuckDB's C API, this enumeration is called <c>duckdb_type</c>.)
+/// </para>
+/// <para>
+/// This enumeration mostly specifies the physical representation of values
+/// but not completely.  For instance, decimal numbers in DuckDB vectors
+/// are stored as integers with a width <c>w</c>, and number of decimal
+/// digits for the fractional part of the number <c>d</c>, that
+/// is specified when the type of the vector is defined as holding elements
+/// of (logical) type <c>DECIMAL(w,d)</c>.  That supplementary information
+/// is queried separately.
+/// </para>
+/// </remarks>
 public enum DuckDbValueKind : int
 {
     Invalid = 0,
 
-    // bool
+    /// <summary>
+    /// Boolean values; BOOLEAN in DuckDB SQL.
+    /// </summary>
     Boolean = 1,
 
-    
-    TinyInt = 2,   // int8_t
-    SmallInt = 3,  // int16_t
-    Integer = 4,    // int32_t
-    BigInt = 5,    // int64_t
+    /// <summary>
+    /// 8-bit signed integer: TINYINT in DuckDB SQL.
+    /// </summary>
+    TinyInt = 2,
+
+    /// <summary>
+    /// 16-bit signed integer: SMALLINT in DuckDB SQL.
+    /// </summary>
+    SmallInt = 3,
+
+    /// <summary>
+    /// 32-bit signed integer: INTEGER in DuckDB SQL.
+    /// </summary>
+    Integer = 4,
+
+    /// <summary>
+    /// 64-bit signed integer: BIGINT in DuckDB SQL.
+    /// </summary>
+    BigInt = 5,
 
     UTinyInt = 6,  // uint8_t
     USmallInt = 7,    // uint16_t
