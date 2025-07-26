@@ -3,7 +3,7 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Mallard;
-using ColumnInfoAndName = (string Name, DuckDbColumnInfo Info);
+using ColumnInfoAndName = (DuckDbColumnInfo Info, string? Name);
 
 /// <summary>
 /// Grants access to the results of a SQL execution by DuckDB.
@@ -57,10 +57,7 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
 
         _columns = new ColumnInfoAndName[columnCount];
         for (int columnIndex = 0; columnIndex < columnCount; ++columnIndex)
-        {
-            _columns[columnIndex] = (Name: NativeMethods.duckdb_column_name(ref nativeResult, columnIndex),
-                                     Info: new(ref _nativeResult, columnIndex));
-        }
+            _columns[columnIndex] = (Info: new(ref _nativeResult, columnIndex), Name: null);
 
         // Ownership transfer
         nativeResult = default;
@@ -445,9 +442,17 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
     /// Information gathered on each column. 
     /// </summary>
     /// <remarks>
-    /// This data, once initialized, is immutable and does not involve any native resources
-    /// from DuckDB.  Therefore, it is not subject to the access restrictions 
-    /// imposed by <see cref="_barricade" />.
+    /// <para>
+    /// <see cref="DuckDbColumnInfo"/> data, once initialized, is immutable and does not 
+    /// involve any native resources from DuckDB.  Therefore, this data is not subject to the access 
+    /// restrictions imposed by <see cref="_barricade" />.
+    /// </para>
+    /// <para>
+    /// For the name of the column, it is retrieved only if requested by the user,
+    /// as that is a mildly heavy operation (requiring a temporary memory allocation from the
+    /// native C API, and then conversion from UTF-8 into a .NET string), and it is not needed
+    /// for decoding data.
+    /// </para>
     /// </remarks>
     private readonly ColumnInfoAndName[] _columns;
 
@@ -473,7 +478,30 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
     /// <returns>
     /// The name of the column, or <see cref="string.Empty" /> if it has no name.
     /// </returns>
-    public string GetColumnName(int columnIndex) => _columns[columnIndex].Name;
+    public string GetColumnName(int columnIndex)
+    {
+        ref string? nameRef = ref _columns[columnIndex].Name;
+        var name = nameRef;
+
+        if (name == null)
+        {
+            using var _ = _barricade.EnterScope(this);
+            name = NativeMethods.duckdb_column_name(ref _nativeResult, columnIndex);
+
+            // Always return the first string constructed if there is a race.
+            //
+            // Such a race would be very rare because the barricade will not allow multi-thread
+            // in the first place.  Theoretically, there ought to be no problem calling 
+            // GetColumnName from multiple threads as it does not mutate DuckDB state or
+            // rely on such state, but the use case is marginal and not worth the complexity.
+            // Not entering the barricade when the name is already stored, above, is just
+            // an optimization hidden to the user, even if strictly speaking we should disallow
+            // all instance methods in this class from multi-thread access.
+            name = (nameRef ??= name);
+        }
+
+        return name;
+    }
 
     /// <see cref="IResultColumns.GetColumnInfo(int)" />
     ref readonly DuckDbColumnInfo IResultColumns.GetColumnInfo(int columnIndex)
