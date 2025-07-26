@@ -56,15 +56,6 @@ internal unsafe readonly struct DuckDbVectorInfo
     /// </summary>
     internal readonly int Length;
 
-    /// <see cref="DuckDbColumnInfo.DecimalScale" />
-    internal byte DecimalScale => ColumnInfo.DecimalScale;
-
-    /// <see cref="DuckDbColumnInfo.ValueKind" />
-    internal DuckDbValueKind ValueKind => ColumnInfo.ValueKind;
-
-    /// <see cref="DuckDbColumnInfo.StorageKind" />
-    internal DuckDbValueKind StorageType => ColumnInfo.StorageKind;
-
     /// <summary>
     /// Construct descriptor on a given vector with cached column information.
     /// </summary>
@@ -158,11 +149,12 @@ internal unsafe readonly struct DuckDbVectorInfo
     }
 
     [DoesNotReturn]
-    internal static void ThrowForWrongParamType(DuckDbValueKind valueKind, 
-                                                DuckDbValueKind storageType,
-                                                Type paramType)
+    internal static void ThrowForWrongParamType(in DuckDbColumnInfo columnInfo, Type paramType)
     {
-        if (valueKind == storageType)
+        var valueKind = columnInfo.ValueKind;
+        var storageKind = columnInfo.StorageKind;
+
+        if (valueKind == storageKind)
         {
             throw new ArgumentException(
                 $"Generic type {paramType.Name} does not match the DuckDB basic type {valueKind} of the elements in the desired column.");
@@ -170,7 +162,7 @@ internal unsafe readonly struct DuckDbVectorInfo
         else
         {
             throw new ArgumentException(
-                $"Generic type {paramType.Name} does not match the DuckDB basic type {valueKind} [{storageType}] of the elements in the desired column.");
+                $"Generic type {paramType.Name} does not match the DuckDB basic type {valueKind} [{storageKind}] of the elements in the desired column.");
         }
     }
 

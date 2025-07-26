@@ -90,7 +90,7 @@ internal readonly partial struct VectorElementConverter
         var converter = CreateForType(targetType, in context);
 
         if (!converter.IsValid)
-            DuckDbVectorInfo.ThrowForWrongParamType(vector.ValueKind, vector.StorageType, targetType ?? typeof(object));
+            DuckDbVectorInfo.ThrowForWrongParamType(vector.ColumnInfo, targetType ?? typeof(object));
 
         return converter;
     }

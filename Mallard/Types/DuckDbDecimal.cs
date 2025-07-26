@@ -206,14 +206,15 @@ public readonly struct DuckDbDecimal
     /// </typeparam>
     private static Decimal ConvertToDecimalFromVector<TStorage>(object? state, in DuckDbVectorInfo vector, int index)
     {
+        var decimalScale = vector.ColumnInfo.DecimalScale;
         if (typeof(TStorage) == typeof(Int16))
-            return ConvertToDecimal(vector.UnsafeRead<Int16>(index), vector.DecimalScale);
+            return ConvertToDecimal(vector.UnsafeRead<Int16>(index), decimalScale);
         else if (typeof(TStorage) == typeof(Int32))
-            return ConvertToDecimal(vector.UnsafeRead<Int32>(index), vector.DecimalScale);
+            return ConvertToDecimal(vector.UnsafeRead<Int32>(index), decimalScale);
         else if (typeof(TStorage) == typeof(Int64))
-            return ConvertToDecimal(vector.UnsafeRead<Int64>(index), vector.DecimalScale);
+            return ConvertToDecimal(vector.UnsafeRead<Int64>(index), decimalScale);
         else if (typeof(TStorage) == typeof(Int128))
-            return ConvertToDecimal(vector.UnsafeRead<Int128>(index), vector.DecimalScale);
+            return ConvertToDecimal(vector.UnsafeRead<Int128>(index), decimalScale);
         else
             throw new UnreachableException();
     }

@@ -71,8 +71,8 @@ public readonly ref struct DuckDbVectorRawReader<T> : IDuckDbVector<T>
     internal DuckDbVectorRawReader(scoped in DuckDbVectorInfo info)
     {
         _info = info;
-        if (!ValidateParamType(_info.StorageType))
-            DuckDbVectorInfo.ThrowForWrongParamType(_info.ValueKind, _info.StorageType, typeof(T));
+        if (!ValidateParamType(_info.ColumnInfo.StorageKind))
+            DuckDbVectorInfo.ThrowForWrongParamType(_info.ColumnInfo, typeof(T));
     }
 
     /// <inheritdoc cref="IDuckDbVector.ValidityMask" />
