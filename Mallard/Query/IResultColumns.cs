@@ -23,7 +23,12 @@ internal interface IResultColumns
     ref readonly DuckDbColumnInfo GetColumnInfo(int columnIndex);
 
     /// <summary>
-    /// The number of columns present in the result.
+    /// Get the name of a column.
+    /// </summary>
+    string GetColumnName(int columnIndex);
+
+    /// <summary>
+    /// The number of top-level columns present in the results.
     /// </summary>
     int ColumnCount { get; }
 }
