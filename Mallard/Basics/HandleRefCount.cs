@@ -39,8 +39,9 @@ internal static partial class SynchronizationMethods
 /// </para>
 /// <para>
 /// This mechanism implicitly assumes every operation in the native library
-/// for the object other than its destruction is thread-safe.  If not, the solution
-/// is not reference counting, but simply a lock to protect all operations.
+/// made available (for the object protected by this helper), other than its destruction 
+/// is thread-safe.  If not, the solution
+/// is not reference counting, but simply a lock or barricade to protect all operations.
 /// </para>
 /// <para>
 /// Because the "lock scope" holds a (managed) reference to the counter, that it needs
@@ -48,6 +49,9 @@ internal static partial class SynchronizationMethods
 /// garbage-collected while the scope is active.  This fact obviates the need to sprinke
 /// <see cref="GC.KeepAlive(object?)" /> on <c>this</c> when using pointers to 
 /// native objects stored inside the <c>this</c> managed object.
+/// </para>
+/// <para>
+/// Re-entrancy is allowed.  
 /// </para>
 /// </remarks>
 internal struct HandleRefCount

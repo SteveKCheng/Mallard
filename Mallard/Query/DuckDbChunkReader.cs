@@ -38,25 +38,51 @@ public delegate TReturn DuckDbChunkReadingFunc<in TState, out TReturn>(in DuckDb
 /// Gives access to the data within a result chunk.
 /// </summary>
 /// <remarks>
+/// <para>
 /// Access must be intermediated through this "ref struct" to ensure that pointers to memory
 /// allocated by the DuckDB native library can only be read from within a restricted scope.
 /// This "ref struct" is passed to the body of 
 /// <see cref="DuckDbResultChunkFunc{TState}" /> and cannot be accessed outside of that
 /// body.
+/// </para>
+/// <para>
+/// "Ref structs" cannot be ported across threads, which also increases performance, by 
+/// making unnecessary all thread-safety checks when accessing a chunk through methods here.
+/// </para>
 /// </remarks>
 public unsafe readonly ref struct DuckDbChunkReader
 {
+    /// <summary>
+    /// Borrowed handle for the native object of the result chunk.
+    /// </summary>
     private readonly _duckdb_data_chunk* _nativeChunk;
-    private readonly IResultColumns _resultColumns;
-    private readonly int _length;
 
+    /// <summary>
+    /// Used to access type information on the columns.
+    /// </summary>
+    private readonly IResultColumns _resultColumns;
+
+    /// <summary>
+    /// Wrap the native object for a result chunk.
+    /// </summary>
+    /// <param name="nativeChunk">
+    /// Handle to the native object.  This handle is borrowed for the duration of the scope 
+    /// of this ref struct.
+    /// </param>
+    /// <param name="resultColumns">
+    /// Used to access type information on the columns.
+    /// </param>
+    /// <param name="length">
+    /// The length (number of rows) present in the chunk.  This value is cached into 
+    /// the <see cref="Length" /> property, so no further API calls are needed to retrieve it.
+    /// </param>
     internal DuckDbChunkReader(_duckdb_data_chunk* nativeChunk,
                                IResultColumns resultColumns,
                                int length)
     {
         _nativeChunk = nativeChunk;
         _resultColumns = resultColumns;
-        _length = length;
+        Length = length;
     }
 
     /// <summary>
@@ -118,11 +144,11 @@ public unsafe readonly ref struct DuckDbChunkReader
         if (nativeVector == null)
             throw new IndexOutOfRangeException("Column index is not in range. ");
 
-        return new DuckDbVectorInfo(nativeVector, _length, _resultColumns.GetColumnInfo(columnIndex));
+        return new DuckDbVectorInfo(nativeVector, Length, _resultColumns.GetColumnInfo(columnIndex));
     }
 
     /// <summary>
     /// The length (number of rows) present in this chunk.
     /// </summary>
-    public int Length => _length;
+    public int Length { get; }
 }
