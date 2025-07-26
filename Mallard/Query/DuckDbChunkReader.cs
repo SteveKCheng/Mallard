@@ -76,19 +76,10 @@ public unsafe readonly ref struct DuckDbChunkReader
     /// <paramref name="columnIndex"/> is out of range, or this instance is default-initialized.
     /// </exception>
     public DuckDbVectorReader<T> GetColumn<T>(int columnIndex)
-        => new(GetVectorInfo(columnIndex));
-
-    private DuckDbVectorInfo GetVectorInfo(int columnIndex)
     {
-        // In case the user calls this method on a default-initialized instance,
-        // the native library will not crash on this call because it does
-        // check _nativeChunk for null first, returning null in that case.
-        var nativeVector = NativeMethods.duckdb_data_chunk_get_vector(_nativeChunk,
-                                                                      columnIndex);
-        if (nativeVector == null)
-            throw new IndexOutOfRangeException("Column index is not in range. ");
-
-        return new DuckDbVectorInfo(nativeVector, _length, _resultColumns.GetColumnInfo(columnIndex));
+        var vector = GetVectorInfo(columnIndex);
+        var converter = _resultColumns.GetColumnConverter(columnIndex, typeof(T), vector);
+        return new DuckDbVectorReader<T>(vector, converter);
     }
 
     /// <summary>
@@ -109,6 +100,26 @@ public unsafe readonly ref struct DuckDbChunkReader
     /// </exception>
     public DuckDbVectorRawReader<T> GetColumnRaw<T>(int columnIndex) where T : unmanaged, allows ref struct
         => new(GetVectorInfo(columnIndex));
+
+    /// <summary>
+    /// Get the descriptor for a column's vector, common to both <see cref="DuckDbVectorReader{T}" />
+    /// and <see cref="DuckDbVectorRawReader{T}" />.
+    /// </summary>
+    /// <param name="columnIndex">
+    /// The index of the DuckDB column to select.
+    /// </param>
+    private DuckDbVectorInfo GetVectorInfo(int columnIndex)
+    {
+        // In case the user calls this method on a default-initialized instance,
+        // the native library will not crash on this call because it does
+        // check _nativeChunk for null first, returning null in that case.
+        var nativeVector = NativeMethods.duckdb_data_chunk_get_vector(_nativeChunk,
+                                                                      columnIndex);
+        if (nativeVector == null)
+            throw new IndexOutOfRangeException("Column index is not in range. ");
+
+        return new DuckDbVectorInfo(nativeVector, _length, _resultColumns.GetColumnInfo(columnIndex));
+    }
 
     /// <summary>
     /// The length (number of rows) present in this chunk.

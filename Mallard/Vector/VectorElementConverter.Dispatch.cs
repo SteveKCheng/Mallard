@@ -74,13 +74,47 @@ internal readonly partial struct VectorElementConverter
     /// The selected .NET type will be set in the <see cref="VectorElementConverter.TargetType" />
     /// of the return value.
     /// </param>
+    /// <param name="vector">
+    /// The vector to convert items from.
+    /// </param>
+    /// <remarks>
+    /// <para>
+    /// The instance obtained must be created, and cannot be cached since this method
+    /// has no context to do so.  
+    /// </para>
+    /// </remarks>
+    internal unsafe static VectorElementConverter
+        CreateForVectorUncached(Type? targetType, in DuckDbVectorInfo vector)
+    {
+        var context = new ConverterCreationContext(vector.ColumnInfo, vector.NativeVector);
+        var converter = CreateForType(targetType, in context).BindToVector(vector);
+
+        if (!converter.IsValid)
+            DuckDbVectorInfo.ThrowForWrongParamType(vector.ValueKind, vector.StorageType, targetType ?? typeof(object));
+
+        return converter;
+    }
+
+    /// <summary>
+    /// Obtain an instance of <see cref="VectorElementConverter" />
+    /// appropriate for the element type of a column and the desired .NET type.
+    /// </summary>
+    /// <param name="type">
+    /// The desired .NET type to convert elements to. 
+    /// This should not be a nullable value type.  (Null values are always handled outside
+    /// of the converter function.)  If null, this method selects the most appropriate
+    /// .NET type; this functionality is used to implement boxing conversions.
+    /// The selected .NET type will be set in the <see cref="VectorElementConverter.TargetType" />
+    /// of the return value.
+    /// </param>
     /// <param name="context">
     /// Context for creating/obtaining a converter for the data in the DuckDB column
     /// in question.
     /// </param>
     /// <returns>
-    /// A converter that works for the combination of <paramref name="type"/> and <paramref name="vector" />,
-    /// or an invalid (default-initialized) instance if there is none suitable.
+    /// A converter that works for the combination of <paramref name="type"/> and <paramref name="context" />,
+    /// or an invalid (default-initialized) instance if there is none suitable.  If the conversion
+    /// function requires binding to a specific vector, the returned instance is unbound.
     /// </returns>
     public static VectorElementConverter
         CreateForType(Type? type, ref readonly ConverterCreationContext context)

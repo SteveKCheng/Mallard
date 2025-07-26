@@ -503,9 +503,18 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
         return name;
     }
 
-    /// <see cref="IResultColumns.GetColumnInfo(int)" />
     ref readonly DuckDbColumnInfo IResultColumns.GetColumnInfo(int columnIndex)
         => ref _columns[columnIndex].Info;
+
+    /// <see cref="IResultColumns.GetColumnConverter(int, Type, in DuckDbVectorInfo)" />
+    private VectorElementConverter GetColumnConverter(int columnIndex, Type targetType, in DuckDbVectorInfo vector)
+    {
+        // FIXME Uncached for now
+        return VectorElementConverter.CreateForVectorUncached(targetType, vector);
+    }
+
+    VectorElementConverter IResultColumns.GetColumnConverter(int columnIndex, Type targetType, in DuckDbVectorInfo vector)
+        => GetColumnConverter(columnIndex, targetType, vector);
 
     #endregion
 }

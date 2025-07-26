@@ -47,16 +47,33 @@ public unsafe readonly ref struct
 
     internal bool DefaultValueIsInvalid => _converter.DefaultValueIsInvalid;
 
-    internal DuckDbVectorReader(scoped in DuckDbVectorInfo info)
+    /// <summary>
+    /// Create a reader using a possibly cached converter for items in the given vector.
+    /// </summary>
+    /// <param name="vector">
+    /// The vector to read from.
+    /// </param>
+    /// <param name="converter">Instance of <see cref="VectorElementConverter"/> that is closed for
+    /// <paramref name="vector"/>. </param>
+    internal DuckDbVectorReader(scoped in DuckDbVectorInfo vector, scoped in VectorElementConverter converter)
     {
-        _info = info;
+        _info = vector;
+        _converter = converter;
+    }
 
-        var context = new ConverterCreationContext(info.ColumnInfo, info.NativeVector);
-        _converter = VectorElementConverter.CreateForType(typeof(T), in context)
-                                           .BindToVector(info);
-
-        if (!_converter.IsValid)
-            DuckDbVectorInfo.ThrowForWrongParamType(info.ValueKind, info.StorageType, typeof(T));
+    /// <summary>
+    /// Create a reader using a freshly-created converter for items in the given vector.
+    /// </summary>
+    /// <param name="vector">
+    /// The vector to read from.
+    /// </param>
+    /// <remarks>
+    /// This constructor should only be used for "one-off" conversions where caching is not possible
+    /// or beneficial.
+    /// </remarks>
+    internal DuckDbVectorReader(scoped in DuckDbVectorInfo vector)
+        : this(vector, VectorElementConverter.CreateForVectorUncached(typeof(T), vector))
+    {
     }
 
     /// <inheritdoc cref="IDuckDbVector.ValidityMask" />

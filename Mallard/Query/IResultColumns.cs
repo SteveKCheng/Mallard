@@ -26,4 +26,19 @@ internal interface IResultColumns
     /// The number of top-level columns present in the results.
     /// </summary>
     int ColumnCount { get; }
+
+    /// <summary>
+    /// Get the converter to convert items on some vector for the given column.
+    /// </summary>
+    /// <param name="columnIndex">The target column. </param>
+    /// <param name="targetType">The .NET type to convert items of the vector to. </param>
+    /// <param name="vector">The vector to convert items from. </param>
+    /// <remarks>
+    /// This method exists here so that (parts of) the
+    /// converter state may be cached, and re-used across all chunks.
+    /// </remarks>
+    /// <returns>
+    /// <see cref="VectorElementConverter" /> bound to <paramref name="vector" />.
+    /// </returns>
+    VectorElementConverter GetColumnConverter(int columnIndex, Type targetType, in DuckDbVectorInfo vector);
 }
