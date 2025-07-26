@@ -91,10 +91,10 @@ public class TestCsvData
         if (!vector.TryGetItem(index, out var listRef))
             return null;
 
-        var childrenVector = vector.GetChildrenVector<string>();
+        var childrenVector = vector.GetChildrenRawVector<DuckDbString>();
         var arrayBuilder = ImmutableArray.CreateBuilder<string>(listRef.Length);
         for (int i = 0; i < listRef.Length; ++i)
-            arrayBuilder.Add(childrenVector.GetItem(listRef.Offset + i));
+            arrayBuilder.Add(childrenVector.GetItem(listRef.Offset + i).ToString());
         return arrayBuilder.DrainToImmutable().ToValueArray();
     }
 
