@@ -224,8 +224,8 @@ public readonly struct DuckDbDecimal
     private static Decimal? ConvertToNullableDecimalFromVector<TStorage>(object? state, in DuckDbVectorInfo vector, int index)
         => new Nullable<Decimal>(ConvertToDecimalFromVector<TStorage>(state, vector, index));
 
-    internal unsafe static VectorElementConverter GetVectorElementConverter(in DuckDbVectorInfo vector)
-        => vector.StorageType switch
+    internal unsafe static VectorElementConverter GetVectorElementConverter(in DuckDbColumnInfo column)
+        => column.StorageKind switch
         {
             DuckDbValueKind.SmallInt => VectorElementConverter.Create(&ConvertToDecimalFromVector<Int16>),
             DuckDbValueKind.Integer => VectorElementConverter.Create(&ConvertToDecimalFromVector<Int32>),
@@ -234,8 +234,8 @@ public readonly struct DuckDbDecimal
             _ => throw new InvalidOperationException("Cannot decode Decimal from a DuckDB vector with the given storage type. ")
         };
 
-    internal unsafe static VectorElementConverter GetBoxedVectorElementConverter(in DuckDbVectorInfo vector)
-        => vector.StorageType switch
+    internal unsafe static VectorElementConverter GetBoxedVectorElementConverter(in DuckDbColumnInfo column)
+        => column.StorageKind switch
         {
             DuckDbValueKind.SmallInt => VectorElementConverter.Create(&ConvertToBoxedDecimalFromVector<Int16>),
             DuckDbValueKind.Integer => VectorElementConverter.Create(&ConvertToBoxedDecimalFromVector<Int32>),
@@ -244,8 +244,8 @@ public readonly struct DuckDbDecimal
             _ => throw new InvalidOperationException("Cannot decode Decimal from a DuckDB vector with the given storage type. ")
         };
 
-    internal unsafe static VectorElementConverter GetNullableVectorElementConverter(in DuckDbVectorInfo vector)
-        => vector.StorageType switch
+    internal unsafe static VectorElementConverter GetNullableVectorElementConverter(in DuckDbColumnInfo column)
+        => column.StorageKind switch
         {
             DuckDbValueKind.SmallInt => VectorElementConverter.Create(&ConvertToNullableDecimalFromVector<Int16>),
             DuckDbValueKind.Integer => VectorElementConverter.Create(&ConvertToNullableDecimalFromVector<Int32>),
