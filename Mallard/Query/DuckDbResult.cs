@@ -426,7 +426,11 @@ public unsafe sealed class DuckDbResult : IDisposable
     /// </summary>
     public int ColumnCount => _columnInfo.Length;
 
-    public string GetColumnName(int columnIndex) => _columnInfo[columnIndex].Name;
-
-    public DuckDbValueKind GetColumnValueKind(int columnIndex) => _columnInfo[columnIndex].ValueKind;
+    /// <summary>
+    /// Get information about a column in the results.
+    /// </summary>
+    /// <param name="columnIndex">
+    /// The index of the column, between 0 (inclusive) to <see cref="ColumnCount" /> (exclusive).
+    /// </param>
+    public DuckDbColumnInfo GetColumnInfo(int columnIndex) => _columnInfo[columnIndex];
 }
