@@ -40,8 +40,12 @@ internal unsafe readonly partial struct VectorElementConverter
     #region Data
 
     /// <summary>
-    /// Opaque (cached) state to pass to <see cref="_function" />.
+    /// Opaque pre-computed state to pass to <see cref="_function" />.
     /// </summary>
+    /// <remarks>
+    /// This member is null if the converter implementation is stateless, or
+    /// it requires vector-specific binding but has not been bound yet.
+    /// </remarks>
     private readonly object? _state;
 
     /// <summary>
@@ -59,7 +63,7 @@ internal unsafe readonly partial struct VectorElementConverter
     ///   </listheader>
     ///   <item>
     ///     <term><c>object?</c> <c>state</c></term>
-    ///     <description>Cached state used by the conversion function. </description>
+    ///     <description>Pre-computed state used by the conversion function. </description>
     ///   </item>
     ///   <item>
     ///     <term><c>DuckDbVectorInfo*</c> <c>vector</c></term>
@@ -92,7 +96,7 @@ internal unsafe readonly partial struct VectorElementConverter
     /// type-erased.  It may also be consulted if the target type is unknown
     /// because the user requested all values be boxed to objects. 
     /// </remarks>
-    public Type TargetType { get; init; }
+    public Type TargetType { get; }
 
     /// <summary>
     /// Whether the default value of <see cref="TargetType" /> is considered
@@ -112,42 +116,71 @@ internal unsafe readonly partial struct VectorElementConverter
     /// This flag is automatically true for reference types and nullable value types.
     /// </para>
     /// </remarks>
-    public bool DefaultValueIsInvalid { get; init; }
+    public bool DefaultValueIsInvalid { get; }
 
     /// <summary>
     /// Whether this instance specifies a valid converter (the function pointer is not null).
     /// </summary>
     public bool IsValid => _function != null;
 
+    /// <summary>
+    /// Binder for converter states that are vector-specific.
+    /// </summary>
+    private readonly IConverterBinder<object>? _binder;
+
     #endregion
 
     #region Constructors
 
-    private VectorElementConverter(object? state, void* function, Type targetType, bool defaultValueIsInvalid)
+    private VectorElementConverter(object? state, 
+                                   void* function, 
+                                   Type targetType, 
+                                   bool defaultValueIsInvalid,
+                                   IConverterBinder<object>? rebinder = null)
     {
         _state = state;
         _function = function;
         TargetType = targetType;
         DefaultValueIsInvalid = defaultValueIsInvalid;
+        _binder = rebinder;
     }
 
     /// <summary>
-    /// Create a pointer to a conversion function along with its state.
+    /// Encapsulate a conversion function along with its state.
     /// </summary>
     /// <typeparam name="S">State object type for the conversion function. </typeparam>
     /// <typeparam name="T">The .NET type to convert to. </typeparam>
+    /// <param name="state">
+    /// The state object to pass in when invoking <paramref name="function" />.
+    /// This state object must not be specific to any vector (for the same DuckDB column), as it may be cached
+    /// for re-use across chunks.  To use vector-specific states, use 
+    /// the overload of this method that takes <see cref="IConverterBinder{TState}" /> instead.
+    /// </param>
+    /// <param name="function">
+    /// Implementation function of the conversion.  It will only be passed
+    /// <paramref name="state" /> as its first argument.
+    /// </param>
+    /// <param name="defaultValueIsInvalid">
+    /// The desired value of <see cref="DefaultValueIsInvalid" />.  Ignored if <typeparamref name="T" />
+    /// is a reference type or is nullable.
+    /// </param>
     public static VectorElementConverter
         Create<S,T>(S state, delegate*<S, in DuckDbVectorInfo, int, T> function, bool defaultValueIsInvalid = false)
         where S : class
         => new(state, function, typeof(T), !typeof(T).IsValueType || typeof(T).IsNullable() || defaultValueIsInvalid);
 
     /// <summary>
-    /// Create a pointer to a stateless conversion function.
+    /// Encapsulate a stateless conversion function.
     /// </summary>
     /// <typeparam name="T">The .NET type to convert to. </typeparam>
-    /// <remarks>
-    /// When the conversion function is invoked, the first argument will be passed as null.
-    /// </remarks>
+    /// <param name="function">
+    /// Implementation function of the conversion.  Its first argument will always be passed as null
+    /// (because it has no state).
+    /// </param>
+    /// <param name="defaultValueIsInvalid">
+    /// The desired value of <see cref="DefaultValueIsInvalid" />.  Ignored if <typeparamref name="T" />
+    /// is a reference type or is nullable.
+    /// </param>
     public static VectorElementConverter
         Create<T>(delegate*<object?, in DuckDbVectorInfo, int, T> function, bool defaultValueIsInvalid = false)
         => new(null, function, typeof(T), !typeof(T).IsValueType || typeof(T).IsNullable() || defaultValueIsInvalid);
@@ -180,7 +213,7 @@ internal unsafe readonly partial struct VectorElementConverter
     {
         Debug.Assert(typeof(T).IsValueType ? typeof(T) == TargetType
                                            : typeof(T).IsAssignableFrom(TargetType),
-            "Type passed to Invoke is not compatible with the type that this VectorElementConverter was created for. ");
+            "The type passed to TryConvert is not compatible with the type that this VectorElementConverter was created for. ");
 
         if (vector.IsItemValid(index))
         {

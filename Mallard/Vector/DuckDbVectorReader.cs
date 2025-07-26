@@ -52,7 +52,8 @@ public unsafe readonly ref struct
         _info = info;
 
         var context = new ConverterCreationContext(info.ColumnInfo, info.NativeVector);
-        _converter = VectorElementConverter.CreateForType(typeof(T), in context);
+        _converter = VectorElementConverter.CreateForType(typeof(T), in context)
+                                           .BindToVector(info);
 
         if (!_converter.IsValid)
             DuckDbVectorInfo.ThrowForWrongParamType(info.ValueKind, info.StorageType, typeof(T));
