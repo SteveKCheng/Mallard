@@ -318,6 +318,12 @@ internal unsafe static partial class NativeMethods
     internal static partial idx_t duckdb_array_type_array_size(_duckdb_logical_type* type);
 
     [LibraryImport(LibraryName)]
+    internal static partial _duckdb_logical_type* duckdb_list_type_child_type(_duckdb_logical_type* type);
+
+    [LibraryImport(LibraryName)]
+    internal static partial _duckdb_logical_type* duckdb_array_type_child_type(_duckdb_logical_type* type);
+
+    [LibraryImport(LibraryName)]
     internal static partial idx_t duckdb_struct_type_child_count(_duckdb_logical_type* type);
 
     [LibraryImport(LibraryName)]

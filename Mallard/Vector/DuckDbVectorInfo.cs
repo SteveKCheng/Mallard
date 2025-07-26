@@ -65,11 +65,6 @@ internal unsafe readonly struct DuckDbVectorInfo
     /// <see cref="DuckDbColumnInfo.StorageKind" />
     internal DuckDbValueKind StorageType => ColumnInfo.StorageKind;
 
-    internal DuckDbVectorInfo(_duckdb_vector* nativeVector, int length)
-        : this(nativeVector, length, new DuckDbColumnInfo(nativeVector))
-    {
-    }
-
     /// <summary>
     /// Construct descriptor on a given vector with cached column information.
     /// </summary>
@@ -81,11 +76,17 @@ internal unsafe readonly struct DuckDbVectorInfo
     /// cached at the level of the chunk containing all vectors (one for each column).
     /// </param>
     /// <param name="columnInfo">
+    /// <para>
     /// Information on the column that the vector is part of.  All of this information
     /// (except for the name) can be obtained from <paramref name="nativeVector" />,
     /// but when processing multiple chunks from the same <see cref="DuckDbResult" />,
     /// the columns will always be the same so it is quicker to cache the information
     /// then to query the DuckDB native library every time.
+    /// </para>
+    /// <para>
+    /// Pass the result of <see cref="DuckDbColumnInfo.DuckDbColumnInfo(_duckdb_vector*)" />
+    /// if no cached column information is available.
+    /// </para>
     /// </param>
     internal DuckDbVectorInfo(_duckdb_vector* nativeVector, int length, in DuckDbColumnInfo columnInfo)
     {

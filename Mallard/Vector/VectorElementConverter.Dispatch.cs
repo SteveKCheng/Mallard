@@ -86,7 +86,7 @@ internal readonly partial struct VectorElementConverter
     internal unsafe static VectorElementConverter
         CreateForVectorUncached(Type? targetType, in DuckDbVectorInfo vector)
     {
-        var context = new ConverterCreationContext(vector.ColumnInfo, vector.NativeVector);
+        var context = ConverterCreationContext.FromVector(vector);
         var converter = CreateForType(targetType, in context).BindToVector(vector);
 
         if (!converter.IsValid)

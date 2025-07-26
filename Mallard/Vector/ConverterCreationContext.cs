@@ -39,7 +39,6 @@ internal unsafe readonly ref struct ConverterCreationContext
     /// </summary>
     public DuckDbColumnInfo ColumnInfo { get; }
 
-    /*
     /// <summary>
     /// Obtain a handle to the "logical type" object from the native DuckDB library.
     /// </summary>
@@ -71,33 +70,35 @@ internal unsafe readonly ref struct ConverterCreationContext
     /// <summary>
     /// Create a new context.
     /// </summary>
-    internal ConverterCreationContext(DuckDbColumnInfo columnInfo, 
-                                      void* logicalTypeImplState,
-                                      LogicalTypeImplFn logicalTypeImplFn)
+    private ConverterCreationContext(DuckDbColumnInfo columnInfo, 
+                                     void* logicalTypeImplState,
+                                     LogicalTypeImplFn logicalTypeImplFn)
     {
         ColumnInfo = columnInfo;
         _logicalTypeImplState = logicalTypeImplState;
         _logicalTypeImplFn = logicalTypeImplFn;
     }
-    */
 
-    internal readonly _duckdb_vector* NativeVector { get; }
-
-    internal ConverterCreationContext(DuckDbColumnInfo columnInfo, 
-                                      _duckdb_vector* vector)
+    /// <summary>
+    /// Wrapper around private constructor that is slightly more type-safe.
+    /// </summary>
+    internal static ConverterCreationContext Create<T>(
+        DuckDbColumnInfo columnInfo,
+        T* logicalTypeImplState,
+        delegate*<T*, _duckdb_logical_type*> logicalTypeImplFn)
+        where T : unmanaged
     {
-        ColumnInfo = columnInfo;
-        NativeVector = vector;
-
-        /*
-        static _duckdb_logical_type* logicalTypeImplFn(void* state)
-            => NativeMethods.duckdb_vector_get_column_type((_duckdb_vector*)state);
-
-        _logicalTypeImplState = vector;
-        _logicalTypeImplFn = &logicalTypeImplFn;
-        */
+        return new(columnInfo, logicalTypeImplState, (LogicalTypeImplFn)logicalTypeImplFn);
     }
 
-    internal _duckdb_logical_type* GetNativeLogicalType()
-        => NativeMethods.duckdb_vector_get_column_type(NativeVector);
+    /// <summary>
+    /// Construct context when an actual vector is available (not just the abstract column).
+    /// </summary>
+    internal static ConverterCreationContext FromVector(in DuckDbVectorInfo vector)
+    {
+        static _duckdb_logical_type* logicalTypeImplFn(_duckdb_vector* nativeVector)
+            => NativeMethods.duckdb_vector_get_column_type(nativeVector);
+
+        return Create(vector.ColumnInfo, vector.NativeVector, &logicalTypeImplFn);
+    }
 }

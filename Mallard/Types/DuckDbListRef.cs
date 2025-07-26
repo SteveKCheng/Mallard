@@ -1,5 +1,6 @@
 ﻿using Mallard.C_API;
 using System;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace Mallard;
@@ -20,36 +21,28 @@ public static partial class DuckDbVectorMethods
     /// The lists' children, collected into one vector, i.e. the "children vector" or "vector of list children".
     /// </returns>
     /// <exception cref="DuckDbException"></exception>
-    public unsafe static DuckDbVectorRawReader<T> GetChildrenRawVector<T>(in this DuckDbVectorRawReader<DuckDbListRef> parent)
+    public static DuckDbVectorRawReader<T> GetChildrenRawVector<T>(in this DuckDbVectorRawReader<DuckDbListRef> parent)
         where T : unmanaged, allows ref struct
-        => new(GetListChildrenVectorInfo(parent._info.NativeVector));
+        => new(parent._info.GetListChildrenVectorInfo());
 
-    /// <summary>
-    /// Retrieve the vector containing all the children across all lists in a vector of lists.
-    /// </summary>
-    /// <typeparam name="T">
-    /// The .NET type to bind an element of the lists to.
-    /// </typeparam>
-    /// <param name="parent">
-    /// The vector of lists.
-    /// </param>
-    /// <returns>
-    /// The lists' children, collected into one vector, i.e. the "children vector" or "vector of list children".
-    /// </returns>
-    /// <exception cref="DuckDbException"></exception>
-    public unsafe static DuckDbVectorReader<T> GetChildrenVector<T>(in this DuckDbVectorRawReader<DuckDbListRef> parent)
-        => new(GetListChildrenVectorInfo(parent._info.NativeVector));
+    internal static DuckDbVectorInfo GetListChildrenVectorInfo(in this DuckDbVectorInfo parentVector)
+        => GetListChildrenVectorInfo(parentVector, Unsafe.NullRef<DuckDbColumnInfo>());
 
-    internal unsafe static DuckDbVectorInfo GetListChildrenVectorInfo(_duckdb_vector* parentVector)
+    internal unsafe static DuckDbVectorInfo GetListChildrenVectorInfo(in this DuckDbVectorInfo parentVector, in DuckDbColumnInfo columnInfo)
     {
-        DuckDbVectorInfo.ThrowOnNullVector(parentVector);
+        DuckDbVectorInfo.ThrowOnNullVector(parentVector.NativeVector);
 
-        var childVector = NativeMethods.duckdb_list_vector_get_child(parentVector);
+        var childVector = NativeMethods.duckdb_list_vector_get_child(parentVector.NativeVector);
         if (childVector == null)
             throw new DuckDbException("Could not get the child vector from a list vector in DuckDB. ");
 
-        var totalChildren = NativeMethods.duckdb_list_vector_get_size(parentVector);
-        return new DuckDbVectorInfo(childVector, (int)totalChildren);
+        var totalChildren = NativeMethods.duckdb_list_vector_get_size(parentVector.NativeVector);
+
+        return new DuckDbVectorInfo(
+                    childVector, 
+                    length: (int)totalChildren,
+                    columnInfo: Unsafe.IsNullRef(in columnInfo) ? new DuckDbColumnInfo(childVector)
+                                                                : columnInfo);      
     }
 }
 

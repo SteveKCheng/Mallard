@@ -94,10 +94,20 @@ public readonly record struct DuckDbColumnInfo
     public int ElementSize { get; }
 
     /// <summary>
-    /// Initialize information on one column. 
+    /// Initialize information on one column of results from a DuckDB query.
     /// </summary>
-    /// <param name="nativeResult">Query results where the column comes from. </param>
+    /// <param name="nativeResult">Query results where the column comes from. 
+    /// This native object is borrowed for the duration of this constructor call.
+    /// </param>
     /// <param name="columnIndex">Index of the selected column. </param>
+    /// <remarks>
+    /// <para>
+    /// Functionally all the available constructors of <see cref="DuckDbColumnInfo" />
+    /// result in the same value (same information), but owing to vagarities in DuckDB's C API,
+    /// this version is more efficient, and should be used for the top-level columns of query
+    /// results.
+    /// </para>
+    /// </remarks>
     internal unsafe DuckDbColumnInfo(ref duckdb_result nativeResult, int columnIndex)
     {
         DuckDbValueKind valueKind = NativeMethods.duckdb_column_type(ref nativeResult, columnIndex);
@@ -122,7 +132,8 @@ public readonly record struct DuckDbColumnInfo
     /// <summary>
     /// Initialize information from one vector (usually coming from a nested column). 
     /// </summary>
-    /// <param name="nativeVector">The vector to retrieve type information from. </param>
+    /// <param name="nativeVector">The vector to retrieve type information from.
+    /// This native object is borrowed for the duration of this constructor call. </param>
     internal unsafe DuckDbColumnInfo(_duckdb_vector* nativeVector)
     {
         using var holder = new NativeLogicalTypeHolder(
@@ -132,6 +143,24 @@ public readonly record struct DuckDbColumnInfo
 
         DuckDbValueKind storageKind;
         (storageKind, ElementSize, DecimalScale) = GatherSupplementaryInfo(valueKind, holder.NativeHandle);
+
+        _valueKind = (byte)valueKind;
+        _storageKind = (byte)storageKind;
+    }
+
+    /// <summary>
+    /// Initialize information from a native object for a logical type 
+    /// (usually a child type from a column of composite type). 
+    /// </summary>
+    /// <param name="nativeLogicalType">
+    /// Handle for the native DuckDB "logical type", borrowed for the duration of this constructor call.
+    /// </param>
+    internal unsafe DuckDbColumnInfo(_duckdb_logical_type* nativeLogicalType)
+    {
+        DuckDbValueKind valueKind = NativeMethods.duckdb_get_type_id(nativeLogicalType);
+
+        DuckDbValueKind storageKind;
+        (storageKind, ElementSize, DecimalScale) = GatherSupplementaryInfo(valueKind, nativeLogicalType);
 
         _valueKind = (byte)valueKind;
         _storageKind = (byte)storageKind;

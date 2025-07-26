@@ -57,7 +57,10 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
 
         _columns = new ColumnInfoAndName[columnCount];
         for (int columnIndex = 0; columnIndex < columnCount; ++columnIndex)
-            _columns[columnIndex] = (Info: new(ref _nativeResult, columnIndex), Name: null);
+        {
+            _columns[columnIndex] = (Info: new DuckDbColumnInfo(ref _nativeResult, columnIndex),
+                                     Name: null);
+        }
 
         // Ownership transfer
         nativeResult = default;
