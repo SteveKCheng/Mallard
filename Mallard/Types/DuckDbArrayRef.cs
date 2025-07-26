@@ -26,10 +26,7 @@ public static partial class DuckDbVectorMethods
         if (childVector == null)
             throw new DuckDbException("Could not get the child vector from an array vector in DuckDB. ");
 
-        // FIXME The array length needs to be exposed as a public property or method in
-        //       DuckDbVectorRawReader<DuckDbArrayRef>.  Need some code re-organization to do so.
         var totalChildren = checked((int)(parent.Length * parent.ColumnInfo.ElementSize));
-
         return new DuckDbVectorInfo(childVector, totalChildren, string.Empty);
     }
 }

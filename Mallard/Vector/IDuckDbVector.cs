@@ -42,6 +42,11 @@ public interface IDuckDbVector
     /// The length (number of rows) inherited from the result chunk this vector is part of.
     /// </summary>
     int Length { get; }
+
+    /// <summary>
+    /// Information about the column that this vector is part of.
+    /// </summary>
+    DuckDbColumnInfo ColumnInfo { get; }
 }
 
 /// <summary>

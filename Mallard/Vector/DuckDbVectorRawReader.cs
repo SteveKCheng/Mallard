@@ -77,14 +77,8 @@ public readonly ref struct DuckDbVectorRawReader<T> : IDuckDbVector<T>
     /// <inheritdoc cref="IDuckDbVector.IsItemValid(int)" />
     public bool IsItemValid(int index) => _info.IsItemValid(index);
 
-    /// <summary>
-    /// The number of digits after the decimal point, when the logical type is
-    /// <see cref="DuckDbValueKind.Decimal" />.
-    /// </summary>
-    /// <remarks>
-    /// Set to zero if inapplicable. 
-    /// </remarks>
-    public byte DecimalScale => _info.DecimalScale;
+    /// <inheritdoc cref="IDuckDbVector.ColumnInfo" />
+    public DuckDbColumnInfo ColumnInfo => _info.ColumnInfo;
 
     /// <summary>
     /// Validate that the .NET type is correct for interpreting the raw

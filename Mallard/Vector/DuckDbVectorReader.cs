@@ -55,6 +55,9 @@ public unsafe readonly ref struct
     /// <inheritdoc cref="IDuckDbVector.Length" />
     public int Length => _info.Length;
 
+    /// <inheritdoc cref="IDuckDbVector.ColumnInfo" />
+    public DuckDbColumnInfo ColumnInfo => _info.ColumnInfo;
+
     /// <inheritdoc cref="IDuckDbVector{T}.GetItemOrDefault(int)" />
     public T? GetItemOrDefault(int index)
         => _converter.Convert<T>(_info, index, requireValid: false);

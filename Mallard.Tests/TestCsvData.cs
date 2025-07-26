@@ -135,7 +135,7 @@ public class TestCsvData
                         菜類 = (菜類_enum)菜類column.GetItem(i),
                         菜式 = 菜式column.GetItem(i),
                         份量對應人數 = DuckDbDecimal.ConvertToDecimal(份量對應人數column.GetItem(i), 
-                                                                    份量對應人數column.DecimalScale),
+                                                                    份量對應人數column.ColumnInfo.DecimalScale),
                         材料 = ReadList(材料column, i),
                         醃料 = ReadList(醃料column, i),
                         調味 = ReadList(調味column, i),
