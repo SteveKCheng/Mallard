@@ -18,11 +18,49 @@ namespace Mallard;
 /// simultaneously.  Any attempt to do so will cause exceptions.
 /// </para>
 /// </remarks>
-public unsafe sealed class DuckDbResult : IDisposable
+public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
 {
+    #region Resource management
+
     private Barricade _barricade;
     private duckdb_result _nativeResult;
-    private readonly DuckDbColumnInfo[] _columnInfo;
+
+    private void DisposeImpl(bool disposing)
+    {
+        if (!_barricade.PrepareToDisposeOwner())
+            return;
+
+        NativeMethods.duckdb_destroy_result(ref _nativeResult);
+    }
+
+    ~DuckDbResult()
+    {
+        DisposeImpl(disposing: false);
+    }
+
+    public void Dispose()
+    {
+        DisposeImpl(disposing: true);
+        GC.SuppressFinalize(this);
+    }
+
+    #endregion
+
+    #region Construction
+
+    private DuckDbResult(ref duckdb_result nativeResult)
+    {
+        _nativeResult = nativeResult;
+
+        var columnCount = (int)NativeMethods.duckdb_column_count(ref _nativeResult);
+
+        _columnInfo = new DuckDbColumnInfo[columnCount];
+        for (int columnIndex = 0; columnIndex < columnCount; ++columnIndex)
+            _columnInfo[columnIndex] = new DuckDbColumnInfo(ref _nativeResult, columnIndex);
+
+        // Ownership transfer
+        nativeResult = default;
+    }
 
     /// <summary>
     /// Wrap the native result from DuckDB, and handle errors. 
@@ -58,6 +96,10 @@ public unsafe sealed class DuckDbResult : IDisposable
             throw;
         }
     }
+
+    #endregion
+
+    #region Summary processing of results without creating result object
 
     /// <summary>
     /// Extract the number of changed rows from executing some SQL statement, and
@@ -142,38 +184,9 @@ public unsafe sealed class DuckDbResult : IDisposable
         }
     }
 
-    private DuckDbResult(ref duckdb_result nativeResult)
-    {
-        _nativeResult = nativeResult;
+    #endregion
 
-        var columnCount = (int)NativeMethods.duckdb_column_count(ref _nativeResult);
-
-        _columnInfo = new DuckDbColumnInfo[columnCount];
-        for (int columnIndex = 0; columnIndex < columnCount; ++columnIndex)
-            _columnInfo[columnIndex] = new DuckDbColumnInfo(ref _nativeResult, columnIndex);
-
-        // Ownership transfer
-        nativeResult = default;
-    }
-
-    private void DisposeImpl(bool disposing)
-    {
-        if (!_barricade.PrepareToDisposeOwner())
-            return;
-
-        NativeMethods.duckdb_destroy_result(ref _nativeResult);
-    }
-
-    ~DuckDbResult()
-    {
-        DisposeImpl(disposing: false);
-    }
-
-    public void Dispose()
-    {
-        DisposeImpl(disposing: true);
-        GC.SuppressFinalize(this);
-    }
+    #region Getting and processing chunks
 
     /// <summary>
     /// Retrieve the next chunk of results from the present query in DuckDB.
@@ -194,7 +207,7 @@ public unsafe sealed class DuckDbResult : IDisposable
 
         try
         {
-            return new DuckDbResultChunk(ref nativeChunk, _columnInfo);
+            return new DuckDbResultChunk(ref nativeChunk, this);
         }
         catch
         {
@@ -273,7 +286,7 @@ public unsafe sealed class DuckDbResult : IDisposable
         try
         {
             var length = (int)NativeMethods.duckdb_data_chunk_get_size(nativeChunk);
-            var reader = new DuckDbChunkReader(nativeChunk, _columnInfo, length);
+            var reader = new DuckDbChunkReader(nativeChunk, this, length);
             result = function(reader, state);
             return true;
         }
@@ -418,8 +431,21 @@ public unsafe sealed class DuckDbResult : IDisposable
         }
 
         return result;
-
     }
+
+    #endregion
+
+    #region Result columns
+
+    /// <summary>
+    /// Information gathered on each column. 
+    /// </summary>
+    /// <remarks>
+    /// This data, once initialized, is immutable and does not involve any native resources
+    /// from DuckDB.  Therefore, it is not subject to the access restrictions 
+    /// imposed by <see cref="_barricade" />.
+    /// </remarks>
+    private readonly DuckDbColumnInfo[] _columnInfo;
 
     /// <summary>
     /// The number of columns present in the result.
@@ -433,4 +459,10 @@ public unsafe sealed class DuckDbResult : IDisposable
     /// The index of the column, between 0 (inclusive) to <see cref="ColumnCount" /> (exclusive).
     /// </param>
     public DuckDbColumnInfo GetColumnInfo(int columnIndex) => _columnInfo[columnIndex];
+
+    /// <see cref="IResultColumns.GetColumnInfo(int)" />
+    ref readonly DuckDbColumnInfo IResultColumns.GetColumnInfo(int columnIndex)
+        => ref _columnInfo[columnIndex];
+
+    #endregion
 }

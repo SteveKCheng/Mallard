@@ -25,7 +25,7 @@ namespace Mallard;
 public unsafe class DuckDbResultChunk : IDisposable
 {
     private _duckdb_data_chunk* _nativeChunk;
-    private readonly DuckDbColumnInfo[] _columnInfo;
+    private readonly IResultColumns _resultColumns;
     private readonly int _length;
 
     private HandleRefCount _refCount;
@@ -41,11 +41,11 @@ public unsafe class DuckDbResultChunk : IDisposable
     /// Pre-tabulated information on the columns of the query result.
     /// </param>
     internal DuckDbResultChunk(ref _duckdb_data_chunk* nativeChunk,
-                               DuckDbColumnInfo[] columnInfo)
+                               IResultColumns resultColumns)
     {
         _nativeChunk = nativeChunk;
         nativeChunk = default;
-        _columnInfo = columnInfo;
+        _resultColumns = resultColumns;
         _length = (int)NativeMethods.duckdb_data_chunk_get_size(_nativeChunk);
     }
 
@@ -119,7 +119,7 @@ public unsafe class DuckDbResultChunk : IDisposable
         where TState : allows ref struct
     {
         using var _ = _refCount.EnterScope(this);
-        var reader = new DuckDbChunkReader(_nativeChunk, _columnInfo, _length);
+        var reader = new DuckDbChunkReader(_nativeChunk, _resultColumns, _length);
         return func(reader, state);
     }
 }

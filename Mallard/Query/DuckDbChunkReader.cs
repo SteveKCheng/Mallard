@@ -47,15 +47,15 @@ public delegate TReturn DuckDbChunkReadingFunc<in TState, out TReturn>(in DuckDb
 public unsafe readonly ref struct DuckDbChunkReader
 {
     private readonly _duckdb_data_chunk* _nativeChunk;
-    private readonly DuckDbColumnInfo[] _columnInfo;
+    private readonly IResultColumns _resultColumns;
     private readonly int _length;
 
     internal DuckDbChunkReader(_duckdb_data_chunk* nativeChunk,
-                               DuckDbColumnInfo[] columnInfo,
+                               IResultColumns resultColumns,
                                int length)
     {
         _nativeChunk = nativeChunk;
-        _columnInfo = columnInfo;
+        _resultColumns = resultColumns;
         _length = length;
     }
 
@@ -88,7 +88,7 @@ public unsafe readonly ref struct DuckDbChunkReader
         if (nativeVector == null)
             throw new IndexOutOfRangeException("Column index is not in range. ");
 
-        return new DuckDbVectorInfo(nativeVector, _length, _columnInfo[columnIndex]);
+        return new DuckDbVectorInfo(nativeVector, _length, _resultColumns.GetColumnInfo(columnIndex));
     }
 
     /// <summary>
