@@ -164,57 +164,67 @@ public class TestCsvData
 
         using var dbResult = dbConn.Execute(@"SELECT * FROM 家常小菜 ORDER BY 頁 ASC");
 
+        // Check column names.  3 times to cover the internal caching.
+        for (int i = 0; i < 3; ++i)
+        {
+            Assert.Equal("頁", dbResult.GetColumnName(0));
+            Assert.Equal("菜類", dbResult.GetColumnName(1));
+            Assert.Equal("菜式", dbResult.GetColumnName(2));
+            Assert.Equal("份量對應人數", dbResult.GetColumnName(3));
+            Assert.Equal("材料", dbResult.GetColumnName(4));
+            Assert.Equal("醃料", dbResult.GetColumnName(5));
+            Assert.Equal("調味", dbResult.GetColumnName(6));
+            Assert.Equal("芡汁", dbResult.GetColumnName(7));
+        }
+
         var recipesDb = new List<Recipe>();
 
-        bool hasChunk;
-        do
+        int totalRows = dbResult.ProcessAllChunks(false, (in DuckDbChunkReader reader, bool _) =>
         {
-            hasChunk = dbResult.ProcessNextChunk(false, (in DuckDbChunkReader reader, bool _) =>
+            var 頁column = reader.GetColumn<int>(0);
+            var 菜類column = reader.GetColumn<菜類_enum>(1);
+            var 菜式column = reader.GetColumn<string>(2);
+            var 份量對應人數column = reader.GetColumn<Decimal>(3);
+            var 材料column = reader.GetColumn<ImmutableArray<string>>(4);
+            var 醃料column = reader.GetColumn<ImmutableArray<string>>(5);
+            var 調味column = reader.GetColumn<ImmutableArray<string>>(6);
+            var 芡汁column = reader.GetColumn<ImmutableArray<string>>(7);
+
+            var 頁columnBoxed = reader.GetColumn<object>(0);
+            var 菜式columnBoxed = reader.GetColumn<object>(2);
+            var 份量對應人數columnBoxed = reader.GetColumn<object>(3);
+            var 材料columnBoxed = reader.GetColumn<object>(4);
+
+            for (int i = 0; i < reader.Length; ++i)
             {
-                var 頁column = reader.GetColumn<int>(0);
-                var 菜類column = reader.GetColumn<菜類_enum>(1);
-                var 菜式column = reader.GetColumn<string>(2);
-                var 份量對應人數column = reader.GetColumn<Decimal>(3);
-                var 材料column = reader.GetColumn<ImmutableArray<string>>(4);
-                var 醃料column = reader.GetColumn<ImmutableArray<string>>(5);
-                var 調味column = reader.GetColumn<ImmutableArray<string>>(6);
-                var 芡汁column = reader.GetColumn<ImmutableArray<string>>(7);
+                var 頁i = 頁column.GetItem(i);
+                var 菜式i = 菜式column.GetItem(i);
+                var 份量對應人數i = 份量對應人數column.GetItem(i);
+                var 材料i = 材料column.GetNullableValue(i);
 
-                var 頁columnBoxed = reader.GetColumn<object>(0);
-                var 菜式columnBoxed = reader.GetColumn<object>(2);
-                var 份量對應人數columnBoxed = reader.GetColumn<object>(3);
-                var 材料columnBoxed = reader.GetColumn<object>(4);
+                // Check boxed items are equal to unboxed items
+                Assert.Equal((object)頁i, 頁columnBoxed.GetItem(i));
+                Assert.Equal((object)菜式i, 菜式columnBoxed.GetItem(i));
+                Assert.Equal((object)份量對應人數i, 份量對應人數columnBoxed.GetItem(i));
+                Assert.Equal((IEnumerable<string>?)材料i, (IEnumerable<string>)材料columnBoxed.GetItem(i));
 
-                for (int i = 0; i < reader.Length; ++i)
+                recipesDb.Add(new Recipe
                 {
-                    var 頁i = 頁column.GetItem(i);
-                    var 菜式i = 菜式column.GetItem(i);
-                    var 份量對應人數i = 份量對應人數column.GetItem(i);
-                    var 材料i = 材料column.GetNullableValue(i);
+                    頁 = 頁i,
+                    菜類 = 菜類column.GetItem(i),
+                    菜式 = 菜式i,
+                    份量對應人數 = 份量對應人數i,
+                    材料 = 材料i.ToValueArray(),
+                    醃料 = 醃料column.GetNullableValue(i).ToValueArray(),
+                    調味 = 調味column.GetNullableValue(i).ToValueArray(),
+                    芡汁 = 芡汁column.GetNullableValue(i).ToValueArray(),
+                });
+            }
 
-                    // Check boxed items are equal to unboxed items
-                    Assert.Equal((object)頁i, 頁columnBoxed.GetItem(i));
-                    Assert.Equal((object)菜式i, 菜式columnBoxed.GetItem(i));
-                    Assert.Equal((object)份量對應人數i, 份量對應人數columnBoxed.GetItem(i));
-                    Assert.Equal((IEnumerable<string>?)材料i, (IEnumerable<string>)材料columnBoxed.GetItem(i));
+            return reader.Length;
+        }, seed: 0, accumulate: static (n, m) => n + m);
 
-                    recipesDb.Add(new Recipe
-                    {
-                        頁 = 頁i,
-                        菜類 = 菜類column.GetItem(i),
-                        菜式 = 菜式i,
-                        份量對應人數 = 份量對應人數i,
-                        材料 = 材料i.ToValueArray(),
-                        醃料 = 醃料column.GetNullableValue(i).ToValueArray(),
-                        調味 = 調味column.GetNullableValue(i).ToValueArray(),
-                        芡汁 = 芡汁column.GetNullableValue(i).ToValueArray(),
-                    });
-                }
-
-                return false;
-            }, out _);
-        } while (hasChunk);
-
+        Assert.Equal(recipesCsv.Count, totalRows);
         Assert.Equal(recipesCsv, recipesDb);
     }
 }
