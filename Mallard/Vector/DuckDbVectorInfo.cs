@@ -35,12 +35,12 @@ internal unsafe readonly struct DuckDbVectorInfo
     /// "Vector" data structure obtained as part of a chunk from DuckDB.  It is
     /// de-allocated together with the chunk.
     /// </summary>
-    internal readonly _duckdb_vector* NativeVector;
+    internal _duckdb_vector* NativeVector { get; }
 
     /// <summary>
     /// Pointer to the raw data array of the DuckDB vector. 
     /// </summary>
-    internal readonly void* DataPointer;
+    internal void* DataPointer { get; }
 
     /// <summary>
     /// Pointer to the bit mask from DuckDB indicating whether the corresponding element
@@ -54,7 +54,7 @@ internal unsafe readonly struct DuckDbVectorInfo
     /// <summary>
     /// The length (number of rows) inherited from the result chunk this vector is part of.
     /// </summary>
-    internal readonly int Length;
+    public int Length { get; }
 
     /// <summary>
     /// Construct descriptor on a given vector with cached column information.
@@ -84,8 +84,8 @@ internal unsafe readonly struct DuckDbVectorInfo
         ColumnInfo = columnInfo;
 
         NativeVector = nativeVector;
-        DataPointer = NativeMethods.duckdb_vector_get_data(NativeVector);
-        _validityMask = NativeMethods.duckdb_vector_get_validity(NativeVector);
+        DataPointer = NativeMethods.duckdb_vector_get_data(nativeVector);
+        _validityMask = NativeMethods.duckdb_vector_get_validity(nativeVector);
 
         Length = length;
     }
