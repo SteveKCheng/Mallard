@@ -4,7 +4,7 @@ using System;
 namespace Mallard;
 
 /// <summary>
-/// Describes a column resulting from a DuckDB query.
+/// Describes the data type of (the items in) a column resulting from a DuckDB query.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -25,8 +25,13 @@ namespace Mallard;
 /// This .NET type is also used to describe a DuckDB column that is nested within another, 
 /// e.g. a member of a structure (STRUCT in DuckDB SQL). 
 /// </para>
+/// <para>
+/// The name of the column (if any) is not part of this information set, because 
+/// it is irrelevant for decoding the data from the column.  By omitting the name,
+/// this .NET type can also implement structural equality on the type information.
+/// </para>
 /// </remarks>
-public readonly struct DuckDbColumnInfo
+public readonly record struct DuckDbColumnInfo
 {
     /// <summary>
     /// Backing field for <see cref="ValueKind" /> compressed to a byte.
@@ -89,22 +94,12 @@ public readonly struct DuckDbColumnInfo
     public int ElementSize { get; }
 
     /// <summary>
-    /// The name of the column.
-    /// </summary>
-    /// <remarks>
-    /// If the column has no name, this property yields the empty string.
-    /// </remarks>
-    public string Name { get; }
-
-    /// <summary>
     /// Initialize information on one column. 
     /// </summary>
     /// <param name="nativeResult">Query results where the column comes from. </param>
     /// <param name="columnIndex">Index of the selected column. </param>
     internal unsafe DuckDbColumnInfo(ref duckdb_result nativeResult, int columnIndex)
     {
-        Name = NativeMethods.duckdb_column_name(ref nativeResult, columnIndex);
-        
         DuckDbValueKind valueKind = NativeMethods.duckdb_column_type(ref nativeResult, columnIndex);
         DuckDbValueKind storageKind = valueKind;
 
@@ -127,12 +122,9 @@ public readonly struct DuckDbColumnInfo
     /// <summary>
     /// Initialize information from one vector (usually coming from a nested column). 
     /// </summary>
-    /// <param name="nativeResult">The vector to retrieve type information from. </param>
-    /// <param name="columnIndex">The name of the (nested) column. </param>
-    internal unsafe DuckDbColumnInfo(_duckdb_vector* nativeVector, string name)
+    /// <param name="nativeVector">The vector to retrieve type information from. </param>
+    internal unsafe DuckDbColumnInfo(_duckdb_vector* nativeVector)
     {
-        Name = name;
-
         using var holder = new NativeLogicalTypeHolder(
             NativeMethods.duckdb_vector_get_column_type(nativeVector));
 

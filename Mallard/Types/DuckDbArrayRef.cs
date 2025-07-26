@@ -27,6 +27,6 @@ public static partial class DuckDbVectorMethods
             throw new DuckDbException("Could not get the child vector from an array vector in DuckDB. ");
 
         var totalChildren = checked((int)(parent.Length * parent.ColumnInfo.ElementSize));
-        return new DuckDbVectorInfo(childVector, totalChildren, string.Empty);
+        return new DuckDbVectorInfo(childVector, totalChildren);
     }
 }

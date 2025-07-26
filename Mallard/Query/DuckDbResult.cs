@@ -3,6 +3,7 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Mallard;
+using ColumnInfoAndName = (string Name, DuckDbColumnInfo Info);
 
 /// <summary>
 /// Grants access to the results of a SQL execution by DuckDB.
@@ -54,9 +55,12 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
 
         var columnCount = (int)NativeMethods.duckdb_column_count(ref _nativeResult);
 
-        _columnInfo = new DuckDbColumnInfo[columnCount];
+        _columns = new ColumnInfoAndName[columnCount];
         for (int columnIndex = 0; columnIndex < columnCount; ++columnIndex)
-            _columnInfo[columnIndex] = new DuckDbColumnInfo(ref _nativeResult, columnIndex);
+        {
+            _columns[columnIndex] = (Name: NativeMethods.duckdb_column_name(ref nativeResult, columnIndex),
+                                     Info: new(ref _nativeResult, columnIndex));
+        }
 
         // Ownership transfer
         nativeResult = default;
@@ -445,12 +449,12 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
     /// from DuckDB.  Therefore, it is not subject to the access restrictions 
     /// imposed by <see cref="_barricade" />.
     /// </remarks>
-    private readonly DuckDbColumnInfo[] _columnInfo;
+    private readonly ColumnInfoAndName[] _columns;
 
     /// <summary>
     /// The number of columns present in the result.
     /// </summary>
-    public int ColumnCount => _columnInfo.Length;
+    public int ColumnCount => _columns.Length;
 
     /// <summary>
     /// Get information about a column in the results.
@@ -458,7 +462,7 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
     /// <param name="columnIndex">
     /// The index of the column, between 0 (inclusive) to <see cref="ColumnCount" /> (exclusive).
     /// </param>
-    public DuckDbColumnInfo GetColumnInfo(int columnIndex) => _columnInfo[columnIndex];
+    public DuckDbColumnInfo GetColumnInfo(int columnIndex) => _columns[columnIndex].Info;
 
     /// <summary>
     /// Get the name of a column in the results.
@@ -469,11 +473,11 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
     /// <returns>
     /// The name of the column, or <see cref="string.Empty" /> if it has no name.
     /// </returns>
-    public string GetColumnName(int columnIndex) => _columnInfo[columnIndex].Name;
+    public string GetColumnName(int columnIndex) => _columns[columnIndex].Name;
 
     /// <see cref="IResultColumns.GetColumnInfo(int)" />
     ref readonly DuckDbColumnInfo IResultColumns.GetColumnInfo(int columnIndex)
-        => ref _columnInfo[columnIndex];
+        => ref _columns[columnIndex].Info;
 
     #endregion
 }

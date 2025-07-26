@@ -6,15 +6,23 @@ using System.Runtime.CompilerServices;
 namespace Mallard;
 
 /// <summary>
-/// Encapsulates type information and pointers to a DuckDB vector.
+/// Descriptor for a DuckDB vector containing basic type information and 
+/// pointers to the native data.
 /// </summary>
 /// <remarks>
+/// <para>
 /// The native memory behind the pointers can obviously go out of scope, 
 /// so this structure is not made public.  This information is independent 
 /// of the parameterized type in <see cref="DuckDbVectorReader{T}" />.
 /// Also, it is stored in a plain structure, not a "ref struct", so 
 /// other parts of this library can store them in arrays (as part of the
 /// collection of all columns in a query result).
+/// </para>
+/// <para>
+/// This structure is basically a combination of <see cref="DuckDbColumnInfo" />
+/// (which describes the vector's type information)
+/// and the pointers to the actual data.
+/// </para>
 /// </remarks>
 internal unsafe readonly struct DuckDbVectorInfo
 {
@@ -57,8 +65,8 @@ internal unsafe readonly struct DuckDbVectorInfo
     /// <see cref="DuckDbColumnInfo.StorageKind" />
     internal DuckDbValueKind StorageType => ColumnInfo.StorageKind;
 
-    internal DuckDbVectorInfo(_duckdb_vector* nativeVector, int length, string name)
-        : this(nativeVector, length, new DuckDbColumnInfo(nativeVector, name))
+    internal DuckDbVectorInfo(_duckdb_vector* nativeVector, int length)
+        : this(nativeVector, length, new DuckDbColumnInfo(nativeVector))
     {
     }
 
