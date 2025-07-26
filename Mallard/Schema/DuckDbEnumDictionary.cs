@@ -60,9 +60,9 @@ public unsafe sealed class DuckDbEnumDictionary : IReadOnlyDictionary<uint, stri
         nativeType = default;
     }
 
-    internal static DuckDbEnumDictionary CreateFromVector(scoped in DuckDbVectorInfo vector)
+    internal static DuckDbEnumDictionary CreateFromContext(ref readonly ConverterCreationContext context)
     {
-        var nativeType = NativeMethods.duckdb_vector_get_column_type(vector.NativeVector);
+        var nativeType = context.GetNativeLogicalType();
         if (nativeType == null)
             throw new DuckDbException("Could not query the logical type of a vector from DuckDB. ");
 

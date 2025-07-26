@@ -20,9 +20,9 @@ public static partial class DuckDbVectorMethods
     /// The lists' children, collected into one vector, i.e. the "children vector" or "vector of list children".
     /// </returns>
     /// <exception cref="DuckDbException"></exception>
-    public static DuckDbVectorRawReader<T> GetChildrenRawVector<T>(in this DuckDbVectorRawReader<DuckDbListRef> parent)
+    public unsafe static DuckDbVectorRawReader<T> GetChildrenRawVector<T>(in this DuckDbVectorRawReader<DuckDbListRef> parent)
         where T : unmanaged, allows ref struct
-        => new(parent._info.GetListChildrenVectorInfo());
+        => new(GetListChildrenVectorInfo(parent._info.NativeVector));
 
     /// <summary>
     /// Retrieve the vector containing all the children across all lists in a vector of lists.
@@ -37,12 +37,11 @@ public static partial class DuckDbVectorMethods
     /// The lists' children, collected into one vector, i.e. the "children vector" or "vector of list children".
     /// </returns>
     /// <exception cref="DuckDbException"></exception>
-    public static DuckDbVectorReader<T> GetChildrenVector<T>(in this DuckDbVectorRawReader<DuckDbListRef> parent)
-        => new(parent._info.GetListChildrenVectorInfo());
+    public unsafe static DuckDbVectorReader<T> GetChildrenVector<T>(in this DuckDbVectorRawReader<DuckDbListRef> parent)
+        => new(GetListChildrenVectorInfo(parent._info.NativeVector));
 
-    internal unsafe static DuckDbVectorInfo GetListChildrenVectorInfo(in this DuckDbVectorInfo parent)
+    internal unsafe static DuckDbVectorInfo GetListChildrenVectorInfo(_duckdb_vector* parentVector)
     {
-        var parentVector = parent.NativeVector;
         DuckDbVectorInfo.ThrowOnNullVector(parentVector);
 
         var childVector = NativeMethods.duckdb_list_vector_get_child(parentVector);

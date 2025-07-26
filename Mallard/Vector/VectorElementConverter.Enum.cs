@@ -48,8 +48,8 @@ internal sealed class EnumConverter
         _nameDict = FrozenDictionary.ToFrozenDictionary(EnumerateNamesAndIndices(_clrMemberNames));
     }
 
-    private EnumConverter(scoped in DuckDbVectorInfo vector, Type clrType)
-        : this(DuckDbEnumDictionary.CreateFromVector(vector), clrType)
+    private EnumConverter(ref readonly ConverterCreationContext context, Type clrType)
+        : this(DuckDbEnumDictionary.CreateFromContext(in context), clrType)
     {
     }
 
@@ -72,36 +72,36 @@ internal sealed class EnumConverter
             $"corresponding member in the .NET enumeration type {self._clrType.FullName}. ");
     }
 
-    private unsafe static VectorElementConverter CreateStage2<TSource, TStorage>(in DuckDbVectorInfo vector, Type enumType)
+    private unsafe static VectorElementConverter CreateStage2<TSource, TStorage>(ref readonly ConverterCreationContext context, Type enumType)
         where TSource : unmanaged, IBinaryInteger<TSource>
         where TStorage : unmanaged
     {
-        var state = new EnumConverter(vector, enumType);
+        var state = new EnumConverter(in context, enumType);
         return VectorElementConverter.Create(state, &ConvertElement<TSource, TStorage>)
                                      .CastReturnTypeToEnum(enumType);
     }
 
-    private static VectorElementConverter CreateStage1<TSource>(in DuckDbVectorInfo vector, Type enumType)
+    private static VectorElementConverter CreateStage1<TSource>(ref readonly ConverterCreationContext context, Type enumType)
         where TSource : unmanaged, IBinaryInteger<TSource>
     {
         var underlyingType = Enum.GetUnderlyingType(enumType);
-        if (underlyingType == typeof(byte)) return CreateStage2<TSource, byte>(vector, enumType);
-        if (underlyingType == typeof(sbyte)) return CreateStage2<TSource, sbyte>(vector, enumType);
-        if (underlyingType == typeof(short)) return CreateStage2<TSource, short>(vector, enumType);
-        if (underlyingType == typeof(ushort)) return CreateStage2<TSource, ushort>(vector, enumType);
-        if (underlyingType == typeof(int)) return CreateStage2<TSource, int>(vector, enumType);
-        if (underlyingType == typeof(uint)) return CreateStage2<TSource, uint>(vector, enumType);
-        if (underlyingType == typeof(long)) return CreateStage2<TSource, int>(vector, enumType);
-        if (underlyingType == typeof(ulong)) return CreateStage2<TSource, ulong>(vector, enumType);
+        if (underlyingType == typeof(byte)) return CreateStage2<TSource, byte>(in context, enumType);
+        if (underlyingType == typeof(sbyte)) return CreateStage2<TSource, sbyte>(in context, enumType);
+        if (underlyingType == typeof(short)) return CreateStage2<TSource, short>(in context, enumType);
+        if (underlyingType == typeof(ushort)) return CreateStage2<TSource, ushort>(in context, enumType);
+        if (underlyingType == typeof(int)) return CreateStage2<TSource, int>(in context, enumType);
+        if (underlyingType == typeof(uint)) return CreateStage2<TSource, uint>(in context, enumType);
+        if (underlyingType == typeof(long)) return CreateStage2<TSource, int>(in context, enumType);
+        if (underlyingType == typeof(ulong)) return CreateStage2<TSource, ulong>(in context, enumType);
         throw new NotSupportedException("Underlying type of .NET enumeration is not supported for conversion. ");
     }
 
-    internal static VectorElementConverter CreateElementConverter(in DuckDbVectorInfo vector, Type enumType)
-        => vector.StorageType switch
+    internal static VectorElementConverter CreateElementConverter(ref readonly ConverterCreationContext context, Type enumType)
+        => context.ColumnInfo.StorageKind switch
            {
-               DuckDbValueKind.UTinyInt => CreateStage1<byte>(vector, enumType),
-               DuckDbValueKind.USmallInt => CreateStage1<ushort>(vector, enumType),
-               DuckDbValueKind.UInteger => CreateStage1<uint>(vector, enumType),
+               DuckDbValueKind.UTinyInt => CreateStage1<byte>(in context, enumType),
+               DuckDbValueKind.USmallInt => CreateStage1<ushort>(in context, enumType),
+               DuckDbValueKind.UInteger => CreateStage1<uint>(in context, enumType),
                _ => throw new InvalidOperationException("Cannot decode enumeration from a DuckDB vector with the given storage type. ")
            };
 }

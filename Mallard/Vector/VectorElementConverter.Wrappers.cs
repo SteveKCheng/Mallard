@@ -10,9 +10,9 @@ internal readonly partial struct VectorElementConverter
     #region Boxing converters
 
     private static VectorElementConverter
-        CreateForBoxedType(in DuckDbVectorInfo vector)
+        CreateForBoxedType(ref readonly ConverterCreationContext context)
     {
-        var converter = vector.ValueKind switch
+        var converter = context.ColumnInfo.ValueKind switch
         {
             DuckDbValueKind.Boolean => CreateForBoxedPrimitive<bool>(),
 
@@ -37,7 +37,7 @@ internal readonly partial struct VectorElementConverter
             DuckDbValueKind.UHugeInt => CreateForBoxedPrimitive<UInt128>(),
             DuckDbValueKind.HugeInt => CreateForBoxedPrimitive<Int128>(),
 
-            DuckDbValueKind.Decimal => DuckDbDecimal.GetBoxedVectorElementConverter(vector.ColumnInfo),
+            DuckDbValueKind.Decimal => DuckDbDecimal.GetBoxedVectorElementConverter(context.ColumnInfo),
             DuckDbValueKind.VarInt => DuckDbVarInt.BoxedVectorElementConverter,
 
             _ => default
@@ -52,7 +52,7 @@ internal readonly partial struct VectorElementConverter
         }
 
         // Decide on what the original (unboxed) type is first.
-        converter = CreateForType(null, vector);
+        converter = CreateForType(null, in context);
 
         // Nothing available, or the target type is a reference type so no boxing needed.
         if (!converter.IsValid || !converter.TargetType.IsValueType)
@@ -64,7 +64,7 @@ internal readonly partial struct VectorElementConverter
         // from the original converter.
         return UnsafeCreateFromGeneric(CreateBoxingWrapperMethod,
                                        converter,
-                                       vector,
+                                       in context,
                                        converter.TargetType);
     }
 
@@ -91,7 +91,7 @@ internal readonly partial struct VectorElementConverter
 
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
         internal static unsafe VectorElementConverter Create<T>
-            (VectorElementConverter unboxedConverter, in DuckDbVectorInfo _) where T : struct
+            (VectorElementConverter unboxedConverter, ref readonly ConverterCreationContext _) where T : struct
             => VectorElementConverter.Create(new BoxingConverter(unboxedConverter), &Convert<T>);
     }
 
@@ -100,9 +100,9 @@ internal readonly partial struct VectorElementConverter
     #region Nullable wrapper
 
     private static VectorElementConverter
-        CreateForNullableType(Type underlyingType, in DuckDbVectorInfo vector)
+        CreateForNullableType(Type underlyingType, ref readonly ConverterCreationContext context)
     {
-        var converter = vector.ValueKind switch
+        var converter = context.ColumnInfo.ValueKind switch
         {
             DuckDbValueKind.Boolean => CreateForNullablePrimitive<bool>(),
 
@@ -127,7 +127,7 @@ internal readonly partial struct VectorElementConverter
             DuckDbValueKind.UHugeInt => CreateForNullablePrimitive<UInt128>(),
             DuckDbValueKind.HugeInt => CreateForNullablePrimitive<Int128>(),
 
-            DuckDbValueKind.Decimal => DuckDbDecimal.GetNullableVectorElementConverter(vector.ColumnInfo),
+            DuckDbValueKind.Decimal => DuckDbDecimal.GetNullableVectorElementConverter(context.ColumnInfo),
             DuckDbValueKind.VarInt => DuckDbVarInt.NullableVectorElementConverter,
 
             _ => default
@@ -142,7 +142,7 @@ internal readonly partial struct VectorElementConverter
         }
 
         // Prepare to wrap generic wrapper around converter for original value type.
-        converter = CreateForType(underlyingType, vector);
+        converter = CreateForType(underlyingType, in context);
 
         // Nothing available.
         if (!converter.IsValid)
@@ -154,7 +154,7 @@ internal readonly partial struct VectorElementConverter
         // from the original converter.
         return UnsafeCreateFromGeneric(CreateNullableWrapperMethod,
                                        converter,
-                                       vector,
+                                       in context,
                                        converter.TargetType);
     }
 
@@ -181,7 +181,7 @@ internal readonly partial struct VectorElementConverter
 
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
         internal static unsafe VectorElementConverter Create<T>
-            (VectorElementConverter underlyingConverter, in DuckDbVectorInfo _) where T : struct
+            (VectorElementConverter underlyingConverter, ref readonly ConverterCreationContext _) where T : struct
             => VectorElementConverter.Create(new NullableConverter(underlyingConverter), &Convert<T>);
     }
 

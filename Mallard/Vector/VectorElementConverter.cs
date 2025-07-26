@@ -257,30 +257,31 @@ internal unsafe readonly partial struct VectorElementConverter
     /// The selected .NET type will be set in the <see cref="VectorElementConverter.TargetType" />
     /// of the return value.
     /// </param>
-    /// <param name="vector">
-    /// Type information for the DuckDB vector.
+    /// <param name="context">
+    /// Context for creating/obtaining a converter for the data in the DuckDB column
+    /// in question.
     /// </param>
     /// <returns>
     /// A converter that works for the combination of <paramref name="type"/> and <paramref name="vector" />,
     /// or an invalid (default-initialized) instance if there is none suitable.
     /// </returns>
     public static VectorElementConverter
-        CreateForType(Type? type, in DuckDbVectorInfo vector)
+        CreateForType(Type? type, ref readonly ConverterCreationContext context)
     {
         // Request for boxing.  Note that CreateForBoxedType may recursively call this
         // function (with type == null) to get the converter for the unboxed type first.
         if (type == typeof(object))
-            return CreateForBoxedType(vector);
+            return CreateForBoxedType(in context);
 
         // Nullable types handled through a separate dispatch.
         if (type != null && (Nullable.GetUnderlyingType(type) is Type underlyingType))
-            return CreateForNullableType(underlyingType, vector);
+            return CreateForNullableType(underlyingType, in context);
 
         // Allow matching against a null (unknown) type
         static bool Match(Type? type, Type target)
             => type == null || type == target;
 
-        return vector.ValueKind switch
+        return context.ColumnInfo.ValueKind switch
         {
             // Fortunately "bool" is considered an unmanaged type (of one byte), even though
             // P/Invoke marshalling does not treat it as such (because BOOL in the Win32 API is a 32-bit integer).
@@ -315,22 +316,22 @@ internal unsafe readonly partial struct VectorElementConverter
             DuckDbValueKind.UHugeInt when Match(type, typeof(UInt128)) => CreateForPrimitive<UInt128>(),
             DuckDbValueKind.HugeInt when Match(type, typeof(Int128)) => CreateForPrimitive<Int128>(),
 
-            DuckDbValueKind.Decimal when Match(type, typeof(Decimal)) => DuckDbDecimal.GetVectorElementConverter(vector.ColumnInfo),
+            DuckDbValueKind.Decimal when Match(type, typeof(Decimal)) => DuckDbDecimal.GetVectorElementConverter(context.ColumnInfo),
 
             // N.B. This matches only T[] and not arbitrary System.Array objects
             // (with arbitrary ranks and lower/upper bounds)
             DuckDbValueKind.List when type == null || type.IsArray 
-                => ListConverter.ConstructForArray(type?.GetElementType(), vector),
+                => ListConverter.ConstructForArray(type?.GetElementType(), in context),
 
             DuckDbValueKind.List when type.GetGenericUnderlyingType(typeof(ImmutableArray<>)) is Type elementType
-                => ListConverter.ConstructForImmutableArray(elementType, vector),
+                => ListConverter.ConstructForImmutableArray(elementType, in context),
 
-            DuckDbValueKind.Enum when type != null && type.IsEnum => EnumConverter.CreateElementConverter(vector, type),
-            DuckDbValueKind.Enum when vector.StorageType == DuckDbValueKind.UTinyInt
+            DuckDbValueKind.Enum when type != null && type.IsEnum => EnumConverter.CreateElementConverter(in context, type),
+            DuckDbValueKind.Enum when context.ColumnInfo.StorageKind == DuckDbValueKind.UTinyInt
                                    && Match(type, typeof(byte)) => CreateForPrimitive<byte>(),
-            DuckDbValueKind.Enum when vector.StorageType == DuckDbValueKind.USmallInt
+            DuckDbValueKind.Enum when context.ColumnInfo.StorageKind == DuckDbValueKind.USmallInt
                                    && Match(type, typeof(ushort)) => CreateForPrimitive<ushort>(),
-            DuckDbValueKind.Enum when vector.StorageType == DuckDbValueKind.UInteger
+            DuckDbValueKind.Enum when context.ColumnInfo.StorageKind == DuckDbValueKind.UInteger
                                    && Match(type, typeof(ulong)) => CreateForPrimitive<ulong>(),
 
             _ => default
@@ -347,14 +348,14 @@ internal unsafe readonly partial struct VectorElementConverter
     /// <param name="method">
     /// A static method, with one generic parameter, 
     /// takes takes as two arguments, [1] <paramref name="arg" />,
-    /// and [2] <paramref name="vector" /> by read-only
+    /// and [2] <paramref name="context" /> by read-only
     /// reference, and returns <see cref="VectorElementConverter" />.
     /// </param>
     /// <param name="arg">
     /// Arbitrary argument, of known type at compile-time, to pass to the factory function.
     /// </param>
-    /// <param name="vector">
-    /// The DuckDB vector information to pass to the factory function.
+    /// <param name="context">
+    /// Context for constructing the converter for the desired DuckDB column.
     /// </param>
     /// <param name="types">
     /// One or more types to substitute into the generic parameter of the method.
@@ -380,13 +381,13 @@ internal unsafe readonly partial struct VectorElementConverter
     /// </para>
     /// </remarks>
     internal unsafe static VectorElementConverter
-        UnsafeCreateFromGeneric<TArg>(MethodInfo method, TArg arg, in DuckDbVectorInfo vector, params Type[] types)
+        UnsafeCreateFromGeneric<TArg>(MethodInfo method, TArg arg, ref readonly ConverterCreationContext context, params Type[] types)
     {
         ArgumentNullException.ThrowIfNull(method);
 
-        var f = (delegate*<TArg, in DuckDbVectorInfo, VectorElementConverter>)
+        var f = (delegate*<TArg, ref readonly ConverterCreationContext, VectorElementConverter>)
                     method.MakeGenericMethod(types).MethodHandle.GetFunctionPointer();
-        return f(arg, vector);
+        return f(arg, in context);
     }
 
     #endregion

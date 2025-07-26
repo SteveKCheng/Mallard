@@ -40,7 +40,9 @@ public unsafe readonly ref struct
     internal DuckDbVectorReader(scoped in DuckDbVectorInfo info)
     {
         _info = info;
-        _converter = VectorElementConverter.CreateForType(typeof(T), _info);
+
+        var context = new ConverterCreationContext(info.ColumnInfo, info.NativeVector);
+        _converter = VectorElementConverter.CreateForType(typeof(T), in context);
 
         if (!_converter.IsValid)
             DuckDbVectorInfo.ThrowForWrongParamType(info.ValueKind, info.StorageType, typeof(T));
