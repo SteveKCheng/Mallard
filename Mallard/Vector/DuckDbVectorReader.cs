@@ -72,7 +72,8 @@ public unsafe readonly ref struct
     /// or beneficial.
     /// </remarks>
     internal DuckDbVectorReader(scoped in DuckDbVectorInfo vector)
-        : this(vector, VectorElementConverter.CreateForVectorUncached(typeof(T), vector))
+        : this(vector, VectorElementConverter.CreateForVectorUncached(typeof(T), vector)
+                                             .BindToVector(vector))
     {
     }
 

@@ -3,7 +3,6 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Mallard;
-using ColumnInfoAndName = (DuckDbColumnInfo Info, string? Name);
 
 /// <summary>
 /// Grants access to the results of a SQL execution by DuckDB.
@@ -55,11 +54,13 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
 
         var columnCount = (int)NativeMethods.duckdb_column_count(ref _nativeResult);
 
-        _columns = new ColumnInfoAndName[columnCount];
+        _columns = new Column[columnCount];
         for (int columnIndex = 0; columnIndex < columnCount; ++columnIndex)
         {
-            _columns[columnIndex] = (Info: new DuckDbColumnInfo(ref _nativeResult, columnIndex),
-                                     Name: null);
+            _columns[columnIndex] = new Column
+            {
+                Info = new DuckDbColumnInfo(ref _nativeResult, columnIndex)
+            };
         }
 
         // Ownership transfer
@@ -442,22 +443,57 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
     #region Result columns
 
     /// <summary>
-    /// Information gathered on each column. 
+    /// Top-level information gathered/cached on each column. 
+    /// </summary>
+    private struct Column
+    {
+        /// <summary>
+        /// Basic type information.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// This data, once initialized, is immutable and does not 
+        /// involve any native resources from DuckDB.  Therefore, this data is not subject to the 
+        /// multi-thread access restrictions.
+        /// </para>
+        /// </remarks>
+        public DuckDbColumnInfo Info;
+
+        /// <summary>
+        /// The name of the column from DuckDB.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// This name is retrieved only if requested by the user,
+        /// as that is a mildly heavy operation (requiring a temporary memory allocation from the
+        /// native C API, and then conversion from UTF-8 into a .NET string), and it is not needed
+        /// for decoding data.
+        /// </para>
+        /// </remarks>
+        public string? Name;
+
+        /// <summary>
+        /// Converter for the items in the column, created and cached on first access.
+        /// </summary>
+        /// <remarks>
+        /// The interface of <see cref="DuckDbChunkReader" /> in theory allows different types
+        /// to be selected each time a chunk is processed, but in practice all the vectors
+        /// (across all chunks) from one column always use the same converter.  There is no point
+        /// in making the user "pre-register" the converter for each column before any vectors
+        /// are accessed.
+        /// We just check <see cref="VectorElementConverter.TargetType" /> for any existing cached 
+        /// instance to know if the instance is still applicable. 
+        /// </remarks>
+        public VectorElementConverter Converter;
+    }
+
+    /// <summary>
+    /// Top-level information gathered/cached on the columns of the result.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// <see cref="DuckDbColumnInfo"/> data, once initialized, is immutable and does not 
-    /// involve any native resources from DuckDB.  Therefore, this data is not subject to the access 
-    /// restrictions imposed by <see cref="_barricade" />.
-    /// </para>
-    /// <para>
-    /// For the name of the column, it is retrieved only if requested by the user,
-    /// as that is a mildly heavy operation (requiring a temporary memory allocation from the
-    /// native C API, and then conversion from UTF-8 into a .NET string), and it is not needed
-    /// for decoding data.
-    /// </para>
+    /// This array is used as a lock when updating cached information.
     /// </remarks>
-    private readonly ColumnInfoAndName[] _columns;
+    private readonly Column[] _columns;
 
     /// <summary>
     /// The number of columns present in the result.
@@ -512,8 +548,25 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
     /// <see cref="IResultColumns.GetColumnConverter(int, Type, in DuckDbVectorInfo)" />
     private VectorElementConverter GetColumnConverter(int columnIndex, Type targetType, in DuckDbVectorInfo vector)
     {
-        // FIXME Uncached for now
-        return VectorElementConverter.CreateForVectorUncached(targetType, vector);
+        ref VectorElementConverter cachedConverter = ref _columns[columnIndex].Converter;
+        VectorElementConverter converter;
+
+        // This method could be called by different chunks which may work in different threads.
+        // Even reading needs a lock because struct reads may tear.
+        // Fortunately, _nativeResult is not accessed, so _barricade need not be entered.
+        lock (_columns)
+        {
+            converter = cachedConverter;
+
+            // Cache miss
+            if (!(converter.IsValid && converter.TargetType == targetType))
+            {
+                converter = VectorElementConverter.CreateForVectorUncached(targetType, vector);
+                cachedConverter = converter;
+            }
+        }
+
+        return converter.BindToVector(vector);
     }
 
     VectorElementConverter IResultColumns.GetColumnConverter(int columnIndex, Type targetType, in DuckDbVectorInfo vector)

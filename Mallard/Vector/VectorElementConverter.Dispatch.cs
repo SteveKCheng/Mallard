@@ -77,17 +77,17 @@ internal readonly partial struct VectorElementConverter
     /// <param name="vector">
     /// The vector to convert items from.
     /// </param>
-    /// <remarks>
-    /// <para>
-    /// The instance obtained must be created, and cannot be cached since this method
-    /// has no context to do so.  
-    /// </para>
-    /// </remarks>
+    /// <returns>
+    /// The created converter, that will <em>not</em> be bound to the vector.  This is so because
+    /// this method although has no context to consult a cache, it is used to elsewhere to implement
+    /// caching.  Remember to call <see cref="VectorElementConverter.BindToVector(in DuckDbVectorInfo)" />
+    /// before using the converter on <paramref name="vector" />.
+    /// </returns>
     internal unsafe static VectorElementConverter
         CreateForVectorUncached(Type? targetType, in DuckDbVectorInfo vector)
     {
         var context = ConverterCreationContext.FromVector(vector);
-        var converter = CreateForType(targetType, in context).BindToVector(vector);
+        var converter = CreateForType(targetType, in context);
 
         if (!converter.IsValid)
             DuckDbVectorInfo.ThrowForWrongParamType(vector.ValueKind, vector.StorageType, targetType ?? typeof(object));
