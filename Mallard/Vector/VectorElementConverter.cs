@@ -37,6 +37,8 @@ namespace Mallard;
 /// </remarks>
 internal unsafe readonly partial struct VectorElementConverter
 {
+    #region Data
+
     /// <summary>
     /// Opaque (cached) state to pass to <see cref="_function" />.
     /// </summary>
@@ -112,6 +114,15 @@ internal unsafe readonly partial struct VectorElementConverter
     /// </remarks>
     public bool DefaultValueIsInvalid { get; init; }
 
+    /// <summary>
+    /// Whether this instance specifies a valid converter (the function pointer is not null).
+    /// </summary>
+    public bool IsValid => _function != null;
+
+    #endregion
+
+    #region Constructors
+
     private VectorElementConverter(object? state, void* function, Type targetType, bool defaultValueIsInvalid)
     {
         _state = state;
@@ -140,6 +151,10 @@ internal unsafe readonly partial struct VectorElementConverter
     public static VectorElementConverter
         Create<T>(delegate*<object?, in DuckDbVectorInfo, int, T> function, bool defaultValueIsInvalid = false)
         => new(null, function, typeof(T), !typeof(T).IsValueType || typeof(T).IsNullable() || defaultValueIsInvalid);
+
+    #endregion
+
+    #region Executing conversions
 
     /// <summary>
     /// Invoke the converter to convert an element from a DuckDB vector.
@@ -234,8 +249,5 @@ internal unsafe readonly partial struct VectorElementConverter
         return f(_state, in vector, index)!;
     }
 
-    /// <summary>
-    /// Whether this instance specifies a valid converter (the function pointer is not null).
-    /// </summary>
-    public bool IsValid => _function != null;
+    #endregion
 }
