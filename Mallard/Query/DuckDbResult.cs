@@ -22,14 +22,7 @@ public unsafe sealed class DuckDbResult : IDisposable
 {
     private Barricade _barricade;
     private duckdb_result _nativeResult;
-    private readonly ColumnInfo[] _columnInfo;
-
-    internal readonly struct ColumnInfo
-    {
-        public string Name { get; init; }
-
-        public DuckDbValueKind ValueKind { get; init; }
-    }
+    private readonly DuckDbColumnInfo[] _columnInfo;
 
     /// <summary>
     /// Wrap the native result from DuckDB, and handle errors. 
@@ -153,17 +146,11 @@ public unsafe sealed class DuckDbResult : IDisposable
     {
         _nativeResult = nativeResult;
 
-        var columnCount = NativeMethods.duckdb_column_count(ref _nativeResult);
+        var columnCount = (int)NativeMethods.duckdb_column_count(ref _nativeResult);
 
-        _columnInfo = new ColumnInfo[columnCount];
-        for (long i = 0; i < columnCount; ++i)
-        {
-            _columnInfo[i] = new ColumnInfo
-            {
-                Name = NativeMethods.duckdb_column_name(ref _nativeResult, i),
-                ValueKind = NativeMethods.duckdb_column_type(ref _nativeResult, i)
-            };
-        }
+        _columnInfo = new DuckDbColumnInfo[columnCount];
+        for (int columnIndex = 0; columnIndex < columnCount; ++columnIndex)
+            _columnInfo[columnIndex] = new DuckDbColumnInfo(ref _nativeResult, columnIndex);
 
         // Ownership transfer
         nativeResult = default;

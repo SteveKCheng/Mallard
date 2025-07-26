@@ -46,11 +46,11 @@ public delegate TReturn DuckDbChunkReadingFunc<in TState, out TReturn>(in DuckDb
 public unsafe readonly ref struct DuckDbChunkReader
 {
     private readonly _duckdb_data_chunk* _nativeChunk;
-    private readonly DuckDbResult.ColumnInfo[] _columnInfo;
+    private readonly DuckDbColumnInfo[] _columnInfo;
     private readonly int _length;
 
     internal DuckDbChunkReader(_duckdb_data_chunk* nativeChunk,
-                               DuckDbResult.ColumnInfo[] columnInfo,
+                               DuckDbColumnInfo[] columnInfo,
                                int length)
     {
         _nativeChunk = nativeChunk;

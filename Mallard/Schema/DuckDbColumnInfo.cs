@@ -4,8 +4,18 @@ using System;
 namespace Mallard;
 
 /// <summary>
-/// Information about a column from the results of a DuckDB query.
+/// Describes a column resulting from a DuckDB query.
 /// </summary>
+/// <remarks>
+/// <para>
+/// In particular, the properties in this type give sufficient information to decode data 
+/// coming in from a DuckDB column.
+/// </para>
+/// <para>
+/// This .NET type is also used to describe a DuckDB column that is nested within another, 
+/// e.g. a member of a structure (STRUCT in DuckDB SQL). 
+/// </para>
+/// </remarks>
 public readonly struct DuckDbColumnInfo
 {
     /// <summary>

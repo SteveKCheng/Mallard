@@ -25,7 +25,7 @@ namespace Mallard;
 public unsafe class DuckDbResultChunk : IDisposable
 {
     private _duckdb_data_chunk* _nativeChunk;
-    private readonly DuckDbResult.ColumnInfo[] _columnInfo;
+    private readonly DuckDbColumnInfo[] _columnInfo;
     private readonly int _length;
 
     private HandleRefCount _refCount;
@@ -41,7 +41,7 @@ public unsafe class DuckDbResultChunk : IDisposable
     /// Pre-tabulated information on the columns of the query result.
     /// </param>
     internal DuckDbResultChunk(ref _duckdb_data_chunk* nativeChunk,
-                               DuckDbResult.ColumnInfo[] columnInfo)
+                               DuckDbColumnInfo[] columnInfo)
     {
         _nativeChunk = nativeChunk;
         nativeChunk = default;
