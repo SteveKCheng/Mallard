@@ -4,7 +4,8 @@ using System;
 namespace Mallard;
 
 /// <summary>
-/// Encapsulates user-defined code that accesses <see cref="DuckDbChunkReader" />.
+/// Encapsulates user-defined code that accesses <see cref="DuckDbChunkReader" />
+/// and its columns/vectors.
 /// </summary>
 /// <typeparam name="TState">
 /// Type of arbitrary state that the user-defined code can take.  The state may be represented by 

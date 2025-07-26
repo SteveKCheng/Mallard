@@ -8,8 +8,18 @@ namespace Mallard;
 /// </summary>
 /// <remarks>
 /// <para>
-/// In particular, the properties in this type give sufficient information to decode data 
-/// coming in from a DuckDB column.
+/// The properties in this type provide information to decode data 
+/// coming in from a DuckDB column.  This information is sufficient for "simple" types
+/// (such as integers, decimals).  
+/// </para>
+/// <para>
+/// For "complex" types (of some composited/nested nature),
+/// specialized API calls to the DuckDB native library may be necessary to decode/describe
+/// them fully.  Those API calls are made available elsewhere in this library as they 
+/// require more complex state/resource management.  This type optimizes for the by far the 
+/// most common case, where basic information on the DuckDB type/column can be gathered 
+/// cheaply upfront, and stored in an inert structure that can be passed around and accessed
+/// (in .NET code) with no restrictions.
 /// </para>
 /// <para>
 /// This .NET type is also used to describe a DuckDB column that is nested within another, 
@@ -107,7 +117,7 @@ public readonly struct DuckDbColumnInfo
             using var holder = new NativeLogicalTypeHolder(
                 NativeMethods.duckdb_column_logical_type(ref nativeResult, columnIndex));
 
-            (storageKind, ElementSize, DecimalScale) = GetSupplementaryInfo(valueKind, holder.NativeHandle);
+            (storageKind, ElementSize, DecimalScale) = GatherSupplementaryInfo(valueKind, holder.NativeHandle);
         }
 
         _valueKind = (byte)valueKind;
@@ -129,7 +139,7 @@ public readonly struct DuckDbColumnInfo
         DuckDbValueKind valueKind = NativeMethods.duckdb_get_type_id(holder.NativeHandle);
 
         DuckDbValueKind storageKind;
-        (storageKind, ElementSize, DecimalScale) = GetSupplementaryInfo(valueKind, holder.NativeHandle);
+        (storageKind, ElementSize, DecimalScale) = GatherSupplementaryInfo(valueKind, holder.NativeHandle);
 
         _valueKind = (byte)valueKind;
         _storageKind = (byte)storageKind;
@@ -146,7 +156,7 @@ public readonly struct DuckDbColumnInfo
     /// Native logical type object.  This method will borrow it to query the native library.
     /// </param>
     private unsafe static (DuckDbValueKind StorageKind, int ElementSize, byte DecimalScale)
-        GetSupplementaryInfo(DuckDbValueKind valueKind, _duckdb_logical_type* nativeType)
+        GatherSupplementaryInfo(DuckDbValueKind valueKind, _duckdb_logical_type* nativeType)
     {
         if (valueKind == DuckDbValueKind.Decimal)
         {

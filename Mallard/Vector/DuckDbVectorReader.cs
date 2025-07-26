@@ -5,7 +5,7 @@ using System.Diagnostics.CodeAnalysis;
 namespace Mallard;
 
 /// <summary>
-/// Points to data for a column within a result chunk from DuckDB.
+/// General-purpose reader of a column of data within a result chunk from DuckDB.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -16,9 +16,19 @@ namespace Mallard;
 /// </para>
 /// <para>
 /// This reader internally uses indirect calls to read, and convert if necessary,
-/// the data in DuckDB's native formats, to the desired .NET type.  It is thus
-/// slower than <see cref="DuckDbVectorRawReader{T}" /> but the results are easier
-/// for clients to consume.
+/// the data in DuckDB's native formats, to the desired .NET type.  
+/// </para>
+/// <para>
+/// This reader is thus slower than <see cref="DuckDbVectorRawReader{T}" />, but the results 
+/// are easier for clients to consume.  For simple types, the run-time overhead should be small, 
+/// while for complex types (such as lists or even enumerations), considerable manual work is 
+/// necessary to consume them through "raw" methods that the run-time overhead may be acceptable.)
+/// </para>
+/// <para>
+/// The reader is a "ref struct" because internally it holds and accesses pointers
+/// to native memory for the vector from DuckDB, and so its scope (lifetime) must be
+/// carefully controlled.  Non-trivial instances are only accessible from within a processing
+/// function for a chunk conforiming to <see cref="DuckDbChunkReadingFunc{TState, TReturn}" />.
 /// </para>
 /// </remarks>
 public unsafe readonly ref struct 

@@ -4,7 +4,8 @@ using System.Diagnostics.CodeAnalysis;
 namespace Mallard;
 
 /// <summary>
-/// Points to data for a column within a result chunk from DuckDB.
+/// Points to data for a column within a result chunk from DuckDB,
+/// and gives read access to it.
 /// </summary>
 /// <typeparam name="T">The .NET type for the element type
 /// of the vector, which must be layout-compatible with the storage type
@@ -44,13 +45,19 @@ namespace Mallard;
 /// This "raw" data may be difficult to consume, particularly for elements that are 
 /// higher-level like <see cref="DuckDbValueKind.Decimal" /> or nested ones like
 /// <see cref="DuckDbValueKind.List" />.  Results that are easier to consume can
-/// be produced by the non-raw <see cref="DuckDbVectorReader{T}" /> instead
+/// be produced by the non-raw <see cref="DuckDbVectorReader{T}" /> instead,
 /// at the expense of some efficiency.
 /// </para>
 /// <para>
 /// In theory, any type can be retrieved and converted in the most efficient manner 
 /// by generating source code that reads the raw data through this reader.  But
 /// source generation may be overkill and complicated for many applications.
+/// </para>
+/// <para>
+/// The reader is a "ref struct" because internally it holds and accesses pointers
+/// to native memory for the vector from DuckDB, and so its scope (lifetime) must be
+/// carefully controlled.  Non-trivial instances are only accessible from within a processing
+/// function for a chunk conforiming to <see cref="DuckDbChunkReadingFunc{TState, TReturn}" />.
 /// </para>
 /// </remarks>
 public readonly ref struct DuckDbVectorRawReader<T> : IDuckDbVector<T>
