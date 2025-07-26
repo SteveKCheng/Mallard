@@ -210,6 +210,9 @@ internal unsafe static partial class NativeMethods
     internal static partial DuckDbValueKind duckdb_column_type(ref duckdb_result result, idx_t col);
 
     [LibraryImport(LibraryName)]
+    internal static partial _duckdb_logical_type* duckdb_column_logical_type(ref duckdb_result result, idx_t col);
+
+    [LibraryImport(LibraryName)]
     internal static partial idx_t duckdb_rows_changed(ref duckdb_result result);
 
     [LibraryImport(LibraryName)]
@@ -312,13 +315,27 @@ internal unsafe static partial class NativeMethods
     internal static partial DuckDbValueKind duckdb_decimal_internal_type(_duckdb_logical_type* type);
 
     [LibraryImport(LibraryName)]
+    internal static partial idx_t duckdb_array_type_array_size(_duckdb_logical_type* type);
+
+    [LibraryImport(LibraryName)]
+    internal static partial idx_t duckdb_struct_type_child_count(_duckdb_logical_type* type);
+
+    [LibraryImport(LibraryName)]
+    [return: MarshalUsing(typeof(Utf8StringMarshallerWithFree))]
+    internal static partial string duckdb_struct_type_child_name(_duckdb_logical_type* type, idx_t index);
+
+    [LibraryImport(LibraryName)]
+    internal static partial idx_t duckdb_union_type_member_count(_duckdb_logical_type* type);
+
+    [LibraryImport(LibraryName)]
+    [return: MarshalUsing(typeof(Utf8StringMarshallerWithFree))]
+    internal static partial string duckdb_union_type_member_name(_duckdb_logical_type* type, idx_t index);
+
+    [LibraryImport(LibraryName)]
     internal static partial DuckDbValueKind duckdb_enum_internal_type(_duckdb_logical_type* type);
 
     [LibraryImport(LibraryName)]
     internal static partial uint duckdb_enum_dictionary_size(_duckdb_logical_type* type);
-
-    [LibraryImport(LibraryName)]
-    internal static partial idx_t duckdb_array_type_array_size(_duckdb_logical_type* type);
 
     [LibraryImport(LibraryName)]
     [return: MarshalUsing(typeof(Utf8StringMarshallerWithFree))]
