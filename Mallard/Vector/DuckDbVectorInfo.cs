@@ -19,6 +19,11 @@ namespace Mallard;
 internal unsafe readonly struct DuckDbVectorInfo
 {
     /// <summary>
+    /// Information on the column that this vector is part of.
+    /// </summary>
+    public DuckDbColumnInfo ColumnInfo { get; }
+
+    /// <summary>
     /// "Vector" data structure obtained as part of a chunk from DuckDB.  It is
     /// de-allocated together with the chunk.
     /// </summary>
@@ -43,94 +48,47 @@ internal unsafe readonly struct DuckDbVectorInfo
     /// </summary>
     internal readonly int Length;
 
-    /// <summary>
-    /// The basic type of data from DuckDB, used to verify correctly-typed access, 
-    /// cast to <c>byte</c> to conserve space.
-    /// </summary>
-    private readonly byte _basicType;
+    /// <see cref="DuckDbColumnInfo.DecimalScale" />
+    internal byte DecimalScale => ColumnInfo.DecimalScale;
 
-    /// <summary>
-    /// The actual DuckDB type used for storage, when the logical type is
-    /// <see cref="DuckDbValueKind.Enum" /> or <see cref="DuckDbValueKind.Decimal" />.
-    /// </summary>
-    /// <remarks>
-    /// Set to zero (<see cref="DuckDbValueKind.Invalid" /> if inapplicable. 
-    /// </remarks>
-    private readonly byte _storageType;
+    /// <see cref="DuckDbColumnInfo.ValueKind" />
+    internal DuckDbValueKind ValueKind => ColumnInfo.ValueKind;
 
-    /// <summary>
-    /// The number of digits after the decimal point, when the logical type is
-    /// <see cref="DuckDbValueKind.Decimal" />.
-    /// </summary>
-    /// <remarks>
-    /// Set to zero if inapplicable. 
-    /// </remarks>
-    internal readonly byte DecimalScale;
+    /// <see cref="DuckDbColumnInfo.StorageKind" />
+    internal DuckDbValueKind StorageType => ColumnInfo.StorageKind;
 
-    internal DuckDbVectorInfo(_duckdb_vector* nativeVector,
-                              DuckDbValueKind valueKind,
-                              int length)
+    internal DuckDbVectorInfo(_duckdb_vector* nativeVector, int length, string name)
+        : this(nativeVector, length, new DuckDbColumnInfo(nativeVector, name))
     {
+    }
+
+    /// <summary>
+    /// Construct descriptor on a given vector with cached column information.
+    /// </summary>
+    /// <param name="nativeVector">
+    /// The vector containing the data (for one column within one chunk of the query results).
+    /// </param>
+    /// <param name="length">
+    /// The length (number of rows) in the vector.  This information is generally
+    /// cached at the level of the chunk containing all vectors (one for each column).
+    /// </param>
+    /// <param name="columnInfo">
+    /// Information on the column that the vector is part of.  All of this information
+    /// (except for the name) can be obtained from <paramref name="nativeVector" />,
+    /// but when processing multiple chunks from the same <see cref="DuckDbResult" />,
+    /// the columns will always be the same so it is quicker to cache the information
+    /// then to query the DuckDB native library every time.
+    /// </param>
+    internal DuckDbVectorInfo(_duckdb_vector* nativeVector, int length, in DuckDbColumnInfo columnInfo)
+    {
+        ColumnInfo = columnInfo;
+
         NativeVector = nativeVector;
         DataPointer = NativeMethods.duckdb_vector_get_data(NativeVector);
         _validityMask = NativeMethods.duckdb_vector_get_validity(NativeVector);
 
         Length = length;
-        _basicType = (byte)valueKind;
-
-        if (valueKind == DuckDbValueKind.Decimal)
-        {
-            var (scale, storageType) = GetDecimalStorageInfo(NativeVector);
-            DecimalScale = scale;
-            _storageType = (byte)storageType;
-        }
-        else if (valueKind == DuckDbValueKind.Enum)
-        {
-            var storageType = GetEnumStorageType(NativeVector);
-            _storageType = (byte)storageType;
-        }
-        else
-        {
-            _storageType = _basicType;
-        }
     }
-
-    private static (byte Scale, DuckDbValueKind StorageType) GetDecimalStorageInfo(_duckdb_vector* vector)
-    {
-        var nativeType = NativeMethods.duckdb_vector_get_column_type(vector);
-        if (nativeType == null)
-            throw new DuckDbException("Could not query the logical type of a vector from DuckDB. ");
-
-        try
-        {
-            return (Scale: NativeMethods.duckdb_decimal_scale(nativeType),
-                    StorageType: NativeMethods.duckdb_decimal_internal_type(nativeType));
-        }
-        finally
-        {
-            NativeMethods.duckdb_destroy_logical_type(ref nativeType);
-        }
-    }
-
-    private static DuckDbValueKind GetEnumStorageType(_duckdb_vector* vector)
-    {
-        var nativeType = NativeMethods.duckdb_vector_get_column_type(vector);
-        if (nativeType == null)
-            throw new DuckDbException("Could not query the logical type of a vector from DuckDB. ");
-
-        try
-        {
-            return NativeMethods.duckdb_enum_internal_type(nativeType);
-        }
-        finally
-        {
-            NativeMethods.duckdb_destroy_logical_type(ref nativeType);
-        }
-    }
-
-    public DuckDbValueKind ValueKind => (DuckDbValueKind)_basicType;
-
-    public DuckDbValueKind StorageType => (DuckDbValueKind)_storageType;
 
     /// <summary>
     /// Read an element of the vector from native memory.

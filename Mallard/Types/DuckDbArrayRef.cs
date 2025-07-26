@@ -9,21 +9,6 @@ namespace Mallard;
 /// </summary>
 public readonly struct DuckDbArrayRef
 {
-    internal unsafe static long GetArraySize(in DuckDbVectorInfo parent)
-    {
-        var nativeType = NativeMethods.duckdb_vector_get_column_type(parent.NativeVector);
-        if (nativeType == null)
-            throw new DuckDbException("Could not query the logical type of a vector from DuckDB. ");
-
-        try
-        {
-            return NativeMethods.duckdb_array_type_array_size(nativeType);
-        }
-        finally
-        {
-            NativeMethods.duckdb_destroy_logical_type(ref nativeType);
-        }
-    }
 }
 
 public static partial class DuckDbVectorMethods
@@ -41,12 +26,10 @@ public static partial class DuckDbVectorMethods
         if (childVector == null)
             throw new DuckDbException("Could not get the child vector from an array vector in DuckDB. ");
 
-        // FIXME This creates the logical type twice.  Re-factor code so logical type is only created once.
         // FIXME The array length needs to be exposed as a public property or method in
         //       DuckDbVectorRawReader<DuckDbArrayRef>.  Need some code re-organization to do so.
-        var totalChildren = checked((int)(parent.Length * DuckDbArrayRef.GetArraySize(parent)));
-        var childValueKind = DuckDbVectorInfo.GetVectorElementValueKind(childVector);
+        var totalChildren = checked((int)(parent.Length * parent.ColumnInfo.ElementSize));
 
-        return new DuckDbVectorInfo(childVector, childValueKind, totalChildren);
+        return new DuckDbVectorInfo(childVector, totalChildren, string.Empty);
     }
 }

@@ -96,8 +96,6 @@ public readonly struct DuckDbColumnInfo
         Name = NativeMethods.duckdb_column_name(ref nativeResult, columnIndex);
         
         DuckDbValueKind valueKind = NativeMethods.duckdb_column_type(ref nativeResult, columnIndex);
-        _valueKind = (byte)valueKind;
-
         DuckDbValueKind storageKind = valueKind;
 
         if (valueKind == DuckDbValueKind.Decimal ||
@@ -105,29 +103,80 @@ public readonly struct DuckDbColumnInfo
             valueKind == DuckDbValueKind.Array ||
             valueKind == DuckDbValueKind.Struct)
         {
+            // Obtain native logical type object only if we need it
             using var holder = new NativeLogicalTypeHolder(
                 NativeMethods.duckdb_column_logical_type(ref nativeResult, columnIndex));
 
-            if (valueKind == DuckDbValueKind.Decimal)
-            {
-                DecimalScale = NativeMethods.duckdb_decimal_scale(holder.NativeHandle);
-                storageKind = NativeMethods.duckdb_decimal_internal_type(holder.NativeHandle);
-            }
-            else if (valueKind == DuckDbValueKind.Enum)
-            {
-                storageKind = NativeMethods.duckdb_enum_internal_type(holder.NativeHandle);
-                ElementSize = (int)NativeMethods.duckdb_enum_dictionary_size(holder.NativeHandle);
-            }
-            else if (valueKind == DuckDbValueKind.Array)
-            {
-                ElementSize = (int)NativeMethods.duckdb_array_type_array_size(holder.NativeHandle);
-            }
-            else if (valueKind == DuckDbValueKind.Struct)
-            {
-                ElementSize = (int)NativeMethods.duckdb_struct_type_child_count(holder.NativeHandle);
-            }
+            (storageKind, ElementSize, DecimalScale) = GetSupplementaryInfo(valueKind, holder.NativeHandle);
         }
 
+        _valueKind = (byte)valueKind;
         _storageKind = (byte)storageKind;
+    }
+
+    /// <summary>
+    /// Initialize information from one vector (usually coming from a nested column). 
+    /// </summary>
+    /// <param name="nativeResult">The vector to retrieve type information from. </param>
+    /// <param name="columnIndex">The name of the (nested) column. </param>
+    internal unsafe DuckDbColumnInfo(_duckdb_vector* nativeVector, string name)
+    {
+        Name = name;
+
+        using var holder = new NativeLogicalTypeHolder(
+            NativeMethods.duckdb_vector_get_column_type(nativeVector));
+
+        DuckDbValueKind valueKind = NativeMethods.duckdb_get_type_id(holder.NativeHandle);
+
+        DuckDbValueKind storageKind;
+        (storageKind, ElementSize, DecimalScale) = GetSupplementaryInfo(valueKind, holder.NativeHandle);
+
+        _valueKind = (byte)valueKind;
+        _storageKind = (byte)storageKind;
+    }
+
+    /// <summary>
+    /// Retrieve more detailed information from the DuckDB native library on how to
+    /// decode/interpret a column's type of data.
+    /// </summary>
+    /// <param name="valueKind">
+    /// The high-level kind of value for the column. 
+    /// </param>
+    /// <param name="nativeType">
+    /// Native logical type object.  This method will borrow it to query the native library.
+    /// </param>
+    private unsafe static (DuckDbValueKind StorageKind, int ElementSize, byte DecimalScale)
+        GetSupplementaryInfo(DuckDbValueKind valueKind, _duckdb_logical_type* nativeType)
+    {
+        if (valueKind == DuckDbValueKind.Decimal)
+        {
+            return (StorageKind: NativeMethods.duckdb_decimal_internal_type(nativeType),
+                    ElementSize: 0,
+                    DecimalScale: NativeMethods.duckdb_decimal_scale(nativeType));
+        }
+        else if (valueKind == DuckDbValueKind.Enum)
+        {
+            return (StorageKind: NativeMethods.duckdb_enum_internal_type(nativeType),
+                    ElementSize: 0,
+                    DecimalScale: 0);
+        }
+        else if (valueKind == DuckDbValueKind.Array)
+        {
+            return (StorageKind: valueKind,
+                    ElementSize: (int)NativeMethods.duckdb_array_type_array_size(nativeType),
+                    DecimalScale: 0);
+        }
+        else if (valueKind == DuckDbValueKind.Struct)
+        {
+            return (StorageKind: valueKind,
+                    ElementSize: (int)NativeMethods.duckdb_struct_type_child_count(nativeType),
+                    DecimalScale: 0);
+        }
+        else
+        {
+            return (StorageKind: valueKind,
+                    ElementSize: 0,
+                    DecimalScale: 0);
+        }
     }
 }

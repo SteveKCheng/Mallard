@@ -50,9 +50,7 @@ public static partial class DuckDbVectorMethods
             throw new DuckDbException("Could not get the child vector from a list vector in DuckDB. ");
 
         var totalChildren = NativeMethods.duckdb_list_vector_get_size(parentVector);
-        var childValueKind = DuckDbVectorInfo.GetVectorElementValueKind(childVector);
-
-        return new DuckDbVectorInfo(childVector, childValueKind, (int)totalChildren);
+        return new DuckDbVectorInfo(childVector, (int)totalChildren, string.Empty);
     }
 }
 

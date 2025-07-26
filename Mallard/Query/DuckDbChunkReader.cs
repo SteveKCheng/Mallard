@@ -87,7 +87,7 @@ public unsafe readonly ref struct DuckDbChunkReader
         if (nativeVector == null)
             throw new IndexOutOfRangeException("Column index is not in range. ");
 
-        return new DuckDbVectorInfo(nativeVector, _columnInfo[columnIndex].ValueKind, _length);
+        return new DuckDbVectorInfo(nativeVector, _length, _columnInfo[columnIndex]);
     }
 
     /// <summary>

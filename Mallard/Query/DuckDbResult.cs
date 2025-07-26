@@ -115,8 +115,8 @@ public unsafe sealed class DuckDbResult : IDisposable
                 if (nativeVector == null)
                     return default;
 
-                var valueKind = NativeMethods.duckdb_column_type(ref nativeResult, 0);
-                var vectorInfo = new DuckDbVectorInfo(nativeVector, valueKind, length);
+                var columnInfo = new DuckDbColumnInfo(ref nativeResult, 0);
+                var vectorInfo = new DuckDbVectorInfo(nativeVector, length, columnInfo);
 
                 var reader = new DuckDbVectorReader<T>(vectorInfo);
                 bool isValid = reader.TryGetItem(0, out var item);
