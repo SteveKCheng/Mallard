@@ -44,11 +44,11 @@ internal sealed class ListConverter
     }
 
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-    private unsafe static VectorElementConverter ConstructForArrayImpl<T>(ListConverter self, in DuckDbVectorInfo _)
+    private unsafe static VectorElementConverter ConstructForArrayImpl<T>(ListConverter self, ref readonly ConverterCreationContext _)
         => VectorElementConverter.Create(self, &ConvertToArray<T>);
 
     [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-    private unsafe static VectorElementConverter ConstructForImmutableArrayImpl<T>(ListConverter self, in DuckDbVectorInfo _)
+    private unsafe static VectorElementConverter ConstructForImmutableArrayImpl<T>(ListConverter self, ref readonly ConverterCreationContext _)
         => VectorElementConverter.Create(self, &ConvertToImmutableArray<T>, defaultValueIsInvalid: true);
 
     /// <summary>
