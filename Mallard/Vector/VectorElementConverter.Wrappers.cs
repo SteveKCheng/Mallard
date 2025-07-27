@@ -104,31 +104,31 @@ internal readonly partial struct VectorElementConverter
     {
         var converter = context.ColumnInfo.ValueKind switch
         {
-            DuckDbValueKind.Boolean => CreateForNullablePrimitive<bool>(),
+            DuckDbValueKind.Boolean when underlyingType == typeof(bool) => CreateForNullablePrimitive<bool>(),
 
-            DuckDbValueKind.TinyInt => CreateForNullablePrimitive<sbyte>(),
-            DuckDbValueKind.SmallInt => CreateForNullablePrimitive<short>(),
-            DuckDbValueKind.Integer => CreateForNullablePrimitive<int>(),
-            DuckDbValueKind.BigInt => CreateForNullablePrimitive<long>(),
+            DuckDbValueKind.TinyInt when underlyingType == typeof(sbyte) => CreateForNullablePrimitive<sbyte>(),
+            DuckDbValueKind.SmallInt when underlyingType == typeof(short) => CreateForNullablePrimitive<short>(),
+            DuckDbValueKind.Integer when underlyingType == typeof(int) => CreateForNullablePrimitive<int>(),
+            DuckDbValueKind.BigInt when underlyingType == typeof(long) => CreateForNullablePrimitive<long>(),
 
-            DuckDbValueKind.UTinyInt => CreateForNullablePrimitive<byte>(),
-            DuckDbValueKind.USmallInt => CreateForNullablePrimitive<ushort>(),
-            DuckDbValueKind.UInteger => CreateForNullablePrimitive<uint>(),
-            DuckDbValueKind.UBigInt => CreateForNullablePrimitive<ulong>(),
+            DuckDbValueKind.UTinyInt when underlyingType == typeof(byte) => CreateForNullablePrimitive<byte>(),
+            DuckDbValueKind.USmallInt when underlyingType == typeof(uint) => CreateForNullablePrimitive<ushort>(),
+            DuckDbValueKind.UInteger when underlyingType == typeof(ulong) => CreateForNullablePrimitive<uint>(),
+            DuckDbValueKind.UBigInt when underlyingType == typeof(ulong) => CreateForNullablePrimitive<ulong>(),
 
-            DuckDbValueKind.Float => CreateForNullablePrimitive<float>(),
-            DuckDbValueKind.Double => CreateForNullablePrimitive<double>(),
+            DuckDbValueKind.Float when underlyingType == typeof(float) => CreateForNullablePrimitive<float>(),
+            DuckDbValueKind.Double when underlyingType == typeof(double) => CreateForNullablePrimitive<double>(),
 
-            DuckDbValueKind.Date => CreateForNullablePrimitive<DuckDbDate>(),
-            DuckDbValueKind.Timestamp => CreateForNullablePrimitive<DuckDbTimestamp>(),
+            DuckDbValueKind.Date when underlyingType == typeof(DuckDbDate) => CreateForNullablePrimitive<DuckDbDate>(),
+            DuckDbValueKind.Timestamp when underlyingType == typeof(DuckDbTimestamp) => CreateForNullablePrimitive<DuckDbTimestamp>(),
 
-            DuckDbValueKind.Interval => CreateForNullablePrimitive<DuckDbInterval>(),
+            DuckDbValueKind.Interval when underlyingType == typeof(DuckDbInterval) => CreateForNullablePrimitive<DuckDbInterval>(),
 
-            DuckDbValueKind.UHugeInt => CreateForNullablePrimitive<UInt128>(),
-            DuckDbValueKind.HugeInt => CreateForNullablePrimitive<Int128>(),
+            DuckDbValueKind.UHugeInt when underlyingType == typeof(UInt128) => CreateForNullablePrimitive<UInt128>(),
+            DuckDbValueKind.HugeInt when underlyingType == typeof(Int128) => CreateForNullablePrimitive<Int128>(),
 
-            DuckDbValueKind.Decimal => DuckDbDecimal.GetNullableVectorElementConverter(context.ColumnInfo),
-            DuckDbValueKind.VarInt => DuckDbVarInt.NullableVectorElementConverter,
+            DuckDbValueKind.Decimal when underlyingType == typeof(Decimal) => DuckDbDecimal.GetNullableVectorElementConverter(context.ColumnInfo),
+            DuckDbValueKind.VarInt when underlyingType == typeof(BigInteger) => DuckDbVarInt.NullableVectorElementConverter,
 
             _ => default
         };
