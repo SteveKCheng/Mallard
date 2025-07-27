@@ -138,14 +138,7 @@ public readonly record struct DuckDbColumnInfo
     {
         using var holder = new NativeLogicalTypeHolder(
             NativeMethods.duckdb_vector_get_column_type(nativeVector));
-
-        DuckDbValueKind valueKind = NativeMethods.duckdb_get_type_id(holder.NativeHandle);
-
-        DuckDbValueKind storageKind;
-        (storageKind, ElementSize, DecimalScale) = GatherSupplementaryInfo(valueKind, holder.NativeHandle);
-
-        _valueKind = (byte)valueKind;
-        _storageKind = (byte)storageKind;
+        this = new DuckDbColumnInfo(holder.NativeHandle);
     }
 
     /// <summary>
