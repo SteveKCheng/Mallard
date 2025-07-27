@@ -21,17 +21,30 @@ public static partial class DuckDbVectorMethods
     /// The lists' children, collected into one vector, i.e. the "children vector" or "vector of list children".
     /// </returns>
     /// <exception cref="DuckDbException"></exception>
-    public static DuckDbVectorRawReader<T> GetChildrenRawVector<T>(in this DuckDbVectorRawReader<DuckDbListRef> parent)
+    public static DuckDbVectorRawReader<T> GetChildrenRaw<T>(in this DuckDbVectorRawReader<DuckDbListRef> parent)
         where T : unmanaged, allows ref struct
-        => new(parent._info.GetListChildrenVectorInfo());
+    {
+        parent._info.ThrowIfNull();
+        var childVector = parent._info.GetListChildrenVectorInfo(Unsafe.NullRef<DuckDbColumnInfo>());
+        return new(childVector);
+    }
 
-    internal static DuckDbVectorInfo GetListChildrenVectorInfo(in this DuckDbVectorInfo parentVector)
-        => GetListChildrenVectorInfo(parentVector, Unsafe.NullRef<DuckDbColumnInfo>());
-
+    /// <summary>
+    /// Retrieve the vector of children, of the lists in the parent vector.
+    /// </summary>
+    /// <param name="parentVector">
+    /// A vector with elements typed as lists in DuckDB.
+    /// </param>
+    /// <param name="columnInfo">
+    /// Data type information for the vector of list children.  This argument may be a null reference, in which case
+    /// this method will retrieve it,  The caller may supply it if it is already available, avoiding
+    /// unnecessary API calls to the DuckDB native library.  
+    /// </param>
+    /// <returns>
+    /// Description of the vector of the all lists' children.
+    /// </returns>
     internal unsafe static DuckDbVectorInfo GetListChildrenVectorInfo(in this DuckDbVectorInfo parentVector, in DuckDbColumnInfo columnInfo)
     {
-        DuckDbVectorInfo.ThrowOnNullVector(parentVector.NativeVector);
-
         var childVector = NativeMethods.duckdb_list_vector_get_child(parentVector.NativeVector);
         if (childVector == null)
             throw new DuckDbException("Could not get the child vector from a list vector in DuckDB. ");

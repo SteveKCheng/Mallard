@@ -6,7 +6,7 @@ using System.Runtime.CompilerServices;
 namespace Mallard;
 
 /// <summary>
-/// Descriptor for a DuckDB vector containing basic type information and 
+/// Description for a DuckDB vector containing basic type information, and 
 /// pointers to the native data.
 /// </summary>
 /// <remarks>
@@ -239,9 +239,9 @@ internal unsafe readonly struct DuckDbVectorInfo
         }
     }
 
-    internal static void ThrowOnNullVector(_duckdb_vector* vector)
+    internal void ThrowIfNull()
     {
-        if (vector == null)
+        if (NativeVector == null)
             throw new InvalidOperationException("Cannot operate on a default instance of DuckDbReadOnlyVector. ");
     }
 }

@@ -19,8 +19,8 @@ public static partial class DuckDbVectorMethods
 
     internal unsafe static DuckDbVectorInfo GetArrayChildrenVectorInfo(in this DuckDbVectorInfo parent)
     {
+        parent.ThrowIfNull();
         var parentVector = parent.NativeVector;
-        DuckDbVectorInfo.ThrowOnNullVector(parentVector);
 
         var childVector = NativeMethods.duckdb_array_vector_get_child(parentVector);
         if (childVector == null)
