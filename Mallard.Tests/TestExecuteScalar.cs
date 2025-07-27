@@ -129,11 +129,11 @@ public class TestExecuteScalar
         sbyte value = 9;
         ps.BindParameter(1, value);
 
-        Assert.Equal(ps.ExecuteValue<sbyte>(), value);
-        Assert.Equal(ps.ExecuteValue<short>(), value);
-        Assert.Equal(ps.ExecuteValue<int>(), value);
-        Assert.Equal(ps.ExecuteValue<long>(), value);
-        Assert.Equal(ps.ExecuteValue<Int128>(), value);
+        Assert.Equal(value, ps.ExecuteValue<sbyte>());
+        Assert.Equal(value, ps.ExecuteValue<short>());
+        Assert.Equal(value, ps.ExecuteValue<int>());
+        Assert.Equal(value, ps.ExecuteValue<long>());
+        Assert.Equal(value, ps.ExecuteValue<Int128>());
 
         // FIXME decide on the exact type of Exception to throw
         Assert.ThrowsAny<Exception>(() => ps.ExecuteValue<byte>());
@@ -141,5 +141,19 @@ public class TestExecuteScalar
         Assert.ThrowsAny<Exception>(() => ps.ExecuteValue<uint>());
         Assert.ThrowsAny<Exception>(() => ps.ExecuteValue<ulong>());
         Assert.ThrowsAny<Exception>(() => ps.ExecuteValue<UInt128>());
+    }
+
+    [Fact]
+    public void EnumPromotion()
+    {
+        using var dbConn = new DuckDbConnection("");
+
+        using var ps = dbConn.CreatePreparedStatement("SELECT $1::ENUM ('すごい', '楽しい', '面白くない', 'まずい')");
+        byte value = 1;
+        ps.BindParameter(1, "楽しい");
+
+        Assert.Equal(value, ps.ExecuteValue<byte>());
+        Assert.Equal(value, ps.ExecuteValue<ushort>());
+        Assert.Equal(value, ps.ExecuteValue<uint>());
     }
 }

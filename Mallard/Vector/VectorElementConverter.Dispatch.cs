@@ -202,6 +202,12 @@ internal readonly partial struct VectorElementConverter
                                    && Match(type, typeof(ushort)) => CreateForPrimitive<ushort>(),
             DuckDbValueKind.Enum when context.ColumnInfo.StorageKind == DuckDbValueKind.UInteger
                                    && Match(type, typeof(ulong)) => CreateForPrimitive<ulong>(),
+            DuckDbValueKind.Enum when context.ColumnInfo.StorageKind == DuckDbValueKind.UTinyInt
+                                   && IsPromotedIntegralType<byte>(type) => CreateForCastedInteger<byte>(type),
+            DuckDbValueKind.Enum when context.ColumnInfo.StorageKind == DuckDbValueKind.USmallInt
+                                   && IsPromotedIntegralType<ushort>(type) => CreateForCastedInteger<ushort>(type),
+            DuckDbValueKind.Enum when context.ColumnInfo.StorageKind == DuckDbValueKind.UInteger
+                                   && IsPromotedIntegralType<uint>(type) => CreateForCastedInteger<uint>(type),
 
             _ => default
         };
