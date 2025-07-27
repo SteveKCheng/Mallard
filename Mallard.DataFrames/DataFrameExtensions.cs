@@ -33,6 +33,8 @@ public static class DataFrameExtensions
 
                 DuckDbValueKind.VarChar => GetStringColumnAndReader(columnName),
 
+                DuckDbValueKind.Date => GetColumnAndReader<DateOnly>(columnName),
+
                 DuckDbValueKind.Decimal => GetColumnAndReader<decimal>(columnName),
 
                 _ => throw new NotSupportedException()

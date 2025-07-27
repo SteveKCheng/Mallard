@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Numerics;
 using System.Reflection;
 
 namespace Mallard;
@@ -29,7 +30,7 @@ internal readonly partial struct VectorElementConverter
             DuckDbValueKind.Float => CreateForBoxedPrimitive<float>(),
             DuckDbValueKind.Double => CreateForBoxedPrimitive<double>(),
 
-            DuckDbValueKind.Date => CreateForBoxedPrimitive<DuckDbDate>(),
+            DuckDbValueKind.Date => DuckDbDate.GetBoxedVectorElementConverter(),
             DuckDbValueKind.Timestamp => CreateForBoxedPrimitive<DuckDbTimestamp>(),
 
             DuckDbValueKind.Interval => CreateForBoxedPrimitive<DuckDbInterval>(),
@@ -119,6 +120,7 @@ internal readonly partial struct VectorElementConverter
             DuckDbValueKind.Float when underlyingType == typeof(float) => CreateForNullablePrimitive<float>(),
             DuckDbValueKind.Double when underlyingType == typeof(double) => CreateForNullablePrimitive<double>(),
 
+            DuckDbValueKind.Date when underlyingType == typeof(DateOnly) => DuckDbDate.GetNullableVectorElementConverter(),
             DuckDbValueKind.Date when underlyingType == typeof(DuckDbDate) => CreateForNullablePrimitive<DuckDbDate>(),
             DuckDbValueKind.Timestamp when underlyingType == typeof(DuckDbTimestamp) => CreateForNullablePrimitive<DuckDbTimestamp>(),
 

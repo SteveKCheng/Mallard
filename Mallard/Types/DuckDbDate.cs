@@ -43,4 +43,26 @@ public struct DuckDbDate(int days)
     {
         return DateOnly.FromDayNumber(Days + new DateOnly(1970, 1, 1).DayNumber);
     }
+
+    #region Type conversions for vector reader
+
+    private static DateOnly ConvertToDateFromVector(object? state, in DuckDbVectorInfo vector, int index)
+        => vector.UnsafeRead<DuckDbDate>(index).ToDateOnly();
+
+    private static object ConvertToBoxedDateFromVector(object? state, in DuckDbVectorInfo vector, int index)
+        => (object)ConvertToDateFromVector(state, vector, index);
+
+    private static DateOnly? ConvertToNullableDateFromVector(object? state, in DuckDbVectorInfo vector, int index)
+        => new Nullable<DateOnly>(ConvertToDateFromVector(state, vector, index));
+
+    internal unsafe static VectorElementConverter GetVectorElementConverter()
+        => VectorElementConverter.Create(&ConvertToDateFromVector);
+
+    internal unsafe static VectorElementConverter GetBoxedVectorElementConverter()
+        => VectorElementConverter.Create(&ConvertToBoxedDateFromVector);
+
+    internal unsafe static VectorElementConverter GetNullableVectorElementConverter()
+        => VectorElementConverter.Create(&ConvertToNullableDateFromVector);
+
+    #endregion
 }
