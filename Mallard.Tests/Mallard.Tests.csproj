@@ -23,6 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Mallard.DataFrames\Mallard.DataFrames.csproj" />
     <ProjectReference Include="..\Mallard\Mallard.csproj" />
   </ItemGroup>
 
