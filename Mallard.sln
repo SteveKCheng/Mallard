@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mallard", "Mallard\Mallard.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mallard.Tests", "Mallard.Tests\Mallard.Tests.csproj", "{DB015AC5-52DB-4501-8E10-E8FA0C68233A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Mallard.DataFrames", "Mallard.DataFrames\Mallard.DataFrames.csproj", "{982DE44A-0509-468A-8A62-75EA4467271B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{DB015AC5-52DB-4501-8E10-E8FA0C68233A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DB015AC5-52DB-4501-8E10-E8FA0C68233A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DB015AC5-52DB-4501-8E10-E8FA0C68233A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{982DE44A-0509-468A-8A62-75EA4467271B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{982DE44A-0509-468A-8A62-75EA4467271B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{982DE44A-0509-468A-8A62-75EA4467271B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{982DE44A-0509-468A-8A62-75EA4467271B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
