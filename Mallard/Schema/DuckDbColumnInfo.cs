@@ -86,6 +86,10 @@ public readonly record struct DuckDbColumnInfo
     ///     <description>The size (number of entries) in the enumeration type</description>
     ///   </item>
     ///   <item>
+    ///     <term>Fixed-point decimal number (DECIMAL in DuckDB SQL)</term>
+    ///     <description>The maximum number of decimal digits ("width")</description>
+    ///   </item>
+    ///   <item>
     ///     <term>Structures (STRUCT in DuckDB SQL)</term>    
     ///     <description>The number of members in the structural type</description>
     ///   </item>
@@ -175,7 +179,7 @@ public readonly record struct DuckDbColumnInfo
         if (valueKind == DuckDbValueKind.Decimal)
         {
             return (StorageKind: NativeMethods.duckdb_decimal_internal_type(nativeType),
-                    ElementSize: 0,
+                    ElementSize: NativeMethods.duckdb_decimal_width(nativeType),
                     DecimalScale: NativeMethods.duckdb_decimal_scale(nativeType));
         }
         else if (valueKind == DuckDbValueKind.Enum)
