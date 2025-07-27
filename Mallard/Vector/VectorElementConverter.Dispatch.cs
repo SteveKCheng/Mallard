@@ -140,16 +140,35 @@ internal readonly partial struct VectorElementConverter
             // but common ABIs make it so, to be compatible with C++.
             DuckDbValueKind.Boolean when Match(type, typeof(bool)) => CreateForPrimitive<bool>(),
 
+            // Signed integers
             DuckDbValueKind.TinyInt when Match(type, typeof(sbyte)) => CreateForPrimitive<sbyte>(),
             DuckDbValueKind.SmallInt when Match(type, typeof(short)) => CreateForPrimitive<short>(),
             DuckDbValueKind.Integer when Match(type, typeof(int)) => CreateForPrimitive<int>(),
             DuckDbValueKind.BigInt when Match(type, typeof(long)) => CreateForPrimitive<long>(),
+            DuckDbValueKind.HugeInt when Match(type, typeof(Int128)) => CreateForPrimitive<Int128>(),
 
+            // Unsigned integers
             DuckDbValueKind.UTinyInt when Match(type, typeof(byte)) => CreateForPrimitive<byte>(),
             DuckDbValueKind.USmallInt when Match(type, typeof(ushort)) => CreateForPrimitive<ushort>(),
             DuckDbValueKind.UInteger when Match(type, typeof(uint)) => CreateForPrimitive<uint>(),
             DuckDbValueKind.UBigInt when Match(type, typeof(ulong)) => CreateForPrimitive<ulong>(),
+            DuckDbValueKind.UHugeInt when Match(type, typeof(UInt128)) => CreateForPrimitive<UInt128>(),
 
+            // Promoted signed integers
+            DuckDbValueKind.TinyInt when IsPromotedIntegralType<sbyte>(type) => CreateForCastedInteger<sbyte>(type),
+            DuckDbValueKind.SmallInt when IsPromotedIntegralType<short>(type) => CreateForCastedInteger<short>(type),
+            DuckDbValueKind.Integer when IsPromotedIntegralType<int>(type) => CreateForCastedInteger<int>(type),
+            DuckDbValueKind.BigInt when IsPromotedIntegralType<long>(type) => CreateForCastedInteger<long>(type),
+            DuckDbValueKind.HugeInt when IsPromotedIntegralType<Int128>(type) => CreateForCastedInteger<Int128>(type),
+
+            // Promoted unsigned integers
+            DuckDbValueKind.UTinyInt when IsPromotedIntegralType<byte>(type) => CreateForCastedInteger<byte>(type),
+            DuckDbValueKind.USmallInt when IsPromotedIntegralType<ushort>(type) => CreateForCastedInteger<ushort>(type),
+            DuckDbValueKind.UInteger when IsPromotedIntegralType<uint>(type) => CreateForCastedInteger<uint>(type),
+            DuckDbValueKind.UBigInt when IsPromotedIntegralType<ulong>(type) => CreateForCastedInteger<ulong>(type),
+            DuckDbValueKind.UHugeInt when IsPromotedIntegralType<UInt128>(type) => CreateForCastedInteger<UInt128>(type),
+
+            // Binary floating-point numbers
             DuckDbValueKind.Float when Match(type, typeof(float)) => CreateForPrimitive<float>(),
             DuckDbValueKind.Double when Match(type, typeof(double)) => CreateForPrimitive<double>(),
 
@@ -158,16 +177,14 @@ internal readonly partial struct VectorElementConverter
 
             DuckDbValueKind.Interval when Match(type, typeof(DuckDbInterval)) => CreateForPrimitive<DuckDbInterval>(),
 
-            DuckDbValueKind.VarChar when Match(type, typeof(string)) => DuckDbString.VectorElementConverter,
+            // Other numbers
             DuckDbValueKind.VarInt when Match(type, typeof(BigInteger)) => DuckDbVarInt.VectorElementConverter,
-            DuckDbValueKind.Bit when Match(type, typeof(BitArray)) => DuckDbBitString.VectorElementConverter,
-
-            DuckDbValueKind.Blob when Match(type, typeof(byte[])) => DuckDbBlob.VectorElementConverter,
-
-            DuckDbValueKind.UHugeInt when Match(type, typeof(UInt128)) => CreateForPrimitive<UInt128>(),
-            DuckDbValueKind.HugeInt when Match(type, typeof(Int128)) => CreateForPrimitive<Int128>(),
-
             DuckDbValueKind.Decimal when Match(type, typeof(Decimal)) => DuckDbDecimal.GetVectorElementConverter(context.ColumnInfo),
+
+            // Variable-length types excluding generic containers
+            DuckDbValueKind.VarChar when Match(type, typeof(string)) => DuckDbString.VectorElementConverter,
+            DuckDbValueKind.Bit when Match(type, typeof(BitArray)) => DuckDbBitString.VectorElementConverter,
+            DuckDbValueKind.Blob when Match(type, typeof(byte[])) => DuckDbBlob.VectorElementConverter,
 
             // N.B. This matches only T[] and not arbitrary System.Array objects
             // (with arbitrary ranks and lower/upper bounds)
@@ -177,6 +194,7 @@ internal readonly partial struct VectorElementConverter
             DuckDbValueKind.List when type.GetGenericUnderlyingType(typeof(ImmutableArray<>)) is Type elementType
                 => ListConverter.ConstructForImmutableArray(elementType, in context),
 
+            // Enumerations
             DuckDbValueKind.Enum when type != null && type.IsEnum => EnumConverter.CreateElementConverter(in context, type),
             DuckDbValueKind.Enum when context.ColumnInfo.StorageKind == DuckDbValueKind.UTinyInt
                                    && Match(type, typeof(byte)) => CreateForPrimitive<byte>(),

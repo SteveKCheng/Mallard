@@ -119,4 +119,27 @@ public class TestExecuteScalar
             for (int i = 0; i < buffer.Length; ++i)
                 buffer[i] = a[i + start] ? '1' : '0';
         });
+
+    [Fact]
+    public void IntegerPromotion()
+    {
+        using var dbConn = new DuckDbConnection("");
+
+        using var ps = dbConn.CreatePreparedStatement("SELECT $1::TINYINT");
+        sbyte value = 9;
+        ps.BindParameter(1, value);
+
+        Assert.Equal(ps.ExecuteValue<sbyte>(), value);
+        Assert.Equal(ps.ExecuteValue<short>(), value);
+        Assert.Equal(ps.ExecuteValue<int>(), value);
+        Assert.Equal(ps.ExecuteValue<long>(), value);
+        Assert.Equal(ps.ExecuteValue<Int128>(), value);
+
+        // FIXME decide on the exact type of Exception to throw
+        Assert.ThrowsAny<Exception>(() => ps.ExecuteValue<byte>());
+        Assert.ThrowsAny<Exception>(() => ps.ExecuteValue<ushort>());
+        Assert.ThrowsAny<Exception>(() => ps.ExecuteValue<uint>());
+        Assert.ThrowsAny<Exception>(() => ps.ExecuteValue<ulong>());
+        Assert.ThrowsAny<Exception>(() => ps.ExecuteValue<UInt128>());
+    }
 }

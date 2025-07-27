@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Numerics;
 
 namespace Mallard;
 
@@ -56,6 +57,102 @@ internal readonly partial struct VectorElementConverter
         static T? ReadItemAndWrap(object? state, in DuckDbVectorInfo vector, int index)
             => new Nullable<T>(vector.UnsafeRead<T>(index));
         return Create(&ReadItemAndWrap);
+    }
+
+    #endregion
+
+    #region Reading integers with promotion of types
+
+    /// <summary>
+    /// Get the type converter that reads a primitive integer value, and casts it to another
+    /// primitive integer value.
+    /// </summary>
+    /// <remarks>
+    /// The cast is not checked (for overflow/underflow) during conversion.  It is intended that
+    /// the target type is always bigger than the source type.
+    /// </remarks>
+    /// <typeparam name="TSource">
+    /// The integer type present as elements of the DuckDB vector.
+    /// </typeparam>
+    /// <typeparam name="TTarget">
+    /// The integer type to convert to.
+    /// </param>
+    private unsafe static VectorElementConverter CreateForCastedInteger<TSource, TTarget>() 
+        where TSource : unmanaged, IBinaryInteger<TSource>
+        where TTarget : IBinaryInteger<TTarget>
+    {
+        static TTarget ReadItemAndCast(object? state, in DuckDbVectorInfo vector, int index)
+            => TTarget.CreateTruncating(vector.UnsafeRead<TSource>(index));
+        return Create(&ReadItemAndCast);
+    }
+
+    /// <summary>
+    /// Get the type converter that reads a primitive integer value, and casts it to another
+    /// primitive integer value.
+    /// </summary>
+    /// <remarks>
+    /// The cast is not checked (for overflow/underflow) during conversion.  It is intended that
+    /// the target type is always bigger than the source type.
+    /// </remarks>
+    /// <typeparam name="TSource">
+    /// The integer type present as elements of the DuckDB vector.
+    /// </typeparam>
+    /// <param name="type">
+    /// The integer type to convert to.
+    /// </param>
+    /// <exception cref="NotSupportedException">
+    /// The conversion from the source type to the target type is not possible.
+    /// </exception>
+    private static VectorElementConverter CreateForCastedInteger<TSource>(Type? type)
+        where TSource : unmanaged, IBinaryInteger<TSource>
+    {
+        if (type == typeof(sbyte)) return CreateForCastedInteger<TSource, sbyte>();
+        if (type == typeof(short)) return CreateForCastedInteger<TSource, short>();
+        if (type == typeof(int)) return CreateForCastedInteger<TSource, int>();
+        if (type == typeof(long)) return CreateForCastedInteger<TSource, long>();
+        if (type == typeof(Int128)) return CreateForCastedInteger<TSource, Int128>();
+        if (type == typeof(byte)) return CreateForCastedInteger<TSource, byte>();
+        if (type == typeof(ushort)) return CreateForCastedInteger<TSource, ushort>();
+        if (type == typeof(uint)) return CreateForCastedInteger<TSource, uint>();
+        if (type == typeof(ulong)) return CreateForCastedInteger<TSource, ulong>();
+        if (type == typeof(UInt128)) return CreateForCastedInteger<TSource, UInt128>();
+        throw new NotSupportedException();
+    }
+
+    /// <summary>
+    /// Rank the built-in integral types for determining if one can be promoted
+    /// to another without data loss.
+    /// </summary>
+    private static (int Rank, bool IsSigned) CategorizeIntegralType(Type? type)
+    {
+        if (type == typeof(sbyte)) return (sizeof(sbyte), true);
+        if (type == typeof(short)) return (sizeof(short), true);
+        if (type == typeof(int)) return (sizeof(int), true);
+        if (type == typeof(long)) return (sizeof(long), true);
+        if (type == typeof(Int128)) return (2 * sizeof(long), true);
+        if (type == typeof(byte)) return (sizeof(byte), false);
+        if (type == typeof(ushort)) return (sizeof(ushort), false);
+        if (type == typeof(uint)) return (sizeof(uint), false);
+        if (type == typeof(ulong)) return (sizeof(ulong), false);
+        if (type == typeof(UInt128)) return (2 * sizeof(ulong), false);
+        return (-1, false);
+    }
+
+    /// <summary>
+    /// Test for integer promotion possibilities when converting to an integral type.
+    /// </summary>
+    /// <typeparam name="TSource">The source integer type. </typeparam>
+    /// <param name="targetType">The conversion target type.  </param>
+    /// <returns>
+    /// True if <paramref name="targetType" /> is an integral type that 
+    /// can hold all values of the type <typeparamref name="TSource" />, and has the
+    /// same signedness.  False otherwise.
+    /// </returns>
+    private static bool IsPromotedIntegralType<TSource>(Type? targetType) where TSource : IBinaryInteger<TSource>
+    {
+        var (sourceRank, sourceSignedness) = CategorizeIntegralType(typeof(TSource));
+        var (targetRank, targetSignedness) = CategorizeIntegralType(targetType);
+        return sourceRank >= 0 && sourceRank <= targetRank && sourceSignedness == targetSignedness;
     }
 
     #endregion
