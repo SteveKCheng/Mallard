@@ -49,32 +49,15 @@ public unsafe sealed class DuckDbEnumDictionary : IReadOnlyDictionary<uint, stri
     /// was defined in DuckDB. </returns>
     public string this[uint key] => GetMemberName(key);
 
-    internal DuckDbEnumDictionary(ref _duckdb_logical_type* nativeType)
+    internal DuckDbEnumDictionary(ref _duckdb_logical_type* nativeType, uint totalEnumMembers)
     {
-        _totalEnumMembers = NativeMethods.duckdb_enum_dictionary_size(nativeType);
+        _totalEnumMembers = totalEnumMembers;
 
         if (_totalEnumMembers <= ushort.MaxValue + 1)
             _memberNames = new string?[_totalEnumMembers];
 
         _nativeType = nativeType;
         nativeType = default;
-    }
-
-    internal static DuckDbEnumDictionary CreateFromContext(ref readonly ConverterCreationContext context)
-    {
-        var nativeType = context.GetNativeLogicalType();
-        if (nativeType == null)
-            throw new DuckDbException("Could not query the logical type of a vector from DuckDB. ");
-
-        try
-        {
-            return new DuckDbEnumDictionary(ref nativeType);
-        }
-        catch
-        {
-            NativeMethods.duckdb_destroy_logical_type(ref nativeType);
-            throw;
-        }
     }
 
     private void VerifyIndex(uint index)

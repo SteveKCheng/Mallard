@@ -181,7 +181,7 @@ public readonly record struct DuckDbColumnInfo
         else if (valueKind == DuckDbValueKind.Enum)
         {
             return (StorageKind: NativeMethods.duckdb_enum_internal_type(nativeType),
-                    ElementSize: 0,
+                    ElementSize: (int)NativeMethods.duckdb_enum_dictionary_size(nativeType),
                     DecimalScale: 0);
         }
         else if (valueKind == DuckDbValueKind.Array)

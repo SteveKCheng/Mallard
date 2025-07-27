@@ -50,6 +50,36 @@ internal unsafe readonly ref struct ConverterCreationContext
         => _logicalTypeImplFn(_logicalTypeImplState);
 
     /// <summary>
+    /// Create an "enumeration dictionary" over the members of the enumeration.
+    /// </summary>
+    /// <returns>
+    /// The numeration dictionary, which is typically used
+    /// to construct converters from the enumeration type in DuckDB to a .NET representation. 
+    /// </returns>
+    /// <exception cref="InvalidOperationException">
+    /// The DuckDB column (in <see cref="ColumnInfo" /> is not typed as an enumeration.
+    /// </exception>
+    public DuckDbEnumDictionary CreateEnumDictionary()
+    {
+        if (ColumnInfo.ValueKind != DuckDbValueKind.Enum)
+            throw new InvalidOperationException("Cannot get enumeration dictionary for a type that is not an enumeration. ");
+
+        var nativeType = GetNativeLogicalType();
+        if (nativeType == null)
+            throw new DuckDbException("Could not query the logical type of a vector from DuckDB. ");
+
+        try
+        {
+            return new DuckDbEnumDictionary(ref nativeType, (uint)ColumnInfo.ElementSize);
+        }
+        catch
+        {
+            NativeMethods.duckdb_destroy_logical_type(ref nativeType);
+            throw;
+        }
+    }
+
+    /// <summary>
     /// Type-erased state for <see cref="_logicalTypeImplFn" />.
     /// </summary>
     /// <remarks>

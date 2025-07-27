@@ -49,7 +49,7 @@ internal sealed class EnumConverter
     }
 
     private EnumConverter(ref readonly ConverterCreationContext context, Type clrType)
-        : this(DuckDbEnumDictionary.CreateFromContext(in context), clrType)
+        : this(context.CreateEnumDictionary(), clrType)
     {
     }
 
