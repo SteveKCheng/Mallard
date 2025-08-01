@@ -533,6 +533,13 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
     /// <summary>
     /// Set to true when <see cref="FetchNextChunk" /> has been called at least once.
     /// </summary>
+    /// <remarks>
+    /// <para>
+    /// If false, there may be some initialization that needs to be done to accommodate 
+    /// <see cref="DuckDbResultChunk" /> objects.  Currently that initialization is thread-safe
+    /// already so this flag is accessed by normal (non-volatile, non-interlocked) reads/writes.
+    /// </para>
+    /// </remarks>
     private bool _hasInvokedFetchChunk;
 
     /// <summary>
