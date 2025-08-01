@@ -7,11 +7,28 @@ using System.Runtime.InteropServices;
 namespace Mallard;
 
 /// <summary>
-/// DuckDB's encoding of a floating-point decimal number.
+/// DuckDB's representation of a floating-point decimal number.
 /// </summary>
+/// <remarks>
+/// <para>
+/// This structure does not represent the form of decimal numbers that DuckDB encodes in its vectors
+/// (which are instead <see cref="Int16"/>, <see cref="Int32" />, <see cref="Int64" />, <see cref="Int128" />
+/// depending on the width of the DECIMAL type set on the column).  Rather it is the most general form
+/// of decimal number that may be read or written to DuckDB.  
+/// </para>
+/// <para>
+/// In this library, this type may be used
+/// as an alternative to the standard <see cref="Decimal" /> type.
+/// Some decimal numbers that are very large in magnitude (taking more than 96 bits) are
+/// not representable in <see cref="Decimal" />.  Use this type if you need to read or write
+/// such decimal numbers.
+/// </para>
+/// </remarks>
 [StructLayout(LayoutKind.Sequential)]
 public readonly struct DuckDbDecimal
 {
+    // CONSIDER: implement generic math & other interfaces that Decimal implements
+
     private readonly byte _width;
     private readonly byte _scale;
     private readonly DuckDbHugeUInt _value;
