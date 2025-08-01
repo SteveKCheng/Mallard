@@ -216,6 +216,21 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
         if (nativeChunk == null)
             return null;    // exhausted all results
 
+        // Make sure all column names have been retrieved from DuckDB and cached
+        // so parallel processing of chunks can occur, possibly even if this result
+        // object itself gets disposed (before the chunks are, which is allowed).
+        //
+        // Obviously, we lose the performance benefits of skipping retrieval of
+        // the column names if the user does not ask for them.  But, presumably,
+        // if the user is using DuckDbResultChunk objects, the processing is expected
+        // to be on the heavier side and so the performance benefit may be negligible.
+        if (!_hasInvokedFetchChunk)
+        {
+            _hasInvokedFetchChunk = true;
+            for (int columnIndex = 0; columnIndex < ColumnCount; ++columnIndex)
+                GetColumnName(columnIndex);
+        }
+
         try
         {
             return new DuckDbResultChunk(ref nativeChunk, this);
@@ -514,6 +529,11 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
     /// </para>
     /// </remarks>
     private readonly Column[] _columns;
+
+    /// <summary>
+    /// Set to true when <see cref="FetchNextChunk" /> has been called at least once.
+    /// </summary>
+    private bool _hasInvokedFetchChunk;
 
     /// <summary>
     /// The number of columns present in the result.
