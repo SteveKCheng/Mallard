@@ -14,9 +14,17 @@ internal static partial class SynchronizationMethods
     /// <param name="targetObject">
     /// The managed object, used only for reporting errors when the dynamic scope cannot be entered.
     /// </param>
+    /// <param name="allowRentrancy">
+    /// If true, do not throw an exception if the barricade has been entered by this
+    /// same thread.  Instead, the returned scope object does nothing, so assuming 
+    /// the scopes for this thread are all properly nested, the barricade is truly exited 
+    /// when the first scope exits.
+    /// </param>
     /// <returns>Scope object that should be the subject of a <c>using</c> statement in C#. </returns>
-    public static Barricade.Scope EnterScope(this ref Barricade barricade, object targetObject)
-        => new(ref barricade, targetObject);
+    public static Barricade.Scope EnterScope(this ref Barricade barricade, 
+                                             object targetObject, 
+                                             bool allowReentrancy = false)
+        => new(ref barricade, targetObject, allowReentrancy);
 }
 
 /// <summary>
@@ -43,9 +51,9 @@ internal static partial class SynchronizationMethods
 ///   </item>
 ///   <item>
 ///     <para>
-///     A thread is not allowed to enter the barricade twice, unlike locks in C# which are re-entrant
-///     by default.  Many designs are better off disallowing recursive locks and this library is no
-///     exception.
+///     A thread is disallowed by default to enter the barricade twice, unlike locks in C# which are 
+///     always re-entrant.  Many designs are better off disallowing recursive locks and this library is no
+///     exception.  Re-entrancy requires opt-in to help prevent logic bugs.
 ///     </para>
 ///   </item>
 ///   <item>
@@ -103,7 +111,7 @@ internal struct Barricade
         /// <paramref name="parent" /> indicates its owning object has already been disposed 
         /// (or is in the middle of being disposed by another thread).
         /// </exception>
-        public Scope(ref Barricade parent, object targetObject)
+        public Scope(ref Barricade parent, object targetObject, bool allowReentrancy)
         {
             _state = ref parent._state;
 
@@ -120,6 +128,12 @@ internal struct Barricade
             }
             else if (oldState == thisThreadId)
             {
+                if (allowReentrancy)
+                {
+                    _state = ref Unsafe.NullRef<int>();
+                    return;
+                }
+
                 throw new InvalidOperationException("Attempt to re-enter critical section from the same thread. ");
             }
             else
@@ -130,11 +144,14 @@ internal struct Barricade
 
         public void Dispose()
         {
-            // "Release" write to publish all other fields in the same managed object
-            Volatile.Write(ref _state, 0);
+            if (!Unsafe.IsNullRef(ref _state))
+            {
+                // "Release" write to publish all other fields in the same managed object
+                Volatile.Write(ref _state, 0);
 
-            // Defend against calling Dispose multiple times
-            _state = ref Unsafe.NullRef<int>();
+                // Defend against calling Dispose multiple times
+                _state = ref Unsafe.NullRef<int>();
+            }
         }
     }
 
