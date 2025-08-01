@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Immutable;
-using System.Diagnostics;
 using System.Numerics;
 using System.Reflection;
 
@@ -80,36 +79,30 @@ internal readonly partial struct VectorElementConverter
 #endif
 
     /// <summary>
-    /// Obtain an instance of <see cref="VectorElementConverter" />
-    /// appropriate for the element type of the vector and the desired .NET type.
+    /// Obtain an instance of <see cref="VectorElementConverter" /> appropriate
+    /// for the element type of a vector and the desired .NET type.
     /// </summary>
-    /// <param name="type">
-    /// The desired .NET type to convert elements to. 
-    /// This should not be a nullable value type.  (Null values are always handled outside
-    /// of the converter function.)  If null, this method selects the most appropriate
-    /// .NET type; this functionality is used to implement boxing conversions.
-    /// The selected .NET type will be set in the <see cref="VectorElementConverter.TargetType" />
-    /// of the return value.
-    /// </param>
-    /// <param name="vector">
-    /// The vector to convert items from.
-    /// </param>
+    /// <param name="type">The desired .NET type to convert elements to. </param>
+    /// <param name="vector">The target vector. </param>
     /// <returns>
-    /// The created converter, that will <em>not</em> be bound to the vector.  This is so because
-    /// this method although has no context to consult a cache, it is used to elsewhere to implement
-    /// caching.  Remember to call <see cref="VectorElementConverter.BindToVector(in DuckDbVectorInfo)" />
-    /// before using the converter on <paramref name="vector" />.
+    /// Instance of <see cref="VectorElementConverter" /> that is closed for
+    /// <paramref name="vector" />.
     /// </returns>
-    internal unsafe static VectorElementConverter
-        CreateForVectorUncached(Type? targetType, in DuckDbVectorInfo vector)
+    /// <remarks>
+    /// Helper used by <see cref="DuckDbVectorReader{T}.DuckDbVectorReader(in DuckDbVectorInfo)" />.
+    /// This code is not integrated into that constructor only to avoid run-time duplication
+    /// of code when the generic type is instantiated.
+    /// </remarks>
+    internal static VectorElementConverter
+        CreateForVector(Type type, in DuckDbVectorInfo vector)
     {
         var context = ConverterCreationContext.FromVector(vector);
-        var converter = CreateForType(targetType, in context);
+        var converter = CreateForType(type, in context);
 
         if (!converter.IsValid)
-            DuckDbVectorInfo.ThrowForWrongParamType(vector.ColumnInfo, targetType ?? typeof(object));
+            DuckDbVectorInfo.ThrowForWrongParamType(vector.ColumnInfo, type);
 
-        return converter;
+        return converter.BindToVector(vector);
     }
 
     /// <summary>
@@ -118,18 +111,17 @@ internal readonly partial struct VectorElementConverter
     /// </summary>
     /// <param name="type">
     /// The desired .NET type to convert elements to. 
-    /// This should not be a nullable value type.  (Null values are always handled outside
-    /// of the converter function.)  If null, this method selects the most appropriate
+    /// If null, this method selects the most appropriate
     /// .NET type; this functionality is used to implement boxing conversions.
-    /// The selected .NET type will be set in the <see cref="VectorElementConverter.TargetType" />
-    /// of the return value.
+    /// The selected .NET type will be set in the <see cref="TargetType" /> property
+    /// of the returned value.
     /// </param>
     /// <param name="context">
     /// Context for creating/obtaining a converter for the data in the DuckDB column
     /// in question.
     /// </param>
     /// <returns>
-    /// A converter that works for the combination of <paramref name="type"/> and <paramref name="context" />,
+    /// A converter that works for the combination of <paramref name="type" /> and <paramref name="context" />,
     /// or an invalid (default-initialized) instance if there is none suitable.  If the conversion
     /// function requires binding to a specific vector, the returned instance is unbound.
     /// </returns>
