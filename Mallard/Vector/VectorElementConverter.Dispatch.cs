@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Numerics;
 using System.Reflection;
 
@@ -11,14 +12,14 @@ internal readonly partial struct VectorElementConverter
     #region Dispatch for conversions of (generic) types
 
     /// <summary>
-    /// Invoke a factory function, generically parameterized on <paramref name="type" />,
+    /// Invoke a factory function, generically parameterized on <paramref name="types" />,
     /// that generates a <see cref="VectorElementConverter" />.
     /// </summary>
     /// <typeparam name="TArg">
     /// The type of the argument <paramref name="arg" /> to the factory function.
     /// </typeparam>
     /// <param name="method">
-    /// A static method, with one generic parameter, 
+    /// A static method, with one or more generic parameters, 
     /// takes takes as two arguments, [1] <paramref name="arg" />,
     /// and [2] <paramref name="context" /> by read-only
     /// reference, and returns <see cref="VectorElementConverter" />.
@@ -30,7 +31,7 @@ internal readonly partial struct VectorElementConverter
     /// Context for constructing the converter for the desired DuckDB column.
     /// </param>
     /// <param name="types">
-    /// One or more types to substitute into the generic parameter of the method.
+    /// One or more types to substitute into the generic parameters of the method.
     /// This argument is passed straight into 
     /// <see cref="MethodInfo.MakeGenericMethod(Type[])" />.
     /// </param>
@@ -46,8 +47,8 @@ internal readonly partial struct VectorElementConverter
     /// with reflection too.  This method encapsulates that logic.
     /// </para>
     /// <para>
-    /// For efficiency, the signature of <paramref name="method" /> is not checked
-    /// in anyway.  It is simply assumed to follow the form described above.
+    /// For efficiency, in Release builds, the signature of <paramref name="method" /> is not checked
+    /// in any way.  It is simply assumed to follow the form described above.
     /// Violating that assumption will corrupt the .NET run-time; that is why this
     /// method is "unsafe".
     /// </para>
@@ -57,10 +58,26 @@ internal readonly partial struct VectorElementConverter
     {
         ArgumentNullException.ThrowIfNull(method);
 
+        var instantiatedMethod = method.MakeGenericMethod(types);
+
+#if DEBUG
+        // In debug mode, call using a fully type-checked delegate.
+        var f = instantiatedMethod.CreateDelegate<CreateFromGenericTargetFunc<TArg>>();
+#else
+        // Function pointers are more efficient but dangerous: the run-time cannot do
+        // type-checking for us.  If any types mismatch then we would corrupt the run-time.
+        // And unfortunately, it is rather easy to mess up the parameter types of the targeted 
+        // method especially after re-factoring.
         var f = (delegate*<TArg, ref readonly ConverterCreationContext, VectorElementConverter>)
-                    method.MakeGenericMethod(types).MethodHandle.GetFunctionPointer();
+                    instantiatedMethod.MethodHandle.GetFunctionPointer();
+#endif
         return f(arg, in context);
     }
+
+#if DEBUG
+    private delegate VectorElementConverter 
+        CreateFromGenericTargetFunc<TArg>(TArg arg, ref readonly ConverterCreationContext context);
+#endif
 
     /// <summary>
     /// Obtain an instance of <see cref="VectorElementConverter" />
