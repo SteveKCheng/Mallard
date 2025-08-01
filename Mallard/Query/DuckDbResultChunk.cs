@@ -68,14 +68,11 @@ public unsafe class DuckDbResultChunk : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    public long ColumnCount
-    {
-        get
-        {
-            using var _ = _refCount.EnterScope(this);
-            return NativeMethods.duckdb_data_chunk_get_column_count(_nativeChunk);
-        }
-    }
+    /// <see cref="DuckDbResult.ColumnCount" />.
+    public int ColumnCount => _resultColumns.ColumnCount;
+
+    /// <see cref="DuckDbResult.GetColumnInfo" />.
+    public DuckDbColumnInfo GetColumnInfo(int columnIndex) => _resultColumns.GetColumnInfo(columnIndex);
 
     /// <summary>
     /// The number of rows present in this chunk.

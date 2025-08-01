@@ -40,5 +40,5 @@ internal interface IResultColumns
     /// <returns>
     /// <see cref="VectorElementConverter" /> bound to <paramref name="vector" />.
     /// </returns>
-    VectorElementConverter GetColumnConverter(int columnIndex, Type targetType, in DuckDbVectorInfo vector);
+    internal VectorElementConverter GetColumnConverter(int columnIndex, Type targetType, in DuckDbVectorInfo vector);
 }
