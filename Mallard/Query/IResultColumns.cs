@@ -32,13 +32,14 @@ internal interface IResultColumns
     /// </summary>
     /// <param name="columnIndex">The target column. </param>
     /// <param name="targetType">The .NET type to convert items of the vector to. </param>
-    /// <param name="vector">The vector to convert items from. </param>
     /// <remarks>
     /// This method exists here so that (parts of) the
     /// converter state may be cached, and re-used across all chunks.
     /// </remarks>
     /// <returns>
-    /// <see cref="VectorElementConverter" /> bound to <paramref name="vector" />.
+    /// <see cref="VectorElementConverter" /> unbound to any particular vector
+    /// (so <see cref="VectorElementConverter.BindToVector" /> must be called before
+    /// conversion can be invoked).
     /// </returns>
-    internal VectorElementConverter GetColumnConverter(int columnIndex, Type targetType, in DuckDbVectorInfo vector);
+    internal VectorElementConverter GetColumnConverter(int columnIndex, Type targetType);
 }

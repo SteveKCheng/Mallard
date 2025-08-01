@@ -104,7 +104,9 @@ public unsafe readonly ref struct DuckDbChunkReader
     public DuckDbVectorReader<T> GetColumn<T>(int columnIndex)
     {
         var vector = GetVectorInfo(columnIndex);
-        var converter = _resultColumns.GetColumnConverter(columnIndex, typeof(T), vector);
+        var converter = _resultColumns.GetColumnConverter(columnIndex, typeof(T))
+                                      .BindToVector(vector);
+
         return new DuckDbVectorReader<T>(vector, converter);
     }
 

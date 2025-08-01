@@ -597,10 +597,9 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
     ref readonly DuckDbColumnInfo IResultColumns.GetColumnInfo(int columnIndex)
         => ref _columns[columnIndex].Info;
 
-    /// <see cref="IResultColumns.GetColumnConverter(int, Type, in DuckDbVectorInfo)" />
-    private VectorElementConverter GetColumnConverter(int columnIndex, Type targetType, in DuckDbVectorInfo vector)
+    VectorElementConverter IResultColumns.GetColumnConverter(int columnIndex, Type targetType)
     {
-        ref VectorElementConverter cachedConverter = ref _columns[columnIndex].Converter;
+        ref var column = ref _columns[columnIndex];
         VectorElementConverter converter;
 
         // This method could be called by different chunks which may work in different threads.
@@ -608,21 +607,25 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
         // Fortunately, _nativeResult is not accessed, so _barricade need not be entered.
         lock (_columns)
         {
-            converter = cachedConverter;
+            // Read from cache
+            converter = column.Converter;
 
             // Cache miss
             if (!(converter.IsValid && converter.TargetType == targetType))
             {
-                converter = VectorElementConverter.CreateForVectorUncached(targetType, vector);
-                cachedConverter = converter;
+                var descriptor = new ConverterCreationContext.ColumnDescriptor(ref _nativeResult, columnIndex);
+                var context = ConverterCreationContext.FromColumn(column.Info, ref descriptor);
+
+                converter = VectorElementConverter.CreateForType(targetType, in context);
+                if (!converter.IsValid)
+                    DuckDbVectorInfo.ThrowForWrongParamType(column.Info, targetType ?? typeof(object));
+
+                column.Converter = converter;
             }
         }
 
-        return converter.BindToVector(vector);
+        return converter;
     }
-
-    VectorElementConverter IResultColumns.GetColumnConverter(int columnIndex, Type targetType, in DuckDbVectorInfo vector)
-        => GetColumnConverter(columnIndex, targetType, vector);
 
     #endregion
 }

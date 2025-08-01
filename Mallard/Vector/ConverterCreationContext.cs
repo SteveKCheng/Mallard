@@ -1,5 +1,6 @@
 ﻿using Mallard.C_API;
 using System;
+using System.Runtime.CompilerServices;
 
 namespace Mallard;
 using unsafe LogicalTypeImplFn = delegate*<void*, _duckdb_logical_type*>;
@@ -116,7 +117,7 @@ internal unsafe readonly ref struct ConverterCreationContext
         DuckDbColumnInfo columnInfo,
         T* logicalTypeImplState,
         delegate*<T*, _duckdb_logical_type*> logicalTypeImplFn)
-        where T : unmanaged
+        where T : unmanaged, allows ref struct
     {
         return new(columnInfo, logicalTypeImplState, (LogicalTypeImplFn)logicalTypeImplFn);
     }
@@ -130,5 +131,57 @@ internal unsafe readonly ref struct ConverterCreationContext
             => NativeMethods.duckdb_vector_get_column_type(nativeVector);
 
         return Create(vector.ColumnInfo, vector.NativeVector, &logicalTypeImplFn);
+    }
+
+    /// <summary>
+    /// State (to be created on the stack only) required for <see cref="FromColumn" />. 
+    /// </summary>
+    internal readonly ref struct ColumnDescriptor
+    {
+        /// <summary>
+        /// Borrowed handle to DuckDB result object.
+        /// </summary>
+        internal readonly ref duckdb_result _nativeResult;
+
+        /// <summary>
+        /// Index of desired column to create a converter context for.
+        /// </summary>
+        internal readonly int _columnIndex;
+
+        internal ColumnDescriptor(ref duckdb_result nativeResult, int columnIndex)
+        {
+            _nativeResult = ref nativeResult;
+            _columnIndex = columnIndex;
+        }
+    }
+
+    /// <summary>
+    /// Construct context for a DuckDB column (without an actual vector).
+    /// </summary>
+    /// <param name="columnInfo">
+    /// Basic information already gathered on the column.
+    /// </param>
+    /// <param name="target">
+    /// Holds the native result object from DuckDB, and the target column index.
+    /// This structure must be created by the caller, and the caller must keep it alive
+    /// to it while the returned context is active, because the returned context
+    /// takes a pointer to this argument.
+    /// </param>
+    internal static ConverterCreationContext FromColumn(in DuckDbColumnInfo columnInfo, ref ColumnDescriptor target)
+    {
+        static _duckdb_logical_type* logicalTypeImplFn(void* p)
+        {
+            // Suppress warning:
+            // "This takes the address of, gets the size of, or declares a pointer to a managed type"
+            //
+            // This is fine because ResultAndColumnIndex is a ref struct so it cannot ever move
+            // (i.e. does not need pinning)
+#pragma warning disable CS8500 
+            var target = (ColumnDescriptor*)p;
+#pragma warning restore CS8500
+            return NativeMethods.duckdb_column_logical_type(ref target->_nativeResult, target->_columnIndex);
+        }
+
+        return new(columnInfo, Unsafe.AsPointer(ref target), &logicalTypeImplFn);
     }
 }
