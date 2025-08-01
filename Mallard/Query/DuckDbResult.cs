@@ -196,6 +196,12 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
     /// <summary>
     /// Retrieve the next chunk of results from the present query in DuckDB.
     /// </summary>
+    /// <remarks>
+    /// This method may be used to parallelize processing of chunks.
+    /// Have one thread/task call this method repeatedly to obtain individual
+    /// chunk objects, then pass each such object to a different thread/task
+    /// to process using <see cref="DuckDbResultChunk.ProcessContents" />.
+    /// </remarks>
     /// <returns>
     /// Object containing the next chunk, or null if there are no more chunks.
     /// </returns>
@@ -287,6 +293,12 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
             result = default;
             return false;
         }
+
+        // N.B. The barricade is not held while executing user code.  So there is potential
+        //      for multiple threads to work on distinct chunks in parallel.  However,
+        //      that is difficult to arrange in a performant manner (i.e. no blocking)
+        //      with the API shape of this method.  Use chunk objects (DuckDbResultChunk)
+        //      for that instead.
 
         try
         {
@@ -491,7 +503,15 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
     /// Top-level information gathered/cached on the columns of the result.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// This array is used as a lock when updating cached information.
+    /// </para>
+    /// <para>
+    /// The elements of this array (deliberately) do not hold any pointers to DuckDB native objects or memory,
+    /// so read-only access does not require entering <see cref="_barricade" />.  This aspect should be
+    /// highlighted for the implemention of <see cref="IResultColumns" />, whose methods are called inside
+    /// <see cref="DuckDbChunkReader" />, when <see cref="_barricade" /> has already been taken.
+    /// </para>
     /// </remarks>
     private readonly Column[] _columns;
 
@@ -514,6 +534,11 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
     /// <param name="columnIndex">
     /// The index of the column, between 0 (inclusive) to <see cref="ColumnCount" /> (exclusive).
     /// </param>
+    /// <remarks>
+    /// Even though this method does not mutate the state of the DuckDB result, due to how it is
+    /// implemented, it may throw an exception if it is called while another thread is using
+    /// the same instance.
+    /// </remarks>
     /// <returns>
     /// The name of the column, or <see cref="string.Empty" /> if it has no name.
     /// </returns>
