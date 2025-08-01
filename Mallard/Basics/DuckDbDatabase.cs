@@ -1,5 +1,6 @@
 ﻿using Mallard.C_API;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Threading;
 
 namespace Mallard;
@@ -8,6 +9,10 @@ internal unsafe class DuckDbDatabase
 {
     private _duckdb_database* _nativeDb;
     private int _refCount;
+
+    internal string Path { get; private set; }
+
+    internal ImmutableArray<KeyValuePair<string, string>> Options { get; private set; }
 
     public DuckDbDatabase(string path, IEnumerable<KeyValuePair<string, string>>? options)
     {
@@ -38,6 +43,9 @@ internal unsafe class DuckDbDatabase
         }
 
         _refCount = 1;
+
+        Path = path;
+        Options = options != null ? options.ToImmutableArray() : default;
     }
 
     internal _duckdb_connection* Connect()

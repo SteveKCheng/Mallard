@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 namespace Mallard;
 
-public unsafe class DuckDbConnection : IDisposable
+public unsafe sealed partial class DuckDbConnection : IDisposable
 {
     private _duckdb_connection* _nativeConn;
 
