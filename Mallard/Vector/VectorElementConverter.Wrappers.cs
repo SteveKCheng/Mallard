@@ -63,51 +63,19 @@ internal readonly partial struct VectorElementConverter
 
         // Set up a second indirect call to box the return value 
         // from the original converter.
-        return UnsafeCreateFromGeneric(CreateBoxingWrapperMethod,
+        return UnsafeCreateFromGeneric(CreateBoxingConverterMethod,
                                        converter,
                                        in context,
                                        converter.TargetType);
     }
 
-    private static readonly MethodInfo CreateBoxingWrapperMethod =
-    typeof(BoxingConverter).GetMethod(nameof(BoxingConverter.Create),
-                                      BindingFlags.Static | BindingFlags.NonPublic)!;
-
-    /// <summary>
-    /// Boxes the results of a vector element conversion that returns a value type, 
-    /// when the client requests such.
-    /// </summary>
-    /// <remarks>
-    /// Used internally by <see cref="VectorElementConverter.CreateForBoxedType(in DuckDbVectorInfo){T}" />
-    /// when no more efficient alternative is available.
-    /// </remarks>
-    private sealed class BoxingConverter
-    {
-        private readonly VectorElementConverter _unboxedConverter;
-        private BoxingConverter(VectorElementConverter unboxedConverter)
-            => _unboxedConverter = unboxedConverter;
-        private static object Convert<T>
-            (BoxingConverter self, in DuckDbVectorInfo vector, int index) where T : struct
-            => (object)self._unboxedConverter.UnsafeConvert<T>(vector, index);
-
-        private class Binder(VectorElementConverter unboxedConverterUnbound) : IConverterBinder<BoxingConverter>
-        {
-            private readonly VectorElementConverter _unboxedConverterUnbound = unboxedConverterUnbound;
-            public BoxingConverter BindToVector(in DuckDbVectorInfo vector)
-                => new(_unboxedConverterUnbound.BindToVector(vector));
-        }
-
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-        internal static unsafe VectorElementConverter Create<T>
-            (VectorElementConverter unboxedConverter, ref readonly ConverterCreationContext _) where T : struct
-            => unboxedConverter.RequiresBinding
-                ? VectorElementConverter.Create(new Binder(unboxedConverter), &Convert<T>)
-                : VectorElementConverter.Create(new BoxingConverter(unboxedConverter), &Convert<T>);
-    }
+    private static readonly MethodInfo CreateBoxingConverterMethod =
+    typeof(ConverterWrapper).GetMethod(nameof(ConverterWrapper.CreateBoxingConverter),
+                                       BindingFlags.Static | BindingFlags.NonPublic)!;
 
     #endregion
 
-    #region Nullable wrapper
+    #region Converters to nullable
 
     private static VectorElementConverter
         CreateForNullableType(Type underlyingType, ref readonly ConverterCreationContext context)
@@ -163,46 +131,64 @@ internal readonly partial struct VectorElementConverter
 
         // Set up a second indirect call to box the return value 
         // from the original converter.
-        return UnsafeCreateFromGeneric(CreateNullableWrapperMethod,
+        return UnsafeCreateFromGeneric(CreateNullableConverterMethod,
                                        converter,
                                        in context,
                                        converter.TargetType);
     }
 
-    private static readonly MethodInfo CreateNullableWrapperMethod =
-    typeof(NullableConverter).GetMethod(nameof(BoxingConverter.Create),
-                                        BindingFlags.Static | BindingFlags.NonPublic)!;
+    private static readonly MethodInfo CreateNullableConverterMethod =
+    typeof(ConverterWrapper).GetMethod(nameof(ConverterWrapper.CreateNullableConverter),
+                                       BindingFlags.Static | BindingFlags.NonPublic)!;
+
+    #endregion
+
+    #region State object common to the boxing and nullable wrappers
 
     /// <summary>
-    /// Wraps the results of a vector element conversion that returns a value type,
-    /// into a nullable.
+    /// Invokes a vector element conversion that returns a value type, and then wraps the value
+    /// in a box or <see cref="Nullable{T}" />.
     /// </summary>
     /// <remarks>
-    /// Used internally by <see cref="VectorElementConverter.CreateForNullableType(Type, in DuckDbVectorInfo)" />
+    /// Used internally by <see cref="VectorElementConverter.CreateForBoxedType" />
+    /// and <see cref="VectorElementConverter.CreateForNullableType" />
     /// when no more efficient alternative is available.
     /// </remarks>
-    private sealed class NullableConverter
+    private sealed class ConverterWrapper
     {
         private readonly VectorElementConverter _underlyingConverter;
-        private NullableConverter(VectorElementConverter underlyingConverter)
+
+        private ConverterWrapper(VectorElementConverter underlyingConverter)
             => _underlyingConverter = underlyingConverter;
-        private static T? Convert<T>
-            (NullableConverter self, in DuckDbVectorInfo vector, int index) where T : struct
+
+        private static object ConvertAndWrapInBox<T>
+            (ConverterWrapper self, in DuckDbVectorInfo vector, int index) where T : struct
+            => (object)self._underlyingConverter.UnsafeConvert<T>(vector, index);
+
+        private static Nullable<T> ConvertAndWrapInNullable<T>
+            (ConverterWrapper self, in DuckDbVectorInfo vector, int index) where T : struct
             => new Nullable<T>(self._underlyingConverter.UnsafeConvert<T>(vector, index));
 
-        private class Binder(VectorElementConverter underlyingConverterUnbound) : IConverterBinder<NullableConverter>
+        private class Binder(VectorElementConverter underlyingConverterUnbound) : IConverterBinder<ConverterWrapper>
         {
             private readonly VectorElementConverter _underlyingConverterUnbound = underlyingConverterUnbound;
-            public NullableConverter BindToVector(in DuckDbVectorInfo vector)
+            public ConverterWrapper BindToVector(in DuckDbVectorInfo vector)
                 => new(_underlyingConverterUnbound.BindToVector(vector));
         }
 
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-        internal static unsafe VectorElementConverter Create<T>
+        internal static unsafe VectorElementConverter CreateBoxingConverter<T>
             (VectorElementConverter underlyingConverter, ref readonly ConverterCreationContext _) where T : struct
             => underlyingConverter.RequiresBinding
-                ? VectorElementConverter.Create(new Binder(underlyingConverter), &Convert<T>)
-                : VectorElementConverter.Create(new NullableConverter(underlyingConverter), &Convert<T>);
+                ? VectorElementConverter.Create(new Binder(underlyingConverter), &ConvertAndWrapInBox<T>)
+                : VectorElementConverter.Create(new ConverterWrapper(underlyingConverter), &ConvertAndWrapInBox<T>);
+
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+        internal static unsafe VectorElementConverter CreateNullableConverter<T>
+            (VectorElementConverter underlyingConverter, ref readonly ConverterCreationContext _) where T : struct
+            => underlyingConverter.RequiresBinding
+                ? VectorElementConverter.Create(new Binder(underlyingConverter), &ConvertAndWrapInNullable<T>)
+                : VectorElementConverter.Create(new ConverterWrapper(underlyingConverter), &ConvertAndWrapInNullable<T>);
     }
 
     #endregion
