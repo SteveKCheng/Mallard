@@ -137,17 +137,7 @@ public unsafe readonly ref struct DuckDbChunkReader
     /// The index of the DuckDB column to select.
     /// </param>
     private DuckDbVectorInfo GetVectorInfo(int columnIndex)
-    {
-        // In case the user calls this method on a default-initialized instance,
-        // the native library will not crash on this call because it does
-        // check _nativeChunk for null first, returning null in that case.
-        var nativeVector = NativeMethods.duckdb_data_chunk_get_vector(_nativeChunk,
-                                                                      columnIndex);
-        if (nativeVector == null)
-            throw new IndexOutOfRangeException("Column index is not in range. ");
-
-        return new DuckDbVectorInfo(nativeVector, Length, _resultColumns.GetColumnInfo(columnIndex));
-    }
+        => DuckDbVectorInfo.FromNativeChunk(_nativeChunk, _resultColumns, Length, columnIndex);
 
     /// <summary>
     /// The length (number of rows) present in this chunk.

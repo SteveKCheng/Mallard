@@ -90,6 +90,22 @@ internal unsafe readonly struct DuckDbVectorInfo
         Length = length;
     }
 
+    internal static DuckDbVectorInfo FromNativeChunk(_duckdb_data_chunk* nativeChunk, 
+                                                     IResultColumns resultColumns,
+                                                     int length,
+                                                     int columnIndex)
+    {
+        // In case the user calls this method on a default-initialized instance,
+        // the native library will not crash on this call because it does
+        // check _nativeChunk for null first, returning null in that case.
+        var nativeVector = NativeMethods.duckdb_data_chunk_get_vector(nativeChunk,
+                                                                      columnIndex);
+        if (nativeVector == null)
+            throw new IndexOutOfRangeException("Column index is not in range. ");
+
+        return new DuckDbVectorInfo(nativeVector, length, resultColumns.GetColumnInfo(columnIndex));
+    }
+
     /// <summary>
     /// Read an element of the vector from native memory.
     /// </summary>

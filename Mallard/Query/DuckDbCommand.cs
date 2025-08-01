@@ -59,15 +59,15 @@ public unsafe class DuckDbCommand : IDisposable
     /// </returns>
     public long ExecuteNonQuery()
     {
-        duckdb_state status;
         duckdb_result nativeResult;
 
         using (var _ = _barricade.EnterScope(this))
         {
-            status = NativeMethods.duckdb_execute_prepared(_nativeStatement, out nativeResult);
+            // Status can be ignored since any errors can be extracted from nativeResult
+            NativeMethods.duckdb_execute_prepared(_nativeStatement, out nativeResult);
         }
 
-        return DuckDbResult.ExtractNumberOfChangedRows(status, ref nativeResult);
+        return DuckDbResult.TakeNumberOfChangedRows(ref nativeResult);
     }
 
     /// <summary>

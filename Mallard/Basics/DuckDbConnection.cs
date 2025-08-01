@@ -55,8 +55,11 @@ public unsafe sealed partial class DuckDbConnection : IDisposable
     public long ExecuteNonQuery(string sql)
     {
         using var _ = _refCount.EnterScope(this);
-        var status = NativeMethods.duckdb_query(_nativeConn, sql, out var nativeResult);
-        return DuckDbResult.ExtractNumberOfChangedRows(status, ref nativeResult);
+
+        // Status can be ignored since any errors can be extracted from nativeResult
+        NativeMethods.duckdb_query(_nativeConn, sql, out var nativeResult);
+
+        return DuckDbResult.TakeNumberOfChangedRows(ref nativeResult);
     }
 
     /// <summary>

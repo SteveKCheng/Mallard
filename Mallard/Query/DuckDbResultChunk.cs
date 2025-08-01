@@ -119,4 +119,16 @@ public unsafe class DuckDbResultChunk : IDisposable
         var reader = new DuckDbChunkReader(_nativeChunk, _resultColumns, _length);
         return func(reader, state);
     }
+
+    internal DuckDbVectorReader<T> UnsafeGetColumnReader<T>(int columnIndex)
+    {
+        var vector = UnsafeGetColumnVector(columnIndex);
+        var converter = _resultColumns.GetColumnConverter(columnIndex, typeof(T)).BindToVector(vector);
+        return new DuckDbVectorReader<T>(vector, converter);
+    }
+
+    internal DuckDbVectorInfo UnsafeGetColumnVector(int columnIndex)
+    {
+        return DuckDbVectorInfo.FromNativeChunk(_nativeChunk, _resultColumns, Length, columnIndex);
+    }
 }

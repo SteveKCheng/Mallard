@@ -104,7 +104,55 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
 
     #endregion
 
+    #region Summary of results
+
+    /// <summary>
+    /// Get the number of changed rows (if this result object is not fronm a pure query).
+    /// </summary>
+    /// <returns>
+    /// Used to implement <see cref="DuckDbDataReader.RecordsAffected" />
+    /// and similar properties/methods.
+    /// </returns>
+    internal long GetNumberOfChangedRows(out bool hasResultRows)
+    {
+        using var _ = _barricade.EnterScope(this);
+        return ExtractNumberOfChangedRows(ref _nativeResult, out hasResultRows, destroyNativeResult: false);
+    }
+
+    #endregion
+
     #region Summary processing of results without creating result object
+
+    private static long ExtractNumberOfChangedRows(ref duckdb_result nativeResult, 
+                                                   out bool hasResultRows,
+                                                   bool destroyNativeResult)
+    {
+        try
+        {
+            var resultType = NativeMethods.duckdb_result_return_type(nativeResult);
+
+            hasResultRows = false;
+            switch (resultType)
+            {
+                case duckdb_result_type.DUCKDB_RESULT_TYPE_INVALID:
+                    throw new DuckDbException(NativeMethods.duckdb_result_error(ref nativeResult));
+
+                case duckdb_result_type.DUCKDB_RESULT_TYPE_CHANGED_ROWS:
+                    return NativeMethods.duckdb_rows_changed(ref nativeResult);
+
+                case duckdb_result_type.DUCKDB_RESULT_TYPE_QUERY_RESULT:
+                    hasResultRows = true;
+                    break;
+            }
+
+            return -1;
+        }
+        finally
+        {
+            if (destroyNativeResult)
+                NativeMethods.duckdb_destroy_result(ref nativeResult);
+        }
+    }
 
     /// <summary>
     /// Extract the number of changed rows from executing some SQL statement, and
@@ -114,22 +162,8 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
     /// This method is common code used to implement <see cref="DuckDbConnection.ExecuteNonQuery" />
     /// and <see cref="DuckDbCommand.ExecuteNonQuery" />.
     /// </remarks>
-    internal static long ExtractNumberOfChangedRows(duckdb_state status, ref duckdb_result nativeResult)
-    {
-        try
-        {
-            if (status != duckdb_state.DuckDBSuccess)
-                throw new DuckDbException(NativeMethods.duckdb_result_error(ref nativeResult));
-            var resultType = NativeMethods.duckdb_result_return_type(nativeResult);
-            if (resultType == duckdb_result_type.DUCKDB_RESULT_TYPE_CHANGED_ROWS)
-                return NativeMethods.duckdb_rows_changed(ref nativeResult);
-            return -1;
-        }
-        finally
-        {
-            NativeMethods.duckdb_destroy_result(ref nativeResult);
-        }
-    }
+    internal static long TakeNumberOfChangedRows(ref duckdb_result nativeResult)
+        => ExtractNumberOfChangedRows(ref nativeResult, out _, destroyNativeResult: true);
 
     /// <summary>
     /// Extract the value at the first row and column, if it exists.
