@@ -90,10 +90,19 @@ internal readonly partial struct VectorElementConverter
             (BoxingConverter self, in DuckDbVectorInfo vector, int index) where T : struct
             => (object)self._unboxedConverter.UnsafeConvert<T>(vector, index);
 
+        private class Binder(VectorElementConverter unboxedConverterUnbound) : IConverterBinder<BoxingConverter>
+        {
+            private readonly VectorElementConverter _unboxedConverterUnbound = unboxedConverterUnbound;
+            public BoxingConverter BindToVector(in DuckDbVectorInfo vector)
+                => new(_unboxedConverterUnbound.BindToVector(vector));
+        }
+
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
         internal static unsafe VectorElementConverter Create<T>
             (VectorElementConverter unboxedConverter, ref readonly ConverterCreationContext _) where T : struct
-            => VectorElementConverter.Create(new BoxingConverter(unboxedConverter), &Convert<T>);
+            => unboxedConverter.RequiresBinding
+                ? VectorElementConverter.Create(new Binder(unboxedConverter), &Convert<T>)
+                : VectorElementConverter.Create(new BoxingConverter(unboxedConverter), &Convert<T>);
     }
 
     #endregion
@@ -181,10 +190,19 @@ internal readonly partial struct VectorElementConverter
             (NullableConverter self, in DuckDbVectorInfo vector, int index) where T : struct
             => new Nullable<T>(self._underlyingConverter.UnsafeConvert<T>(vector, index));
 
+        private class Binder(VectorElementConverter underlyingConverterUnbound) : IConverterBinder<NullableConverter>
+        {
+            private readonly VectorElementConverter _underlyingConverterUnbound = underlyingConverterUnbound;
+            public NullableConverter BindToVector(in DuckDbVectorInfo vector)
+                => new(_underlyingConverterUnbound.BindToVector(vector));
+        }
+
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
         internal static unsafe VectorElementConverter Create<T>
             (VectorElementConverter underlyingConverter, ref readonly ConverterCreationContext _) where T : struct
-            => VectorElementConverter.Create(new NullableConverter(underlyingConverter), &Convert<T>);
+            => underlyingConverter.RequiresBinding
+                ? VectorElementConverter.Create(new Binder(underlyingConverter), &Convert<T>)
+                : VectorElementConverter.Create(new NullableConverter(underlyingConverter), &Convert<T>);
     }
 
     #endregion
