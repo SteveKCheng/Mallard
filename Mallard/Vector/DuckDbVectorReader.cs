@@ -1,5 +1,6 @@
 ﻿using Mallard.C_API;
 using System;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Mallard;
@@ -57,6 +58,7 @@ public unsafe readonly ref struct
     /// <paramref name="vector"/>. </param>
     internal DuckDbVectorReader(scoped in DuckDbVectorInfo vector, scoped in VectorElementConverter converter)
     {
+        Debug.Assert(typeof(T).IsAssignableWithoutBoxingFrom(converter.TargetType));
         _info = vector;
         _converter = converter;
     }

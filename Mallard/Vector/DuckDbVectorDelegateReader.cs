@@ -174,6 +174,17 @@ public class DuckDbVectorDelegateReader : IDuckDbVector
     }
 
     /// <summary>
+    /// Throws the exception for the generic parameter to <see cref="GetValue" /> being wrong.
+    /// </summary>
+    private void ThrowExceptionForWrongType(Type receiverType)
+    {
+        throw new ArgumentException(
+            "The generic type T that GetValue<T> has been called with is incompatible with the " +
+            "actual type of the element from the DuckDB vector. " +
+            $"Desired type: {receiverType}, Actual type: {_converter.TargetType}");
+    }
+
+    /// <summary>
     /// Get an item in the vector in its default .NET type (without boxing it).
     /// </summary>
     /// <typeparam name="T">
@@ -193,9 +204,15 @@ public class DuckDbVectorDelegateReader : IDuckDbVector
     /// </typeparam>
     public T GetValue<T>(int index)
     {
-        ref readonly VectorElementConverter converter = 
-            ref ((typeof(T) != typeof(object)) ? ref _converter
-                                               : ref _boxedConverter);
+        ref readonly VectorElementConverter converter = ref _boxedConverter;
+        
+        if (typeof(T) != typeof(object))
+        {
+            converter = ref _converter;
+            if (!typeof(T).IsAssignableWithoutBoxingFrom(converter.TargetType))
+                ThrowExceptionForWrongType(typeof(T));
+        }
+
         var v = converter.Convert<T>(_vector, index, requireValid: true)!;
         GC.KeepAlive(this);
         return v;

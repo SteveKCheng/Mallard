@@ -211,8 +211,7 @@ internal unsafe readonly partial struct VectorElementConverter
     /// </returns>
     public bool TryConvert<T>(in DuckDbVectorInfo vector, int index, [NotNullWhen(true)] out T? result)        
     {
-        Debug.Assert(typeof(T).IsValueType ? typeof(T) == TargetType
-                                           : typeof(T).IsAssignableFrom(TargetType),
+        Debug.Assert(typeof(T).IsAssignableWithoutBoxingFrom(TargetType),
             "The type passed to TryConvert is not compatible with the type that this VectorElementConverter was created for. ");
 
         if (vector.IsItemValid(index))
@@ -235,8 +234,11 @@ internal unsafe readonly partial struct VectorElementConverter
     /// possibly throwing an exception if the element does not exist.
     /// </summary>
     /// <typeparam name="T">
-    /// The type to convert to.  This must exactly match the type on creation
-    /// of this instance.
+    /// The type to convert to.  This must be ABI-compatible with the type on creation
+    /// of this instance.  Caution: this condition is only checked in debug mode!
+    /// User-facing interfaces/methods require either explicit run-time checks 
+    /// or else the API surface must be designed to be statically type-safe
+    /// (i.e. no type erasure).
     /// </typeparam>
     /// <param name="vector">The DuckDB vector to read from. </param>
     /// <param name="index">The index of the element within the vector. </param>

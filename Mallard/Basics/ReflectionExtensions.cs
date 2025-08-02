@@ -56,4 +56,19 @@ internal static class ReflectionExtensions
         => type.IsValueType &&
            type.IsGenericType && 
            type.GetGenericTypeDefinition() == typeof(Nullable<>);
+
+    /// <summary>
+    /// Check whether a .NET variable of a specified type can be assigned a value of another specified type.
+    /// </summary>
+    /// <remarks>
+    /// Semantically similar to <see cref="Type.IsAssignableFrom(Type?)" />
+    /// but disallows boxing (of the right-hand side of the assignment).
+    /// This additional requirement is necessary and sufficient for the ABI representation of the
+    /// value of the .NET variable to be the same for the two types.
+    /// </remarks>
+    /// <param name="receiverType">The type of the .NET variable to receive the value. </param>
+    /// <param name="actualType">The .NET type of the value to assign to the variable. </param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static bool IsAssignableWithoutBoxingFrom(this Type receiverType, Type actualType)
+        => receiverType == actualType || (!actualType.IsValueType && receiverType.IsAssignableFrom(actualType));
 }
