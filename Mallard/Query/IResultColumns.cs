@@ -31,7 +31,9 @@ internal interface IResultColumns
     /// Get the converter to convert items on some vector for the given column.
     /// </summary>
     /// <param name="columnIndex">The target column. </param>
-    /// <param name="targetType">The .NET type to convert items of the vector to. </param>
+    /// <param name="targetType">The .NET type to convert items of the vector to. 
+    /// If null, the type is implied in the same way as <see cref="VectorElementConverter.CreateForType" />.
+    /// </param>
     /// <remarks>
     /// This method exists here so that (parts of) the
     /// converter state may be cached, and re-used across all chunks.
@@ -41,5 +43,5 @@ internal interface IResultColumns
     /// (so <see cref="VectorElementConverter.BindToVector" /> must be called before
     /// conversion can be invoked).
     /// </returns>
-    internal VectorElementConverter GetColumnConverter(int columnIndex, Type targetType);
+    internal VectorElementConverter GetColumnConverter(int columnIndex, Type? targetType);
 }

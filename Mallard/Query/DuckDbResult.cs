@@ -561,6 +561,41 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
             get => _converter.Value; 
             set => _converter.Value = value; 
         }
+
+        /// <summary>
+        /// Backing field for <see cref="BoxedConverter" /> implementing atomic read/write.
+        /// </summary>
+        private Antitear<VectorElementConverter> _boxedConverter;
+
+        /// <summary>
+        /// Boxing converter for the items in the column, created and cached on first access.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// A boxing converter gets a separate slot so the cache remains effective if both the
+        /// unboxed and boxed versions of the converter are requested.
+        /// </para>
+        /// </remarks>
+        public VectorElementConverter BoxedConverter
+        {
+            get => _boxedConverter.Value;
+            set => _boxedConverter.Value = value;
+        }
+
+        /// <summary>
+        /// If non-null, specifies what is the default .NET type to use in converting this column.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// This field exists only to make the caching logic work when the .NET type is unknown
+        /// by the caller of <see cref="IResultColumns.GetColumnConverter(int, Type?)" />.
+        /// </para>
+        /// <para>
+        /// No concurrency control is needed for this field since it can take only two values:
+        /// null (when uninitialized), or the actual default type which should be fixed given the DuckDB column.
+        /// </para>
+        /// </remarks>
+        public Type? DefaultedType;
     }
 
     /// <summary>
@@ -613,29 +648,63 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
         return name;
     }
 
-    VectorElementConverter IResultColumns.GetColumnConverter(int columnIndex, Type targetType)
+    VectorElementConverter IResultColumns.GetColumnConverter(int columnIndex, Type? targetType)
+        => GetColumnConverter(columnIndex, targetType);
+
+    /// <see cref="IResultColumns.GetColumnConverter(int, Type?)" />
+    private VectorElementConverter GetColumnConverter(int columnIndex, Type? targetType)
     {
-        ref var column = ref _columns[columnIndex];
-        VectorElementConverter converter;
-
-        // Read from cache
-        converter = column.Converter;
-
-        // Cache miss
-        if (!(converter.IsValid && converter.TargetType == targetType))
+        VectorElementConverter CreateConverter(in DuckDbColumnInfo columnInfo, int columnIndex, Type? targetType)
         {
-            using (var _ = _refCount.EnterScope(_nativeResult))
-            {
-                var descriptor = new ConverterCreationContext.ColumnDescriptor(ref _nativeResult, columnIndex);
-                var context = ConverterCreationContext.FromColumn(column.Info, ref descriptor);
-
-                converter = VectorElementConverter.CreateForType(targetType, in context);
-            }
-
+            using var _ = _refCount.EnterScope(_nativeResult);
+            var descriptor = new ConverterCreationContext.ColumnDescriptor(ref _nativeResult, columnIndex);
+            var context = ConverterCreationContext.FromColumn(columnInfo, ref descriptor);
+            var converter = VectorElementConverter.CreateForType(targetType, in context);
             if (!converter.IsValid)
-                DuckDbVectorInfo.ThrowForWrongParamType(column.Info, targetType ?? typeof(object));
+                DuckDbVectorInfo.ThrowForWrongParamType(columnInfo, targetType ?? typeof(object));
+            return converter;
+        }
 
-            column.Converter = converter;
+        ref var column = ref _columns[columnIndex];
+        var defaultedType = column.DefaultedType;
+        VectorElementConverter converter;
+        
+        // Not boxed.
+        // The second condition is to guard against an infinite recursive call from the case
+        // for a boxed converter.
+        if (targetType != typeof(object) || defaultedType == typeof(object))
+        {
+            // Read from cache
+            converter = column.Converter;
+
+            // Cache miss.
+            if (!(converter.IsValid && converter.TargetType == (targetType ?? defaultedType)))
+            {
+                converter = CreateConverter(column.Info, columnIndex, targetType);
+                column.Converter = converter;
+
+                if (targetType == null)
+                    column.DefaultedType = converter.TargetType;
+            }
+        }
+
+        // Boxed
+        else
+        {
+            // Read from cache
+            converter = column.BoxedConverter;
+
+            // Cache miss.
+            if (!converter.IsValid)
+            {
+                // Optimize the easy case, of the trivial boxing of a reference type.
+                if (defaultedType != null && !defaultedType.IsValueType)
+                    converter = GetColumnConverter(columnIndex, defaultedType);
+                else
+                    converter = CreateConverter(column.Info, columnIndex, targetType);
+
+                column.BoxedConverter = converter;
+            }
         }
 
         return converter;
