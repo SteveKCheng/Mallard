@@ -2,7 +2,6 @@
 using System.Collections;
 using System.Collections.Immutable;
 using System.Data.Common;
-using System.Diagnostics.CodeAnalysis;
 
 namespace Mallard;
 
@@ -22,6 +21,9 @@ public sealed class DuckDbDataReader : DbDataReader
         // It is not strictly necessary to cache this information right away,
         // but we want to avoid complicated code to retrieve the information on demand.
         _numberOfRowsChanged = queryResults.GetNumberOfChangedRows(out _hasResultRows);
+
+        // Not populated until the first chunk is advanced into.
+        _columns = new DuckDbVectorDelegateReader?[queryResults.ColumnCount];
     }
 
     #endregion
@@ -51,43 +53,16 @@ public sealed class DuckDbDataReader : DbDataReader
     {
         _isClosed = true;
         _currentChunk = null;
+        _queryResults.Dispose();
     }
-
-    #endregion
-
-    #region Private helpers
-
-    private DuckDbResultChunk GetCurrentChunk()
-        => _currentChunk ?? throw new InvalidOperationException(
-            "There are no more chunks, or this data reader has not been started, or has been closed. ");
-
-    private DuckDbVectorReader<T> GetVectorReader<T>(int columnIndex)
-        => GetCurrentChunk().UnsafeGetColumnReader<T>(columnIndex);
 
     #endregion
 
     #region Retrieval of field values, generically
 
+    /// <inheritdoc />
     public override T GetFieldValue<T>(int ordinal)
-    {
-        var reader = GetVectorReader<T>(ordinal);
-        return reader.GetItem(_currentChunkRow);
-
-        /*
-        ref readonly Column column = ref _currentColumns[ordinal];
-        if (typeof(T) == column.Converter.TargetType)
-        {
-            return column.Converter.Convert<T>(column.Vector, _currentChunkRow, requireValid: true)!;
-        }
-        else
-        {
-            object v = column.Converter.Convert<object>(column.Vector, _currentChunkRow, requireValid: true)!;
-            if (typeof(T) != typeof(object))
-                v = Convert.ChangeType(v, typeof(T));
-
-            return (T)v;
-        }*/
-    }
+        => GetDelegateReader(ordinal).GetValue<T>(_currentChunkRow);
 
     #endregion
 
@@ -101,9 +76,7 @@ public sealed class DuckDbDataReader : DbDataReader
 
     /// <inheritdoc />
     public override object GetValue(int ordinal)
-    {
-        throw new NotImplementedException();
-    }
+        => GetDelegateReader(ordinal).GetObject(_currentChunkRow);
 
     /// <inheritdoc />
     public override int GetValues(object[] values)
@@ -185,14 +158,22 @@ public sealed class DuckDbDataReader : DbDataReader
 
     #region Queries of column information
 
+    private readonly DuckDbVectorDelegateReader?[] _columns;
+
+    private DuckDbVectorDelegateReader GetDelegateReader(int columnIndex)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(columnIndex);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(columnIndex, _columns.Length);
+        return _columns[columnIndex] ?? throw new InvalidOperationException(
+            "There are no more chunks, or this data reader has not been started, or has been closed. ");
+    }
+
     /// <inheritdoc />
     public override int FieldCount => _queryResults.ColumnCount;
 
     /// <inheritdoc />
     public override string GetName(int ordinal)
-    {
-        return _queryResults.GetColumnName(ordinal);
-    }
+        => _queryResults.GetColumnName(ordinal);
 
     /// <summary>
     /// Dictionary to look up the column index for a column name.
@@ -236,10 +217,18 @@ public sealed class DuckDbDataReader : DbDataReader
         throw new NotImplementedException();
     }
 
-    [return: DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicFields | DynamicallyAccessedMemberTypes.PublicProperties)]
+    /// <inheritdoc />
     public override Type GetFieldType(int ordinal)
     {
-        throw new NotImplementedException();
+        ArgumentOutOfRangeException.ThrowIfNegative(ordinal);
+        ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(ordinal, _columns.Length);
+        if (_columns[ordinal] is { }reader)
+            return reader.ElementType;
+
+        // No delegate reader (active).  Must query from the results container.
+        // The column converter is cached so there should be no "wasted" work
+        // (duplicating what needs to be done when the next chunk, if any, is retrieved).
+        return _queryResults.GetColumnConverter(ordinal, null).TargetType;
     }
 
     #endregion
@@ -248,7 +237,7 @@ public sealed class DuckDbDataReader : DbDataReader
 
     /// <inheritdoc />
     public override bool IsDBNull(int ordinal)
-        => GetCurrentChunk().UnsafeGetColumnVector(ordinal).IsItemValid(_currentChunkRow);
+        => GetDelegateReader(ordinal).IsItemValid(_currentChunkRow);
 
     #endregion
 
@@ -267,23 +256,51 @@ public sealed class DuckDbDataReader : DbDataReader
     public override bool Read()
     {
         ObjectDisposedException.ThrowIf(_isClosed, this);
+        var currentChunk = _currentChunk;
 
-        if (_currentChunk != null)
+        if (currentChunk != null)
         {
-            if (++_currentChunkRow < _currentChunk.Length)
+            if (++_currentChunkRow < currentChunk.Length)
                 return true;
 
             _currentChunkRow = 0;
         }
 
+        void EraseDelegateReaders()
+        {
+            for (int columnIndex = 0; columnIndex < _columns.Length; ++columnIndex)
+                _columns[columnIndex] = null;
+        }
+
         // Fetch the next non-empty chunk.
         // Chunks should not be empty but we will be defensive.
-        do
+        try
         {
-            _currentChunk = _queryResults.FetchNextChunk();
-        } while (_currentChunk != null && _currentChunk.Length == 0);
+            do
+            {
+                currentChunk = _queryResults.FetchNextChunk();
+            } while (currentChunk != null && currentChunk.Length == 0);
+        }
+        catch
+        {
+            EraseDelegateReaders();
+            throw;
+        }
 
-        return (_currentChunk != null);
+        if (currentChunk != null)
+        {
+            // Re-initialize delegate readers for the new chunk.
+            // Should not fail (except for run-time related issues like out of memory),
+            // so we do not need roll-back.
+            for (int columnIndex = 0; columnIndex < _columns.Length; ++columnIndex)
+                _columns[columnIndex] = new DuckDbVectorDelegateReader(currentChunk, columnIndex);
+
+            _currentChunk = currentChunk;
+            return true;
+        }
+
+        EraseDelegateReaders();
+        return false;
     }
 
     #endregion

@@ -50,6 +50,12 @@ public unsafe class DuckDbCommand : IDisposable
     }
 
     /// <summary>
+    /// Execute the prepared statement and return the results via an ADO.NET data reader.
+    /// </summary>
+    public DuckDbDataReader ExecuteReader()
+        => new DuckDbDataReader(Execute());
+
+    /// <summary>
     /// Execute the prepared statement, and report only the number of rows changed.
     /// </summary>
     /// <returns>

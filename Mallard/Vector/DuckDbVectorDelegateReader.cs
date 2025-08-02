@@ -177,13 +177,21 @@ public class DuckDbVectorDelegateReader : IDuckDbVector
     /// Get an item in the vector in its default .NET type (without boxing it).
     /// </summary>
     /// <typeparam name="T">
+    /// <para>
     /// The .NET type of the column, required to be specified since it has been 
     /// "type-erased" from the type identity of this class.  However, it must 
     /// still match, at run-time, the actual type that the elements in the DuckDB
     /// column have been mapped to by default, as indicated by <see cref="ElementType" />.
     /// (For reference types, a base class or interface can also match.)
+    /// </para>
+    /// <para>
+    /// This type should not be a nullable value type; it would never match
+    /// <see cref="ElementType" />.  There is no "notnull" constraint 
+    /// on <typeparamref name="T" /> only because some APIs that would be
+    /// implemented with this class do not have that shape.
+    /// </para>
     /// </typeparam>
-    public T GetValue<T>(int index) where T : notnull
+    public T GetValue<T>(int index)
     {
         ref readonly VectorElementConverter converter = 
             ref ((typeof(T) != typeof(object)) ? ref _converter

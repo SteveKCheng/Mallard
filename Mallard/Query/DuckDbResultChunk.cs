@@ -188,12 +188,6 @@ public unsafe sealed class DuckDbResultChunk : IResultColumns, IDisposable
         return func(reader, state);
     }
 
-    internal DuckDbVectorReader<T> UnsafeGetColumnReader<T>(int columnIndex)
-    {
-        var vector = UnsafeGetColumnVector(columnIndex);
-        var converter = _resultColumns.GetColumnConverter(columnIndex, typeof(T)).BindToVector(vector);
-        return new DuckDbVectorReader<T>(vector, converter);
-    }
     VectorElementConverter IResultColumns.GetColumnConverter(int columnIndex, Type? targetType)
         => GetColumnConverter(columnIndex, targetType);
 

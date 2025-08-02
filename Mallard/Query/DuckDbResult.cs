@@ -652,7 +652,7 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
         => GetColumnConverter(columnIndex, targetType);
 
     /// <see cref="IResultColumns.GetColumnConverter(int, Type?)" />
-    private VectorElementConverter GetColumnConverter(int columnIndex, Type? targetType)
+    internal VectorElementConverter GetColumnConverter(int columnIndex, Type? targetType)
     {
         VectorElementConverter CreateConverter(in DuckDbColumnInfo columnInfo, int columnIndex, Type? targetType)
         {
