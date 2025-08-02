@@ -11,15 +11,30 @@ namespace Mallard;
 /// The structure to read and write atomically.
 /// </typeparam>
 /// <remarks>
-/// Uses a version counter to signal when reads/writes should be re-tried. 
+/// Uses a version counter to signal when reads/writes should be re-tried (in a loop).
 /// </remarks>
-internal struct Antitear<T> where T : struct
+internal struct Antitear<T>(T initialValue) where T : struct
 {
-    private T _data;
+    /// <summary>
+    /// Backing field for <see cref="Value" />.
+    /// </summary>
+    private T _data = initialValue;
+
+    /// <summary>
+    /// Version counter protecting <see cref="_data" />.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Incremented before and after <see cref="_data" /> changes.
+    /// Is an odd number while <see cref="_data" /> is being set.  Is an even
+    /// number when <see cref="_data"/> has been successfully published.
+    /// </para>
+    /// </remarks>
     private uint _version;
 
     /// <summary>
-    /// The held value of type <typeparamref name="T" /> which is read/written atomically.
+    /// The held data value which may be read/written
+    /// from any thread without tearing or conflicts.
     /// </summary>
     public T Value
     {
