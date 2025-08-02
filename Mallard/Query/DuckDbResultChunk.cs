@@ -191,9 +191,24 @@ public unsafe sealed class DuckDbResultChunk : IResultColumns, IDisposable
     VectorElementConverter IResultColumns.GetColumnConverter(int columnIndex, Type? targetType)
         => GetColumnConverter(columnIndex, targetType);
 
+    /// <inheritdoc cref="IResultColumns.GetColumnConverter(int, Type?)" />
     internal VectorElementConverter GetColumnConverter(int columnIndex, Type? type)
         => _resultColumns.GetColumnConverter(columnIndex, type);
 
+    /// <summary>
+    /// Obtain the vector for a specified column of this chunk.
+    /// </summary>
+    /// <param name="columnIndex"></param>
+    /// <remarks>
+    /// This method is "unsafe" in the sense that a lifetime of the vector needs to be scoped
+    /// to that of this chunk, but there is no way to enforce that statically in .NET
+    /// when this type is a class and not a ref struct.  It is used to implement 
+    /// <see cref="DuckDbVectorDelegateReader" /> and similar classes that encapsulate
+    /// vector access.  Those classes must take appropriate precautions to not leak
+    /// out pointers relating to the DuckDB vector in any way, and not allow this
+    /// instance to be disposed while the vectors are accessed (such as by calling 
+    /// <see cref="IgnoreDisposals" />).
+    /// </remarks>
     internal DuckDbVectorInfo UnsafeGetColumnVector(int columnIndex)
         => DuckDbVectorInfo.FromNativeChunk(_nativeChunk, _resultColumns, Length, columnIndex);
 }
