@@ -28,6 +28,36 @@ public unsafe class DuckDbResultChunk : IDisposable
     private readonly IResultColumns _resultColumns;
     private readonly int _length;
 
+    /// <summary>
+    /// If true, requests to dispose (i.e. calls to <see cref="Dispose" />) are ignored.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Disabling explicit, immediate disposal is required to make APIs that read 
+    /// DuckDB results <em>without using ref structs</em> thread safe, unless
+    /// we are willing to introduce reference-counting everywhere.
+    /// </para>
+    /// <para>
+    /// When an object implementing such an API holds a reference to a <see cref="DuckDbResultChunk" />
+    /// (this object), some other thread might try to dispose the latter while the former
+    /// is in the middle of the method that uses the latter.
+    /// </para>
+    /// <para>
+    /// This library normally prevents such a situation by atomically increasing a reference count
+    /// before all usages of objects with native resources, i.e. the same as what "safe handles" do
+    /// in Microsoft's API designs.  But these atomic operations are expensive if they have to
+    /// be performed for access to every cell in the query results.
+    /// </para>
+    /// <para>
+    /// That means we are relying solely on the .NET garbage collector to call finalizers to
+    /// clean up resources.  Hopefully that will be sufficient; if the garbage collector
+    /// cannot "keep up", we would have to implement QSBR-based clean-up (scheduling clean-ups 
+    /// by tracking quiescent states on all threads that use <see cref="DuckDbResultChunk" />),
+    /// which is a lot more complicated.
+    /// </para>
+    /// </remarks>
+    private bool _ignoreDisposals;
+
     private HandleRefCount _refCount;
 
     /// <summary>
@@ -49,8 +79,46 @@ public unsafe class DuckDbResultChunk : IDisposable
         _length = (int)NativeMethods.duckdb_data_chunk_get_size(_nativeChunk);
     }
 
+    /// <summary>
+    /// Ignore all future requests to explicitly 
+    /// dispose (via <see cref="Dispose" /> or <see cref="IDisposable.Dispose" />)
+    /// for thread safety.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Once this method is called, its effects cannot be reversed for this object.
+    /// </para>
+    /// <para>
+    /// A successful call of this method ensures that the current instance is always available
+    /// for use as long as a caller holds a reference to it.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="ObjectDisposedException">
+    /// This object has already been disposed (before disposals can be ignored).
+    /// </exception>
+    internal void IgnoreDisposals()
+    {
+        if (_ignoreDisposals)
+            return;
+
+        _refCount.PreventDispose(this);
+        _ignoreDisposals = true;
+    }
+
     private void DisposeImpl(bool disposing)
     {
+        // N.B. The _ignoreDisposals flag is not integrated with _refCount, so
+        // another thread could race to set the former (to true), and this test could fail
+        // to see the new value before proceeding to attempt to mark this object for disposal.
+        // But since _refCount.PreventDispose is called first before that flag is set,
+        // at worst _refCount.PrepareToDisposeOwner would fail (with an exception), when
+        // a silent return would be ideal.
+        //
+        // Such a race can only arise from incorrect usage patterns from client code, 
+        // so causing failure (without any memory corruption) is fine.
+        if (disposing && _ignoreDisposals)
+            return;
+
         if (!_refCount.PrepareToDisposeOwner())
             return;
 

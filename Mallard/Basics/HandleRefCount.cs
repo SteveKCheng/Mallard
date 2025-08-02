@@ -156,8 +156,30 @@ internal struct HandleRefCount
                 throw new InvalidOperationException("Cannot dispose object while it is being used from another thread. ");
 
             w = v;
+
+            // Using int.MinValue allows using Interlocked.Increment to take a reference count
+            // in Scope's constructor, instead of a manual compare-exchange loop.  If -1 is used
+            // as the sentinel, a second thread entering that constructor could see a temporary
+            // value of 0 indicating a valid object when the object is actually disposed.
         } while ((v = Interlocked.CompareExchange(ref _counter, int.MinValue, w)) != w);
 
         return true;
+    }
+
+    /// <summary>
+    /// Block <see cref="PrepareToDisposeOwner" /> from ever succeeding, by adding one permanently to
+    /// the active count of references.
+    /// </summary>
+    /// <exception cref="ObjectDisposedException">
+    /// The controlled object is already disposed.
+    /// </exception>
+    public void PreventDispose(object targetObject)
+    {
+        int v = Interlocked.Increment(ref _counter);
+        if (v <= 0)
+        {
+            Interlocked.Decrement(ref _counter);
+            throw new ObjectDisposedException(targetObject.GetType().FullName, "The object is already disposed. ");
+        }
     }
 }
