@@ -31,8 +31,17 @@ public class DuckDbVectorDelegateReader : IDuckDbVector
     /// still exists.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// This object is the originating <see cref="DuckDbResult" />, but since it does not
     /// need to be directly accessed again, this field is typed as <see cref="object" />.
+    /// </para>
+    /// <para>
+    /// Because <see cref="DuckDbVectorInfo" /> is passed by reference into 
+    /// <see cref="VectorElementConverter.Convert{T}(in DuckDbVectorInfo, int, bool)" />,
+    /// calls to <see cref="GC.KeepAlive(object?)" /> ought to be not needed during conversion.
+    /// But there is a danger the .NET IL compiler would optimize out the references so
+    /// we put in those calls anyway.
+    /// </para>
     /// </remarks>
     private readonly object _owner;
 
@@ -83,7 +92,12 @@ public class DuckDbVectorDelegateReader : IDuckDbVector
     public DuckDbColumnInfo ColumnInfo => _vector.ColumnInfo;
 
     /// <inheritdoc cref="IDuckDbVector.IsItemValid(int)" />
-    public bool IsItemValid(int index) => _vector.IsItemValid(index);
+    public bool IsItemValid(int index)
+    {
+        var b = _vector.IsItemValid(index);
+        GC.KeepAlive(this);
+        return b;
+    }
 
     /// <summary>
     /// The .NET type that the elements in the DuckDB column are mapped to.
@@ -96,14 +110,22 @@ public class DuckDbVectorDelegateReader : IDuckDbVector
     /// </summary>
     /// <param name="index">The (row) index of the element of the vector. </param>
     public object? GetObjectOrNull(int index)
-        => _boxedConverter.Convert<object>(_vector, index, requireValid: false);
+    {
+        var v = _boxedConverter.Convert<object>(_vector, index, requireValid: false);
+        GC.KeepAlive(this);
+        return v;
+    }
 
     /// <summary>
     /// Get an item in the vector, cast into <see cref="System.Object"/>.
     /// </summary>
     /// <param name="index">The (row) index of the element of the vector. </param>
     public object GetObject(int index)
-        => _boxedConverter.Convert<object>(_vector, index, requireValid: true)!;
+    {
+        var v = _boxedConverter.Convert<object>(_vector, index, requireValid: true)!;
+        GC.KeepAlive(this);
+        return v;
+    }
 
     /// <summary>
     /// Get an item in the vector in its default .NET type (without boxing it).
@@ -117,8 +139,11 @@ public class DuckDbVectorDelegateReader : IDuckDbVector
     /// </typeparam>
     public T GetValue<T>(int index) where T : notnull
     {
-        if (typeof(T) == typeof(object))
-            return (T)GetObject(index);
-        return _converter.Convert<T>(_vector, index, requireValid: true)!;
+        ref readonly VectorElementConverter converter = 
+            ref ((typeof(T) != typeof(object)) ? ref _converter
+                                               : ref _boxedConverter);
+        var v = converter.Convert<T>(_vector, index, requireValid: true)!;
+        GC.KeepAlive(this);
+        return v;
     }
 }
