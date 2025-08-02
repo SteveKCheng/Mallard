@@ -649,10 +649,14 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
         // Cache miss
         if (!(converter.IsValid && converter.TargetType == targetType))
         {
-            var descriptor = new ConverterCreationContext.ColumnDescriptor(ref _nativeResult, columnIndex);
-            var context = ConverterCreationContext.FromColumn(column.Info, ref descriptor);
+            using (var _ = _barricade.EnterScope(_nativeResult))
+            {
+                var descriptor = new ConverterCreationContext.ColumnDescriptor(ref _nativeResult, columnIndex);
+                var context = ConverterCreationContext.FromColumn(column.Info, ref descriptor);
 
-            converter = VectorElementConverter.CreateForType(targetType, in context);
+                converter = VectorElementConverter.CreateForType(targetType, in context);
+            }
+
             if (!converter.IsValid)
                 DuckDbVectorInfo.ThrowForWrongParamType(column.Info, targetType ?? typeof(object));
 
