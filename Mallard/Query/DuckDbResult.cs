@@ -518,7 +518,7 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
         /// multi-thread access restrictions.
         /// </para>
         /// </remarks>
-        public DuckDbColumnInfo Info;
+        public DuckDbColumnInfo Info { get; init; }
 
         /// <summary>
         /// The name of the column from DuckDB.
@@ -637,9 +637,6 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
 
         return name;
     }
-
-    ref readonly DuckDbColumnInfo IResultColumns.GetColumnInfo(int columnIndex)
-        => ref _columns[columnIndex].Info;
 
     VectorElementConverter IResultColumns.GetColumnConverter(int columnIndex, Type targetType)
     {

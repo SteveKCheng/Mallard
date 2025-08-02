@@ -20,7 +20,7 @@ internal interface IResultColumns
     /// <param name="columnIndex">
     /// The index of the column, between 0 (inclusive) to <see cref="ColumnCount" /> (exclusive).
     /// </param>
-    ref readonly DuckDbColumnInfo GetColumnInfo(int columnIndex);
+    DuckDbColumnInfo GetColumnInfo(int columnIndex);
 
     /// <summary>
     /// The number of top-level columns present in the results.
