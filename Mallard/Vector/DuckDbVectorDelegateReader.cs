@@ -61,6 +61,12 @@ public class DuckDbVectorDelegateReader : IDuckDbVector
     private readonly VectorElementConverter _boxedConverter;
 
     /// <summary>
+    /// Copy of <see cref="IDuckDbVector.ValidityMask" /> of <see cref="_vector"/>, 
+    /// allocated in managed memory.
+    /// </summary>
+    private ulong[]? _validityMaskCopy;
+
+    /// <summary>
     /// Obtains read access to a column (vector) in a result chunk coming from DuckDB.
     /// </summary>
     /// <param name="chunk">
@@ -82,8 +88,48 @@ public class DuckDbVectorDelegateReader : IDuckDbVector
         _boxedConverter = chunk.GetColumnConverter(columnIndex, typeof(object)).BindToVector(_vector);
     }
 
-    /// <inheritdoc cref="IDuckDbVector.ValidityMask" />
-    public ReadOnlySpan<ulong> ValidityMask => _vector.ValidityMask;
+    /// <summary>
+    /// The variable-length bit mask indicating which elements in the vector are valid (not null).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Unlike the efficient implementation from <see cref="DuckDbVectorReader{T}" />,
+    /// this method must copy out the array of bits.  The original array is in memory natively
+    /// allocated by DuckDB, and this class (not being a ref struct) 
+    /// has no way to control the lifetime of the span were the original array to be returned.
+    /// </para>
+    /// <para>
+    /// Clients that use <see "DuckDbVectorDelegateReader" /> instead of <see cref="DuckDbVectorReader{T}" />
+    /// generally are not using performant span-based APIs anyway, so this fallback exists
+    /// only to complete the implementation of the interface method (<see cref="IDuckDbVector.ValidityMask" />).
+    /// </para>
+    /// </remarks>
+    ReadOnlySpan<ulong> IDuckDbVector.ValidityMask
+    {
+        get
+        {
+            var m = _validityMaskCopy;
+
+            if (_validityMaskCopy == null)
+            {
+                var s = _vector.ValidityMask;
+                if (s.Length == 0)
+                {
+                    m = Array.Empty<ulong>();
+                }
+                else
+                {
+                    m = new ulong[s.Length];
+                    s.CopyTo(m);
+                }
+
+                GC.KeepAlive(this);
+                _validityMaskCopy = m;
+            }
+
+            return new ReadOnlySpan<ulong>(m);
+        }
+    }
 
     /// <inheritdoc cref="IDuckDbVector.Length" />
     public int Length => _vector.Length;
