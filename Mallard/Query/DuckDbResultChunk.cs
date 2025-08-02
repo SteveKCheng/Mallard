@@ -22,7 +22,7 @@ namespace Mallard;
 /// unpredictable memory usage (before garbage collection kicks in).
 /// </para>
 /// </remarks>
-public unsafe class DuckDbResultChunk : IDisposable
+public unsafe sealed class DuckDbResultChunk : IResultColumns, IDisposable
 {
     private _duckdb_data_chunk* _nativeChunk;
     private readonly IResultColumns _resultColumns;
@@ -194,9 +194,12 @@ public unsafe class DuckDbResultChunk : IDisposable
         var converter = _resultColumns.GetColumnConverter(columnIndex, typeof(T)).BindToVector(vector);
         return new DuckDbVectorReader<T>(vector, converter);
     }
+    VectorElementConverter IResultColumns.GetColumnConverter(int columnIndex, Type? targetType)
+        => GetColumnConverter(columnIndex, targetType);
+
+    internal VectorElementConverter GetColumnConverter(int columnIndex, Type? type)
+        => _resultColumns.GetColumnConverter(columnIndex, type);
 
     internal DuckDbVectorInfo UnsafeGetColumnVector(int columnIndex)
-    {
-        return DuckDbVectorInfo.FromNativeChunk(_nativeChunk, _resultColumns, Length, columnIndex);
-    }
+        => DuckDbVectorInfo.FromNativeChunk(_nativeChunk, _resultColumns, Length, columnIndex);
 }
