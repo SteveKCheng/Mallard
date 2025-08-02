@@ -534,27 +534,37 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
         public string? Name;
 
         /// <summary>
+        /// Backing field for <see cref="Converter" /> implementing atomic read/write.
+        /// </summary>
+        private Antitear<VectorElementConverter> _converter;
+
+        /// <summary>
         /// Converter for the items in the column, created and cached on first access.
         /// </summary>
         /// <remarks>
+        /// <para>
         /// The interface of <see cref="DuckDbChunkReader" /> in theory allows different types
         /// to be selected each time a chunk is processed, but in practice all the vectors
         /// (across all chunks) from one column always use the same converter.  There is no point
         /// in making the user "pre-register" the converter for each column before any vectors
         /// are accessed.
+        /// </para>
+        /// <para>
         /// We just check <see cref="VectorElementConverter.TargetType" /> for any existing cached 
         /// instance to know if the instance is still applicable. 
+        /// </para>
         /// </remarks>
-        public VectorElementConverter Converter;
+        public VectorElementConverter Converter 
+        { 
+            get => _converter.Value; 
+            set => _converter.Value = value; 
+        }
     }
 
     /// <summary>
     /// Top-level information gathered/cached on the columns of the result.
     /// </summary>
     /// <remarks>
-    /// <para>
-    /// This array is used as a lock when updating cached information.
-    /// </para>
     /// <para>
     /// The elements of this array (deliberately) do not hold any pointers to DuckDB native objects or memory,
     /// so read-only access does not require entering <see cref="_barricade" />.  This aspect should be
@@ -636,26 +646,20 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
         ref var column = ref _columns[columnIndex];
         VectorElementConverter converter;
 
-        // This method could be called by different chunks which may work in different threads.
-        // Even reading needs a lock because struct reads may tear.
-        // Fortunately, _nativeResult is not accessed, so _barricade need not be entered.
-        lock (_columns)
+        // Read from cache
+        converter = column.Converter;
+
+        // Cache miss
+        if (!(converter.IsValid && converter.TargetType == targetType))
         {
-            // Read from cache
-            converter = column.Converter;
+            var descriptor = new ConverterCreationContext.ColumnDescriptor(ref _nativeResult, columnIndex);
+            var context = ConverterCreationContext.FromColumn(column.Info, ref descriptor);
 
-            // Cache miss
-            if (!(converter.IsValid && converter.TargetType == targetType))
-            {
-                var descriptor = new ConverterCreationContext.ColumnDescriptor(ref _nativeResult, columnIndex);
-                var context = ConverterCreationContext.FromColumn(column.Info, ref descriptor);
+            converter = VectorElementConverter.CreateForType(targetType, in context);
+            if (!converter.IsValid)
+                DuckDbVectorInfo.ThrowForWrongParamType(column.Info, targetType ?? typeof(object));
 
-                converter = VectorElementConverter.CreateForType(targetType, in context);
-                if (!converter.IsValid)
-                    DuckDbVectorInfo.ThrowForWrongParamType(column.Info, targetType ?? typeof(object));
-
-                column.Converter = converter;
-            }
+            column.Converter = converter;
         }
 
         return converter;
