@@ -74,6 +74,24 @@ internal struct HandleRefCount
     public ref struct Scope
     {
         private ref int _counter;
+        
+        /// <summary>
+        /// Whether this instance (scope) is the first of the active references.
+        /// </summary>
+        public bool IsFirst { get; }
+
+        /// <summary>
+        /// Throw an exception if this scope is not the first of active references.
+        /// Used to enforce mutual exclusion.
+        /// </summary>
+        public void ThrowIfNotFirst()
+        {
+            if (!IsFirst)
+            {
+                throw new InvalidOperationException(
+                    "This method is not allowed to be called simultaneously from multiple threads. ");
+            }
+        }
 
         /// <summary>
         /// Establishes the dynamic scope.
@@ -97,6 +115,8 @@ internal struct HandleRefCount
                 Interlocked.Decrement(ref _counter);
                 throw new ObjectDisposedException(targetObject.GetType().FullName, "Cannot operate on a disposed object. ");
             }
+
+            IsFirst = (v == 1);
         }
 
         /// <summary>

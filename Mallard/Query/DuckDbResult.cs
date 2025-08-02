@@ -1,6 +1,7 @@
 ﻿using Mallard.C_API;
 using System;
 using System.Diagnostics.CodeAnalysis;
+using System.Threading;
 
 namespace Mallard;
 
@@ -14,20 +15,20 @@ namespace Mallard;
 /// </para>
 /// <para>
 /// Since retrieving a chunk advances the internal state of this result object,
-/// i.e. mutating that state, this object may not be accessed from multiple threads
-/// simultaneously.  Any attempt to do so will cause exceptions.
+/// i.e. mutating that state, methods in this class that do that may not be
+/// called from multiple threads simultaneously.  Any attempt to do so will cause exceptions.
 /// </para>
 /// </remarks>
 public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
 {
     #region Resource management
 
-    private Barricade _barricade;
+    private HandleRefCount _refCount;
     private duckdb_result _nativeResult;
 
     private void DisposeImpl(bool disposing)
     {
-        if (!_barricade.PrepareToDisposeOwner())
+        if (!_refCount.PrepareToDisposeOwner())
             return;
 
         NativeMethods.duckdb_destroy_result(ref _nativeResult);
@@ -115,7 +116,7 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
     /// </returns>
     internal long GetNumberOfChangedRows(out bool hasResultRows)
     {
-        using var _ = _barricade.EnterScope(this);
+        using var _ = _refCount.EnterScope(this);
         return ExtractNumberOfChangedRows(ref _nativeResult, out hasResultRows, destroyNativeResult: false);
     }
 
@@ -231,10 +232,15 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
     /// Retrieve the next chunk of results from the present query in DuckDB.
     /// </summary>
     /// <remarks>
-    /// This method may be used to parallelize processing of chunks.
+    /// <para>
+    /// This method may not be called simultaneously from multiple threads.
+    /// </para>
+    /// <para>
+    /// Nevertheless, the processing of the contents of chunks may still be parallelized.
     /// Have one thread/task call this method repeatedly to obtain individual
-    /// chunk objects, then pass each such object to a different thread/task
-    /// to process using <see cref="DuckDbResultChunk.ProcessContents" />.
+    /// chunk objects.  Then, each such object may be passed to a different thread/task,
+    /// to process its contents via <see cref="DuckDbResultChunk.ProcessContents" />.
+    /// </para>
     /// </remarks>
     /// <returns>
     /// Object containing the next chunk, or null if there are no more chunks.
@@ -242,28 +248,14 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
     public DuckDbResultChunk? FetchNextChunk()
     {
         _duckdb_data_chunk* nativeChunk;
-        using (var _ = _barricade.EnterScope(this))
+        using (var rs = _refCount.EnterScope(this))
         {
+            rs.ThrowIfNotFirst();
             nativeChunk = NativeMethods.duckdb_fetch_chunk(_nativeResult);
         }
 
         if (nativeChunk == null)
             return null;    // exhausted all results
-
-        // Make sure all column names have been retrieved from DuckDB and cached
-        // so parallel processing of chunks can occur, possibly even if this result
-        // object itself gets disposed (before the chunks are, which is allowed).
-        //
-        // Obviously, we lose the performance benefits of skipping retrieval of
-        // the column names if the user does not ask for them.  But, presumably,
-        // if the user is using DuckDbResultChunk objects, the processing is expected
-        // to be on the heavier side and so the performance benefit may be negligible.
-        if (!_hasInvokedFetchChunk)
-        {
-            _hasInvokedFetchChunk = true;
-            for (int columnIndex = 0; columnIndex < ColumnCount; ++columnIndex)
-                GetColumnName(columnIndex);
-        }
 
         try
         {
@@ -325,6 +317,15 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
     /// This method can be called continually, until it returns false, 
     /// to process all chunks of the result.
     /// </para>
+    /// <para>
+    /// This method may not be called from multiple threads simultaneously.
+    /// Although there is potential for multiple threads to process the contents of
+    /// distinct chunks in parallel, getting (fetching) successive chunks
+    /// is not parallelizable, and the API shape of this method does not allow
+    /// segregating the two concerns.  
+    /// Use the chunk objects <see cref="DuckDbResultChunk" />
+    /// from <see cref="FetchNextChunk" /> instead if multi-thread processing is desired.
+    /// </para>
     /// </remarks>
     public bool ProcessNextChunk<TState, TReturn>(TState state, 
                                                   DuckDbChunkReadingFunc<TState, TReturn> function,
@@ -332,8 +333,9 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
         where TState : allows ref struct
     {
         _duckdb_data_chunk* nativeChunk;
-        using (var _ = _barricade.EnterScope(this))
+        using (var rs = _refCount.EnterScope(this))
         {
+            rs.ThrowIfNotFirst();
             nativeChunk = NativeMethods.duckdb_fetch_chunk(_nativeResult);
         }
 
@@ -342,12 +344,6 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
             result = default;
             return false;
         }
-
-        // N.B. The barricade is not held while executing user code.  So there is potential
-        //      for multiple threads to work on distinct chunks in parallel.  However,
-        //      that is difficult to arrange in a performant manner (i.e. no blocking)
-        //      with the API shape of this method.  Use chunk objects (DuckDbResultChunk)
-        //      for that instead.
 
         try
         {
@@ -412,6 +408,9 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
     /// could also be written to close over individual variables from its surrounding
     /// scope.
     /// </para>
+    /// <para>
+    /// This method may not be called from multiple threads simultaneously.
+    /// </para>
     /// </remarks>
     public TReturn? ProcessAllChunks<TState, TReturn>(TState state, 
                                                       DuckDbChunkReadingFunc<TState, TReturn> function)
@@ -474,6 +473,9 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
     /// <para>
     /// This method is equivalent to calling <see cref="ProcessNextChunk" />
     /// in a loop until that method returns false.
+    /// </para>
+    /// <para>
+    /// This method may not be called from multiple threads simultaneously.
     /// </para>
     /// </remarks>
     public TReturn ProcessAllChunks<TState, TReturn>(TState state,
@@ -567,24 +569,10 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
     /// <remarks>
     /// <para>
     /// The elements of this array (deliberately) do not hold any pointers to DuckDB native objects or memory,
-    /// so read-only access does not require entering <see cref="_barricade" />.  This aspect should be
-    /// highlighted for the implemention of <see cref="IResultColumns" />, whose methods are called inside
-    /// <see cref="DuckDbChunkReader" />, when <see cref="_barricade" /> has already been taken.
+    /// so read-only access does not require entering the reference-count scope.  
     /// </para>
     /// </remarks>
     private readonly Column[] _columns;
-
-    /// <summary>
-    /// Set to true when <see cref="FetchNextChunk" /> has been called at least once.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// If false, there may be some initialization that needs to be done to accommodate 
-    /// <see cref="DuckDbResultChunk" /> objects.  Currently that initialization is thread-safe
-    /// already so this flag is accessed by normal (non-volatile, non-interlocked) reads/writes.
-    /// </para>
-    /// </remarks>
-    private bool _hasInvokedFetchChunk;
 
     /// <summary>
     /// The number of columns present in the result.
@@ -605,11 +593,6 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
     /// <param name="columnIndex">
     /// The index of the column, between 0 (inclusive) to <see cref="ColumnCount" /> (exclusive).
     /// </param>
-    /// <remarks>
-    /// Even though this method does not mutate the state of the DuckDB result, due to how it is
-    /// implemented, it may throw an exception if it is called while another thread is using
-    /// the same instance.
-    /// </remarks>
     /// <returns>
     /// The name of the column, or <see cref="string.Empty" /> if it has no name.
     /// </returns>
@@ -620,19 +603,11 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
 
         if (name == null)
         {
-            using var _ = _barricade.EnterScope(this);
+            using var _ = _refCount.EnterScope(this);
             name = NativeMethods.duckdb_column_name(ref _nativeResult, columnIndex);
 
             // Always return the first string constructed if there is a race.
-            //
-            // Such a race would be very rare because the barricade will not allow multi-thread
-            // in the first place.  Theoretically, there ought to be no problem calling 
-            // GetColumnName from multiple threads as it does not mutate DuckDB state or
-            // rely on such state, but the use case is marginal and not worth the complexity.
-            // Not entering the barricade when the name is already stored, above, is just
-            // an optimization hidden to the user, even if strictly speaking we should disallow
-            // all instance methods in this class from multi-thread access.
-            name = (nameRef ??= name);
+            name = Interlocked.CompareExchange(ref nameRef, name, null) ?? name;
         }
 
         return name;
@@ -649,7 +624,7 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
         // Cache miss
         if (!(converter.IsValid && converter.TargetType == targetType))
         {
-            using (var _ = _barricade.EnterScope(_nativeResult))
+            using (var _ = _refCount.EnterScope(_nativeResult))
             {
                 var descriptor = new ConverterCreationContext.ColumnDescriptor(ref _nativeResult, columnIndex);
                 var context = ConverterCreationContext.FromColumn(column.Info, ref descriptor);

@@ -19,7 +19,8 @@ public sealed class DuckDbDataReader : DbDataReader
     {
         _queryResults = queryResults;
 
-        // Must cache this right away because queryResults does not allow multi-thread access
+        // It is not strictly necessary to cache this information right away,
+        // but we want to avoid complicated code to retrieve the information on demand.
         _numberOfRowsChanged = queryResults.GetNumberOfChangedRows(out _hasResultRows);
     }
 
