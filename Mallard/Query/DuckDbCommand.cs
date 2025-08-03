@@ -33,10 +33,13 @@ public unsafe class DuckDbCommand : IDisposable
     /// The results of the query execution.
     /// </returns>
     public DuckDbResult Execute()
+        => Execute(DuckDbTypeMappingFlags.Default);
+
+    private DuckDbResult Execute(DuckDbTypeMappingFlags typeMappingFlags)
     {
         duckdb_state status;
         duckdb_result nativeResult;
-        
+
         using (var _ = _barricade.EnterScope(this))
         {
             // N.B. DuckDB captures the "client context" from the database connection
@@ -46,14 +49,14 @@ public unsafe class DuckDbCommand : IDisposable
             status = NativeMethods.duckdb_execute_prepared(_nativeStatement, out nativeResult);
         }
 
-        return DuckDbResult.CreateFromQuery(status, ref nativeResult);
+        return DuckDbResult.CreateFromQuery(status, ref nativeResult, typeMappingFlags);
     }
 
     /// <summary>
     /// Execute the prepared statement and return the results via an ADO.NET data reader.
     /// </summary>
     public DuckDbDataReader ExecuteReader()
-        => new DuckDbDataReader(Execute());
+        => new DuckDbDataReader(Execute(DuckDbTypeMappingFlags.DatesAsDateTime));
 
     /// <summary>
     /// Execute the prepared statement, and report only the number of rows changed.

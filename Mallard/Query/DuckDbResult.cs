@@ -49,8 +49,11 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
 
     #region Construction
 
-    private DuckDbResult(ref duckdb_result nativeResult)
+    private DuckDbResult(ref duckdb_result nativeResult, 
+                         DuckDbTypeMappingFlags typeMappingFlags = default)
     {
+        TypeMappingFlags = typeMappingFlags;
+
         _nativeResult = nativeResult;
 
         var columnCount = (int)NativeMethods.duckdb_column_count(ref _nativeResult);
@@ -82,11 +85,17 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
     /// transferred to the new instance of <see cref="DuckDbResult" />, or otherwise (when this
     /// method throws an exception) gets destroyed.
     /// </param>
+    /// <param name="typeMappingFlags">
+    /// Overrides the default type-mapping flags, used e.g. for producing ADO.NET-compatible
+    /// results.
+    /// </param>
     /// <returns>
     /// If <paramref name="status" /> indicates success, an instance of <see cref="DuckDbResult" />
     /// that wraps the native result object.
     /// </returns>
-    internal static DuckDbResult CreateFromQuery(duckdb_state status, ref duckdb_result nativeResult)
+    internal static DuckDbResult CreateFromQuery(duckdb_state status, 
+                                                 ref duckdb_result nativeResult,
+                                                 DuckDbTypeMappingFlags typeMappingFlags = default)
     {
         try
         {
@@ -94,7 +103,7 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
                 throw new DuckDbException(NativeMethods.duckdb_result_error(ref nativeResult));
 
             // Passes ownership of nativeResult
-            return new DuckDbResult(ref nativeResult);
+            return new DuckDbResult(ref nativeResult, typeMappingFlags);
         }
         catch
         {
@@ -610,6 +619,11 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
     private readonly Column[] _columns;
 
     /// <summary>
+    /// Overridden compatibility flags for mapping DuckDB types to .NET types.
+    /// </summary>
+    public DuckDbTypeMappingFlags TypeMappingFlags { get; }
+
+    /// <summary>
     /// The number of columns present in the result.
     /// </summary>
     public int ColumnCount => _columns.Length;
@@ -658,7 +672,7 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
         {
             using var _ = _refCount.EnterScope(_nativeResult);
             var descriptor = new ConverterCreationContext.ColumnDescriptor(ref _nativeResult, columnIndex);
-            var context = ConverterCreationContext.FromColumn(columnInfo, ref descriptor);
+            var context = ConverterCreationContext.FromColumn(columnInfo, ref descriptor, TypeMappingFlags);
             var converter = VectorElementConverter.CreateForType(targetType, in context);
             if (!converter.IsValid)
                 DuckDbVectorInfo.ThrowForWrongParamType(columnInfo, targetType ?? typeof(object));

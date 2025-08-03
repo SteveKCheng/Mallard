@@ -39,7 +39,8 @@ internal sealed class ListConverter
 
             var childContext = ConverterCreationContext.Create(_childColumn,
                                                                parentLogicalType.NativeHandle,
-                                                               &getChildLogicalType);
+                                                               &getChildLogicalType,
+                                                               parentContext.TypeMappingFlags);
 
             _childConverterUnbound = VectorElementConverter.CreateForType(childType, in childContext);
 
