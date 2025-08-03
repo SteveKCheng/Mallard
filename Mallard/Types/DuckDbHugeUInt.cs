@@ -39,6 +39,7 @@ internal struct DuckDbHugeUInt
 
     public unsafe DuckDbHugeUInt(Int128 value)
     {
+        // FIXME: Assumes little-endian
         var p = (ulong*)&value;
         lower = p[0];
         upper = p[1];
@@ -46,6 +47,7 @@ internal struct DuckDbHugeUInt
 
     public unsafe DuckDbHugeUInt(UInt128 value)
     {
+        // FIXME: Assumes little-endian
         var p = (ulong*)&value;
         lower = p[0];
         upper = p[1];
@@ -53,4 +55,7 @@ internal struct DuckDbHugeUInt
 
     public readonly Int128 ToInt128() => new(upper, lower);
     public readonly UInt128 ToUInt128() => new(upper, lower);
+
+    public override int GetHashCode()
+        => BitConverter.IsLittleEndian ? HashCode.Combine(lower, upper) : HashCode.Combine(upper, lower);
 }

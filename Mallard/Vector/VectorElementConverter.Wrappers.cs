@@ -41,6 +41,8 @@ internal readonly partial struct VectorElementConverter
             DuckDbValueKind.Decimal => DuckDbDecimal.GetBoxedVectorElementConverter(context.ColumnInfo),
             DuckDbValueKind.VarInt => DuckDbVarInt.BoxedVectorElementConverter,
 
+            DuckDbValueKind.Uuid => DuckDbUuid.GetBoxedVectorElementConverter(),
+
             _ => default
         };
 
@@ -108,6 +110,11 @@ internal readonly partial struct VectorElementConverter
 
             DuckDbValueKind.Decimal when underlyingType == typeof(Decimal) => DuckDbDecimal.GetNullableVectorElementConverter(context.ColumnInfo),
             DuckDbValueKind.VarInt when underlyingType == typeof(BigInteger) => DuckDbVarInt.NullableVectorElementConverter,
+
+            // UUIDs
+            DuckDbValueKind.Uuid when underlyingType == typeof(Guid) => DuckDbUuid.GetNullableVectorElementConverter(),
+            DuckDbValueKind.Uuid when underlyingType == typeof(DuckDbUuid) => CreateForNullablePrimitive<DuckDbUuid>(),
+            DuckDbValueKind.Uuid when underlyingType == typeof(UInt128) => CreateForNullablePrimitive<UInt128>(),
 
             _ => default
         };

@@ -192,6 +192,11 @@ internal readonly partial struct VectorElementConverter
             DuckDbValueKind.VarInt when Match(type, typeof(BigInteger)) => DuckDbVarInt.VectorElementConverter,
             DuckDbValueKind.Decimal when Match(type, typeof(Decimal)) => DuckDbDecimal.GetVectorElementConverter(context.ColumnInfo),
 
+            // UUIDs
+            DuckDbValueKind.Uuid when Match(type, typeof(Guid)) => DuckDbUuid.GetVectorElementConverter(),
+            DuckDbValueKind.Uuid when type == typeof(DuckDbUuid) => CreateForPrimitive<DuckDbUuid>(),
+            DuckDbValueKind.Uuid when type == typeof(UInt128) => CreateForPrimitive<UInt128>(),
+
             // Variable-length types excluding generic containers
             DuckDbValueKind.VarChar when Match(type, typeof(string)) => DuckDbString.VectorElementConverter,
             DuckDbValueKind.Bit when Match(type, typeof(BitArray)) => DuckDbBitString.VectorElementConverter,

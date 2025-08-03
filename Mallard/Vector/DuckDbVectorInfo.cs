@@ -227,7 +227,7 @@ internal unsafe readonly struct DuckDbVectorInfo
             DuckDbValueKind.UHugeInt => typeof(T) == typeof(UInt128),
             DuckDbValueKind.HugeInt => typeof(T) == typeof(Int128),
             DuckDbValueKind.Blob => typeof(T) == typeof(DuckDbBlob),
-            DuckDbValueKind.Uuid => typeof(T) == typeof(UInt128),
+            DuckDbValueKind.Uuid => typeof(T) == typeof(DuckDbUuid) || typeof(T) == typeof(UInt128),
             DuckDbValueKind.Decimal => typeof(T) == typeof(short) ||
                                        typeof(T) == typeof(int) ||
                                        typeof(T) == typeof(long) ||
