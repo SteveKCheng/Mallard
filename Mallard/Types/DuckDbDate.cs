@@ -15,7 +15,7 @@ namespace Mallard;
 /// layout of this structure. 
 /// </remarks>
 [StructLayout(LayoutKind.Sequential)]
-public struct DuckDbDate(int days)
+public struct DuckDbDate(int days) : IStatelessConvertible<DuckDbDate, DateOnly>
 {
     /// <summary>
     /// Number of days since 1970-01-01 (Unix epoch).
@@ -46,23 +46,7 @@ public struct DuckDbDate(int days)
 
     #region Type conversions for vector reader
 
-    private static DateOnly ConvertToDateFromVector(object? state, in DuckDbVectorInfo vector, int index)
-        => vector.UnsafeRead<DuckDbDate>(index).ToDateOnly();
-
-    private static object ConvertToBoxedDateFromVector(object? state, in DuckDbVectorInfo vector, int index)
-        => (object)ConvertToDateFromVector(state, vector, index);
-
-    private static DateOnly? ConvertToNullableDateFromVector(object? state, in DuckDbVectorInfo vector, int index)
-        => new Nullable<DateOnly>(ConvertToDateFromVector(state, vector, index));
-
-    internal unsafe static VectorElementConverter GetVectorElementConverter()
-        => VectorElementConverter.Create(&ConvertToDateFromVector);
-
-    internal unsafe static VectorElementConverter GetBoxedVectorElementConverter()
-        => VectorElementConverter.Create(&ConvertToBoxedDateFromVector);
-
-    internal unsafe static VectorElementConverter GetNullableVectorElementConverter()
-        => VectorElementConverter.Create(&ConvertToNullableDateFromVector);
+    static DateOnly IStatelessConvertible<DuckDbDate, DateOnly>.Convert(ref readonly DuckDbDate item) => item.ToDateOnly();
 
     #endregion
 }

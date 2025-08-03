@@ -30,7 +30,7 @@ internal readonly partial struct VectorElementConverter
             DuckDbValueKind.Float => CreateForBoxedPrimitive<float>(),
             DuckDbValueKind.Double => CreateForBoxedPrimitive<double>(),
 
-            DuckDbValueKind.Date => DuckDbDate.GetBoxedVectorElementConverter(),
+            DuckDbValueKind.Date => CreateBoxingFor<DuckDbDate,DateOnly>(),
             DuckDbValueKind.Timestamp => CreateForBoxedPrimitive<DuckDbTimestamp>(),
 
             DuckDbValueKind.Interval => CreateForBoxedPrimitive<DuckDbInterval>(),
@@ -99,7 +99,7 @@ internal readonly partial struct VectorElementConverter
             DuckDbValueKind.Float when underlyingType == typeof(float) => CreateForNullablePrimitive<float>(),
             DuckDbValueKind.Double when underlyingType == typeof(double) => CreateForNullablePrimitive<double>(),
 
-            DuckDbValueKind.Date when underlyingType == typeof(DateOnly) => DuckDbDate.GetNullableVectorElementConverter(),
+            DuckDbValueKind.Date when underlyingType == typeof(DateOnly) => CreateNullableFor<DuckDbDate, DateOnly>(),
             DuckDbValueKind.Date when underlyingType == typeof(DuckDbDate) => CreateForNullablePrimitive<DuckDbDate>(),
             DuckDbValueKind.Timestamp when underlyingType == typeof(DuckDbTimestamp) => CreateForNullablePrimitive<DuckDbTimestamp>(),
 
