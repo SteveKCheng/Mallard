@@ -154,10 +154,10 @@ public class DuckDbVectorDelegateReader : IDuckDbVector
     /// Get an item in the vector, cast into <see cref="System.Object"/>, or null if
     /// the selected item is invalid.
     /// </summary>
-    /// <param name="index">The (row) index of the element of the vector. </param>
-    public object? GetObjectOrNull(int index)
+    /// <param name="rowIndex">The (row) index of the element of the vector. </param>
+    public object? GetObjectOrNull(int rowIndex)
     {
-        var v = _boxedConverter.Convert<object>(_vector, index, requireValid: false);
+        var v = _boxedConverter.Convert<object>(_vector, rowIndex, requireValid: false);
         GC.KeepAlive(this);
         return v;
     }
@@ -165,10 +165,10 @@ public class DuckDbVectorDelegateReader : IDuckDbVector
     /// <summary>
     /// Get an item in the vector, cast into <see cref="System.Object"/>.
     /// </summary>
-    /// <param name="index">The (row) index of the element of the vector. </param>
-    public object GetObject(int index)
+    /// <param name="rowIndex">The (row) index of the element of the vector. </param>
+    public object GetObject(int rowIndex)
     {
-        var v = _boxedConverter.Convert<object>(_vector, index, requireValid: true)!;
+        var v = _boxedConverter.Convert<object>(_vector, rowIndex, requireValid: true)!;
         GC.KeepAlive(this);
         return v;
     }
@@ -202,7 +202,7 @@ public class DuckDbVectorDelegateReader : IDuckDbVector
     /// implemented with this class do not have that shape.
     /// </para>
     /// </typeparam>
-    public T GetValue<T>(int index)
+    public T GetValue<T>(int rowIndex)
     {
         ref readonly VectorElementConverter converter = ref _boxedConverter;
         
@@ -213,8 +213,81 @@ public class DuckDbVectorDelegateReader : IDuckDbVector
                 ThrowExceptionForWrongType(typeof(T));
         }
 
-        var v = converter.Convert<T>(_vector, index, requireValid: true)!;
+        var v = converter.Convert<T>(_vector, rowIndex, requireValid: true)!;
         GC.KeepAlive(this);
         return v;
+    }
+
+    /// <summary>
+    /// Copy out sub-span of bytes from a blob, string, or bit string.
+    /// </summary>
+    /// <param name="rowIndex">
+    /// The (row) index of the element that is a blob, string or bit string.
+    /// </param>
+    /// <param name="destination">
+    /// Buffer where the bytes will be copied to.
+    /// </param>
+    /// <param name="totalBytes">
+    /// The number of bytes that would be copied (given the same <paramref name="offset" />)
+    /// if <paramref name="destination" /> is big enough.
+    /// </param>
+    /// <param name="offset">
+    /// The offset, measured in byte units from the beginning of the blob, string or
+    /// bit string, to start copying from.
+    /// </param>
+    /// <returns>
+    /// The number of bytes written to the beginning of <paramref name="destination" />.
+    /// </returns>
+    /// <exception cref="InvalidOperationException">
+    /// The element type of this DuckDB vector is not a blob, string or bit string.
+    /// </exception>
+    /// <remarks>
+    /// <para>
+    /// For a vector element that is a string, its byte content is the UTF-8 encoding of the string.
+    /// </para>
+    /// <para>
+    /// For a vector element that is a bit string, the byte content is the little-endian encoding
+    /// as accepted by <see cref="System.Collections.BitArray.BitArray(byte[])" />.
+    /// (See also <see cref="DuckDbBitString.GetSegment" />.
+    /// </para>
+    /// </remarks>
+    public int GetBytes(int rowIndex, Span<byte> destination, out int totalBytes, int offset = 0)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(offset, 0);
+        var valueKind = ColumnInfo.ValueKind;
+        int bytesWritten;
+
+        if (valueKind == DuckDbValueKind.Blob ||
+            valueKind == DuckDbValueKind.VarChar)
+        {
+            var reader = new DuckDbVectorRawReader<DuckDbBlob>(_vector);
+            var blob = reader.GetItem(rowIndex);
+            var source = blob.AsSpan();
+            ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(offset, source.Length);
+            totalBytes = source.Length - offset;
+            bytesWritten = Math.Min(destination.Length, totalBytes);
+            source.Slice(offset, bytesWritten).CopyTo(destination);
+        }
+        else if (valueKind == DuckDbValueKind.Bit)
+        {
+            var reader = new DuckDbVectorRawReader<DuckDbBitString>(_vector);
+            var bitString = reader.GetItem(rowIndex);
+
+            int sourceByteLength = (bitString.Length + 7) / 8;
+            ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(offset, sourceByteLength);
+            totalBytes = sourceByteLength - offset;
+
+            int totalBits = bitString.Length - 8 * offset;
+            int bitsToWrite = Math.Min(destination.Length * 8, totalBits);
+            bytesWritten = bitString.GetSegment(destination, 8 * offset, bitsToWrite);
+        }
+        else
+        {
+            throw new InvalidOperationException(
+                "Cannot use GetBytes on this element type in a DuckDB vector. ");
+        }
+
+        GC.KeepAlive(this);
+        return bytesWritten;
     }
 }

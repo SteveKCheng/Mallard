@@ -220,7 +220,7 @@ internal unsafe readonly struct DuckDbVectorInfo
             DuckDbValueKind.List => typeof(T) == typeof(DuckDbListRef),
             DuckDbValueKind.Array => typeof(T) == typeof(DuckDbArrayRef),
 
-            DuckDbValueKind.VarChar => typeof(T) == typeof(DuckDbString),
+            DuckDbValueKind.VarChar => typeof(T) == typeof(DuckDbString) || typeof(T) == typeof(DuckDbBlob),
             DuckDbValueKind.VarInt => typeof(T) == typeof(DuckDbVarInt),
             DuckDbValueKind.Bit => typeof(T) == typeof(DuckDbBitString),
 
