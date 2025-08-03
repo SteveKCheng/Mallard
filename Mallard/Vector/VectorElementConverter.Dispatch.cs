@@ -189,11 +189,11 @@ internal readonly partial struct VectorElementConverter
             DuckDbValueKind.Interval when Match(type, typeof(DuckDbInterval)) => CreateForPrimitive<DuckDbInterval>(),
 
             // Other numbers
-            DuckDbValueKind.VarInt when Match(type, typeof(BigInteger)) => DuckDbVarInt.VectorElementConverter,
+            DuckDbValueKind.VarInt when Match(type, typeof(BigInteger)) => CreateFor<DuckDbVarInt, BigInteger>(),
             DuckDbValueKind.Decimal when Match(type, typeof(Decimal)) => DuckDbDecimal.GetVectorElementConverter(context.ColumnInfo),
 
             // UUIDs
-            DuckDbValueKind.Uuid when Match(type, typeof(Guid)) => DuckDbUuid.GetVectorElementConverter(),
+            DuckDbValueKind.Uuid when Match(type, typeof(Guid)) => CreateFor<DuckDbUuid, Guid>(),
             DuckDbValueKind.Uuid when type == typeof(DuckDbUuid) => CreateForPrimitive<DuckDbUuid>(),
             DuckDbValueKind.Uuid when type == typeof(UInt128) => CreateForPrimitive<UInt128>(),
 

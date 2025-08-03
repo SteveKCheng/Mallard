@@ -11,7 +11,7 @@ namespace Mallard;
 /// This structure is only used for reading, not for writing/sending values to DuckDB.
 /// </remarks>
 [StructLayout(LayoutKind.Sequential)]
-public readonly ref struct DuckDbVarInt
+public readonly ref struct DuckDbVarInt : IStatelessConvertible<DuckDbVarInt, BigInteger>
 {
     /// <summary>
     /// The blob that stores the VARINT.
@@ -112,17 +112,6 @@ public readonly ref struct DuckDbVarInt
         }
     }
 
-    private static BigInteger ConvertToBigIntegerFromVector(object? state, in DuckDbVectorInfo vector, int index)
-        => vector.UnsafeRead<DuckDbVarInt>(index).ToBigInteger();
-    private static object ConvertToBoxedBigIntegerFromVector(object? state, in DuckDbVectorInfo vector, int index)
-        => (object)ConvertToBigIntegerFromVector(state, vector, index);
-    private static BigInteger? ConvertToNullableBigIntegerFromVector(object? state, in DuckDbVectorInfo vector, int index)
-        => new Nullable<BigInteger>(ConvertToBigIntegerFromVector(state, vector, index));
-
-    internal unsafe static VectorElementConverter VectorElementConverter
-        => VectorElementConverter.Create(&ConvertToBigIntegerFromVector);
-    internal unsafe static VectorElementConverter BoxedVectorElementConverter
-        => VectorElementConverter.Create(&ConvertToBoxedBigIntegerFromVector);
-    internal unsafe static VectorElementConverter NullableVectorElementConverter
-        => VectorElementConverter.Create(&ConvertToNullableBigIntegerFromVector);
+    static BigInteger IStatelessConvertible<DuckDbVarInt, BigInteger>.Convert(ref readonly DuckDbVarInt item)
+        => item.ToBigInteger();
 }

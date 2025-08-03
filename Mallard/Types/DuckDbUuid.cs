@@ -61,7 +61,8 @@ namespace Mallard;
 /// </para>
 /// </remarks>
 [StructLayout(LayoutKind.Sequential)]
-public readonly struct DuckDbUuid(UInt128 value) : ISpanFormattable, IUtf8SpanFormattable
+public readonly struct DuckDbUuid(UInt128 value) 
+    : ISpanFormattable, IUtf8SpanFormattable, IStatelessConvertible<DuckDbUuid, Guid>
 {
     private readonly DuckDbHugeUInt _data = new(value);
 
@@ -175,23 +176,7 @@ public readonly struct DuckDbUuid(UInt128 value) : ISpanFormattable, IUtf8SpanFo
 
     #region Type conversions for vector reader
 
-    private static Guid ConvertToGuidFromVector(object? state, in DuckDbVectorInfo vector, int index)
-        => vector.UnsafeRead<DuckDbUuid>(index).ToGuid();
-
-    private static object ConvertToBoxedGuidFromVector(object? state, in DuckDbVectorInfo vector, int index)
-        => (object)ConvertToGuidFromVector(state, vector, index);
-
-    private static Guid? ConvertToNullableGuidFromVector(object? state, in DuckDbVectorInfo vector, int index)
-        => new Nullable<Guid>(ConvertToGuidFromVector(state, vector, index));
-
-    internal unsafe static VectorElementConverter GetVectorElementConverter()
-        => VectorElementConverter.Create(&ConvertToGuidFromVector);
-
-    internal unsafe static VectorElementConverter GetBoxedVectorElementConverter()
-        => VectorElementConverter.Create(&ConvertToBoxedGuidFromVector);
-
-    internal unsafe static VectorElementConverter GetNullableVectorElementConverter()
-        => VectorElementConverter.Create(&ConvertToNullableGuidFromVector);
+    static Guid IStatelessConvertible<DuckDbUuid, Guid>.Convert(ref readonly DuckDbUuid item) => item.ToGuid();
 
     #endregion
 
