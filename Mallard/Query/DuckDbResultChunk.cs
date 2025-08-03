@@ -119,10 +119,11 @@ public unsafe sealed class DuckDbResultChunk : IResultColumns, IDisposable
         if (disposing && _ignoreDisposals)
             return;
 
-        if (!_refCount.PrepareToDisposeOwner())
-            return;
-
-        NativeMethods.duckdb_destroy_data_chunk(ref _nativeChunk);
+        // PrepareToDisposeOwner would throw when finalizing while ignoring disposals
+        // (because the reference count has been biased by at least one),
+        // so the first condition is necessary to execute finalization anyway.
+        if (_ignoreDisposals || _refCount.PrepareToDisposeOwner())
+            NativeMethods.duckdb_destroy_data_chunk(ref _nativeChunk);
     }
 
     ~DuckDbResultChunk()
