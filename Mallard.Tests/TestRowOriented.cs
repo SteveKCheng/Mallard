@@ -93,4 +93,65 @@ public class TestRowOriented(DatabaseFixture fixture) : IClassFixture<DatabaseFi
         Assert.False(adoReader.Read());
     }
 
+    [Fact]
+    public void GetChars()
+    {
+        using var dbConn = new DuckDbConnection("");
+        using var ps = DbConnection.CreatePreparedStatement($"SELECT $1::STRING");
+
+        // Use Unicode characters with various lengths in UTF-8 and UTF-16.
+        // Note the emoji and "𝑖𝜋" consist of UTF-16 surrogate pairs, and we even test
+        // chopping at character offsets in the middle of a surrogate pair.
+        var stringBuilder = new StringBuilder();
+        stringBuilder.Append("🕐;こんにちは! 😀😁😂😃😄😅😆😇");
+        int n1 = stringBuilder.Length;
+        for (int i = 0; i < 500; ++i)
+        {
+            stringBuilder.Append("exp(𝑖𝜋) = -1 ▶▶▶");
+            stringBuilder.Append("En mathématiques, l'identité d'Euler est une relation " +
+                                 "entre plusieurs constantes fondamentales et utilisant " +
+                                 "les trois opérations arithmétiques d'addition, " +
+                                 "multiplication et exponentiation ☮");
+        }
+        int n2 = stringBuilder.Length;
+        stringBuilder.Append(" 💣 💣 💣");
+        int n3 = stringBuilder.Length;
+
+        var testString = stringBuilder.ToString();
+        ps.BindParameter(1, testString);
+
+        (int Offset, int Length)[] samples =
+        [
+            (0, 0), (0, 4), (0, 1), (1, 1), (1, 2), (1, 3), (3, 8),
+            (9, 3), (12, 3), (16, 4),
+            (n2 / 500, 256), (n2 / 500 + 500, 257), (n2 / 500 + 300, 500),
+            (500, 500), (1100, 200), (1600, 400), (2020, 2),
+            (n3 - 10, 4), (n3 - 4, 1), (n3 - 4, 2), (n3 - 4, 3), (n3 - 3, 1), (n3 - 3, 2), 
+            (n3 - 2, 1), (n3 - 2, 2), (n3 - 1, 1), (n3 - 1, 0), (n3, 0),
+            (n3 - 10, 20)
+        ];
+
+        var adoReader = ps.ExecuteReader();
+        adoReader.Read();
+
+        void Check((int Offset, int Length)[] samples)
+        {
+            var buffer = new char[samples.Select(s => s.Length).Max()];
+            foreach (var (offset, length) in samples)
+            {
+                var charsWritten = (int)adoReader.GetChars(0, offset, buffer, 0, length);
+                var actualLength = Math.Min(length, testString.Length - offset);
+                Assert.Equal(actualLength, charsWritten);
+                Assert.Equal(testString.AsSpan().Slice(offset, actualLength),
+                                buffer.AsSpan()[..actualLength]);
+            }
+        }
+
+        Check(samples);
+
+        // Shuffle elements to screw up the internal UTF-8/UTF-16 position cache
+        new Random(Seed: 37).Shuffle(samples);
+        Check(samples);
+    }
+
 }
