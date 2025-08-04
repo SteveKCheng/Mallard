@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Buffers;
+using System.Diagnostics;
 using System.Text.Unicode;
 
 namespace Mallard;
@@ -339,25 +340,28 @@ public class DuckDbVectorDelegateReader : IDuckDbVector
         // Skip the specified number of UTF-16 codepoints at the beginning by linear scan,
         // which is the only approach possible.  We incrementally convert into a dummy buffer
         // (at some loss of efficiency) rather than re-implement a UTF-8 decoder ourselves.
-        static int FindByteOffsetForCharOffset(ReadOnlySpan<byte> utf8Source, int charOffset, out char surrogate)
+        static int FindByteOffsetForCharOffset(ReadOnlySpan<byte> utf8Source, int charOffset, out char trailingSurrogate)
         {
+            trailingSurrogate = '\0';
+
+            if (charOffset <= 0)
+                return 0;
+
             const int ChunkSize = 256;
             Span<char> dummyBuffer = stackalloc char[ChunkSize];
             int byteOffset = 0;
             int charsRemaining = charOffset;
 
-            surrogate = '\0';
-
-            while (charsRemaining > 0)
+            do
             {
                 if (byteOffset >= utf8Source.Length)
                 {
                     throw new ArgumentOutOfRangeException(
-                        nameof(charOffset), 
+                        nameof(charOffset),
                         "Specified charOffset exceeds the length of the string. ");
                 }
 
-                var status = Utf8.ToUtf16(utf8Source[byteOffset..], 
+                var status = Utf8.ToUtf16(utf8Source[byteOffset..],
                                           dummyBuffer[0..Math.Min(ChunkSize, charsRemaining)],
                                           out int bytesSkipped, out int charsSkipped,
                                           replaceInvalidSequences: false, isFinalBlock: true);
@@ -368,21 +372,31 @@ public class DuckDbVectorDelegateReader : IDuckDbVector
                 // (trailing code unit), which the caller can set into the destination buffer.
                 if (charsRemaining == 1 && charsSkipped == 0)
                 {
-                    status = Utf8.ToUtf16(utf8Source[byteOffset..], 
-                                          dummyBuffer[0..2],
-                                          out bytesSkipped, out charsSkipped,
-                                          replaceInvalidSequences: false, isFinalBlock: true);
-                    if (charsSkipped != 2)
-                        status = OperationStatus.InvalidData;
-                    CheckUtf8Status(status);
-                    surrogate = dummyBuffer[1];
+                    Debug.Assert(bytesSkipped == 0);
+                    trailingSurrogate = ReadSurrogatePair(utf8Source[byteOffset..]).Trailing;
+                    bytesSkipped = 4;
+                    charsSkipped = 2;
                 }
 
                 byteOffset += bytesSkipped;
                 charsRemaining -= charsSkipped;
-            }
+            } while (charsRemaining > 0);
 
             return byteOffset;
+        }
+
+        static (char Leading, char Trailing) ReadSurrogatePair(ReadOnlySpan<byte> utf8Source)
+        {
+            Span<char> surrogatePair = stackalloc char[2];
+            var status = Utf8.ToUtf16(utf8Source, surrogatePair,
+                                      out var bytesRead, out var charsWritten,
+                                      replaceInvalidSequences: false, isFinalBlock: true);
+            if (charsWritten != 2)
+                status = OperationStatus.InvalidData;
+            CheckUtf8Status(status);
+            Debug.Assert(bytesRead == 4);
+            Debug.Assert(Char.IsHighSurrogate(surrogatePair[0]) && Char.IsLowSurrogate(surrogatePair[1]));
+            return (surrogatePair[0], surrogatePair[1]);
         }
 
         static void CheckUtf8Status(OperationStatus status)
@@ -414,7 +428,7 @@ public class DuckDbVectorDelegateReader : IDuckDbVector
             // except in the case of a surrogate pair (see below).
             byteOffset += FindByteOffsetForCharOffset(utf8Source[byteOffset..], 
                                                       charOffset - oldCharOffset, 
-                                                      out char surrogate);
+                                                      out char trailingSurrogate);
             utf8Source = utf8Source[byteOffset..];
 
             // If charOffset points to the middle of a surrogate pair, then
@@ -424,9 +438,9 @@ public class DuckDbVectorDelegateReader : IDuckDbVector
             // and adjust charOffset by +1 to match.  (Note that this calculation is
             // consistent with the fact that the variable "charsRemaining" in that
             // function always ends up as -1 whenever this case occurs.)
-            if (surrogate != '\0')
+            if (trailingSurrogate != '\0')
             {
-                destination[0] = surrogate; // already ensured destination.Length >= 1
+                destination[0] = trailingSurrogate; // already ensured destination.Length >= 1
                 destination = destination[1..];
                 surrogateCount++;
                 charOffset++;
@@ -440,14 +454,7 @@ public class DuckDbVectorDelegateReader : IDuckDbVector
         // Fix up again if destination buffer is too short for the last surrogate pair.
         if (charsWritten == destination.Length - 1 && bytesRead < utf8Source.Length)
         {
-            Span<char> surrogatePair = new char[2];
-            status = Utf8.ToUtf16(utf8Source[bytesRead..], surrogatePair,
-                                  out _, out var charsWritten2,
-                                  replaceInvalidSequences: false, isFinalBlock: true);
-            if (charsWritten2 != 2)
-                status = OperationStatus.InvalidData;
-            CheckUtf8Status(status);
-            destination[^1] = surrogatePair[0];
+            destination[^1] = ReadSurrogatePair(utf8Source[bytesRead..]).Leading;
             surrogateCount++;
         }
 
