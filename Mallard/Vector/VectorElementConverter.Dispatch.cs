@@ -60,20 +60,28 @@ internal readonly partial struct VectorElementConverter
         var instantiatedMethod = method.MakeGenericMethod(types);
 
 #if DEBUG
-        // In debug mode, call using a fully type-checked delegate.
-        var f = instantiatedMethod.CreateDelegate<CreateFromGenericTargetFunc<TArg>>();
-#else
+        // To mitigate the danger of function pointers, in Debug mode we fully check the
+        // argument types and return types.  It is probably faster, and certainly easier,
+        // to create a delegate which implies those checks, then to do the checks manually
+        // using .NET's reflection API.  We discard the result, since we still want to test
+        // calling method in the same way as Release mode.
+        _ = instantiatedMethod.CreateDelegate<CreateFromGenericTargetFunc<TArg>>();
+#endif
+
         // Function pointers are more efficient but dangerous: the run-time cannot do
         // type-checking for us.  If any types mismatch then we would corrupt the run-time.
         // And unfortunately, it is rather easy to mess up the parameter types of the targeted 
         // method especially after re-factoring.
         var f = (delegate*<TArg, ref readonly ConverterCreationContext, VectorElementConverter>)
                     instantiatedMethod.MethodHandle.GetFunctionPointer();
-#endif
         return f(arg, in context);
     }
 
 #if DEBUG
+    /// <summary>
+    /// Dummy delegate used for type-checking function pointers (in Debug builds) 
+    /// inside <see cref="UnsafeCreateFromGeneric" />.
+    /// </summary>
     private delegate VectorElementConverter 
         CreateFromGenericTargetFunc<TArg>(TArg arg, ref readonly ConverterCreationContext context);
 #endif
