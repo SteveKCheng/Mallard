@@ -104,7 +104,10 @@ public sealed class DuckDbDataReader : DbDataReader
     /// <inheritdoc />
     public override long GetChars(int ordinal, long dataOffset, char[]? buffer, int bufferOffset, int length)
     {
-        throw new NotImplementedException();
+        ArgumentNullException.ThrowIfNull(buffer);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(length, buffer.Length - bufferOffset);
+        var span = new Span<char>(buffer, bufferOffset, length);
+        return GetDelegateReader(ordinal).GetChars(_currentChunkRow, span, (int)dataOffset);
     }
 
     #endregion

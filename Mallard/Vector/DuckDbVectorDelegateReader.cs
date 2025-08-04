@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Buffers;
+using System.Text.Unicode;
 
 namespace Mallard;
 
@@ -219,7 +221,7 @@ public class DuckDbVectorDelegateReader : IDuckDbVector
     }
 
     /// <summary>
-    /// Copy out sub-span of bytes from a blob, string, or bit string.
+    /// Copy out a sub-span of bytes from a blob, string, or bit string.
     /// </summary>
     /// <param name="rowIndex">
     /// The (row) index of the element that is a blob, string or bit string.
@@ -249,6 +251,10 @@ public class DuckDbVectorDelegateReader : IDuckDbVector
     /// For a vector element that is a bit string, the byte content is the little-endian encoding
     /// as accepted by <see cref="System.Collections.BitArray.BitArray(byte[])" />.
     /// (See also <see cref="DuckDbBitString.GetSegment" />.
+    /// </para>
+    /// <para>
+    /// This method is primarily intended for implementing 
+    /// <see cref="System.Data.IDataRecord.GetBytes(int, long, byte[]?, int, int)" />.
     /// </para>
     /// </remarks>
     public int GetBytes(int rowIndex, Span<byte> destination, out int totalBytes, int offset = 0)
@@ -289,5 +295,132 @@ public class DuckDbVectorDelegateReader : IDuckDbVector
 
         GC.KeepAlive(this);
         return bytesWritten;
+    }
+
+    /// <summary>
+    /// Copy out a sub-span of UTF-16 code units from a string.
+    /// </summary>
+    /// <param name="rowIndex">
+    /// The (row) index of the element that is a blob, string or bit string.
+    /// </param>
+    /// <param name="destination">
+    /// Buffer where the bytes will be copied to.
+    /// </param>
+    /// <param name="offset">
+    /// The offset, measured in UTF-16 code units from the beginning of the string 
+    /// to start copying from.
+    /// </param>
+    /// <returns>
+    /// The number of UTF-16 code units written to the beginning of <paramref name="destination" />.
+    /// </returns>
+    /// <exception cref="InvalidOperationException">
+    /// The element type of this DuckDB vector is not a string.
+    /// </exception>
+    /// <remarks>
+    /// This method is primarily intended for implementing 
+    /// <see cref="System.Data.IDataRecord.GetChars(int, long, char[]?, int, int)" />.
+    /// </remarks>
+    public int GetChars(int rowIndex, Span<char> destination, int charOffset = 0)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(charOffset, 0);
+        if (ColumnInfo.ValueKind != DuckDbValueKind.VarChar)
+        {
+            throw new InvalidOperationException(
+                "Cannot use GetChars on a DuckDB vector whose element type is not VarChar (storing strings). ");
+        }
+
+        var reader = new DuckDbVectorRawReader<DuckDbString>(_vector);
+        var sourceItem = reader.GetItem(rowIndex);
+        var utf8Source = sourceItem.AsUtf8();
+
+        if (destination.Length == 0)
+            return 0;
+
+        // Skip the specified number of UTF-16 codepoints at the beginning by linear scan,
+        // which is the only approach possible.  We incrementally convert into a dummy buffer
+        // (at some loss of efficiency) rather than re-implement a UTF-8 decoder ourselves.
+        static int FindByteOffsetForCharOffset(ReadOnlySpan<byte> utf8Source, int charOffset, out char surrogate)
+        {
+            const int ChunkSize = 256;
+            Span<char> dummyBuffer = stackalloc char[ChunkSize];
+            int byteOffset = 0;
+            int charsRemaining = charOffset;
+
+            surrogate = '\0';
+
+            while (charsRemaining > 0)
+            {
+                if (byteOffset >= utf8Source.Length)
+                {
+                    throw new ArgumentOutOfRangeException(
+                        nameof(charOffset), 
+                        "Specified charOffset exceeds the length of the string. ");
+                }
+
+                var status = Utf8.ToUtf16(utf8Source[byteOffset..], 
+                                          dummyBuffer[0..Math.Min(ChunkSize, charsRemaining)],
+                                          out int bytesSkipped, out int charsSkipped,
+                                          replaceInvalidSequences: false, isFinalBlock: true);
+                CheckUtf8Status(status);
+
+                // Freak case where charOffset chops a UTF-16 surrogate pair in the middle.
+                // Repeat the conversion for the surrogate pair, and then output the low surrogate
+                // (trailing code unit), which the caller can set into the destination buffer.
+                if (charsRemaining == 1 && charsSkipped == 0)
+                {
+                    status = Utf8.ToUtf16(utf8Source[byteOffset..], 
+                                          dummyBuffer[0..2],
+                                          out bytesSkipped, out charsSkipped,
+                                          replaceInvalidSequences: false, isFinalBlock: true);
+                    if (charsSkipped != 2)
+                        status = OperationStatus.InvalidData;
+                    CheckUtf8Status(status);
+                    surrogate = dummyBuffer[1];
+                }
+
+                byteOffset += bytesSkipped;
+                charsRemaining -= charsSkipped;
+            }
+
+            return byteOffset;
+        }
+
+        static void CheckUtf8Status(OperationStatus status)
+        {
+            if (status == OperationStatus.InvalidData)
+                throw new InvalidOperationException("UTF-8 string is invalid and could not be converted to UTF-16. ");
+        }
+
+        int surrogateCount = 0;
+        if (charOffset > 0)
+        {
+            utf8Source = utf8Source[FindByteOffsetForCharOffset(utf8Source, charOffset, out char surrogate)..];
+            if (surrogate != '\0')
+            {
+                destination[0] = surrogate;
+                destination = destination[1..];
+                surrogateCount = 1;
+            }
+        }
+
+        var status = Utf8.ToUtf16(utf8Source, destination, out int bytesRead, out int charsWritten,
+                                  replaceInvalidSequences: false, isFinalBlock: true);
+        CheckUtf8Status(status);
+
+        // Fix up again if destination buffer is too short for the last surrogate pair.
+        if (charsWritten == destination.Length - 1 && bytesRead < utf8Source.Length)
+        {
+            Span<char> surrogateBuffer = new char[2];
+            status = Utf8.ToUtf16(utf8Source[bytesRead..], surrogateBuffer,
+                                  out _, out var charsWritten2,
+                                  replaceInvalidSequences: false, isFinalBlock: true);
+            if (charsWritten2 != 2)
+                status = OperationStatus.InvalidData;
+            CheckUtf8Status(status);
+            destination[^1] = surrogateBuffer[0];
+            surrogateCount++;
+        }
+
+        return charsWritten + surrogateCount;
     }
 }
