@@ -62,7 +62,7 @@ namespace Mallard;
 /// </remarks>
 [StructLayout(LayoutKind.Sequential)]
 public readonly struct DuckDbUuid(UInt128 value) 
-    : ISpanFormattable, IUtf8SpanFormattable, IStatelessConvertible<DuckDbUuid, Guid>
+    : ISpanFormattable, IUtf8SpanFormattable, IStatelesslyConvertible<DuckDbUuid, Guid>
 {
     private readonly DuckDbHugeUInt _data = new(value);
 
@@ -176,7 +176,7 @@ public readonly struct DuckDbUuid(UInt128 value)
 
     #region Type conversions for vector reader
 
-    static Guid IStatelessConvertible<DuckDbUuid, Guid>.Convert(ref readonly DuckDbUuid item) => item.ToGuid();
+    static Guid IStatelesslyConvertible<DuckDbUuid, Guid>.Convert(ref readonly DuckDbUuid item) => item.ToGuid();
 
     #endregion
 

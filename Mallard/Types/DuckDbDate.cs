@@ -15,7 +15,7 @@ namespace Mallard;
 /// layout of this structure. 
 /// </remarks>
 [StructLayout(LayoutKind.Sequential)]
-public struct DuckDbDate(int days) : IStatelessConvertible<DuckDbDate, DateOnly>
+public struct DuckDbDate(int days) : IStatelesslyConvertible<DuckDbDate, DateOnly>
 {
     /// <summary>
     /// Number of days since 1970-01-01 (Unix epoch).
@@ -46,7 +46,7 @@ public struct DuckDbDate(int days) : IStatelessConvertible<DuckDbDate, DateOnly>
 
     #region Type conversions for vector reader
 
-    static DateOnly IStatelessConvertible<DuckDbDate, DateOnly>.Convert(ref readonly DuckDbDate item) => item.ToDateOnly();
+    static DateOnly IStatelesslyConvertible<DuckDbDate, DateOnly>.Convert(ref readonly DuckDbDate item) => item.ToDateOnly();
 
     #endregion
 }

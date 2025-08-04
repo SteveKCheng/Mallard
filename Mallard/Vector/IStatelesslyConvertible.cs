@@ -24,7 +24,7 @@ namespace Mallard;
 /// and recently enabled in .NET with "static abstract" methods in interfaces.)
 /// </para>
 /// </remarks>
-internal interface IStatelessConvertible<TSource, TTarget> 
+internal interface IStatelesslyConvertible<TSource, TTarget> 
     where TSource : unmanaged, allows ref struct
     where TTarget : notnull
 {
@@ -54,7 +54,7 @@ internal readonly partial struct VectorElementConverter
     /// The .NET type to convert to.
     /// </typeparam>
     internal static unsafe VectorElementConverter CreateFor<TSource, TTarget>() 
-        where TSource : unmanaged, IStatelessConvertible<TSource, TTarget>, allows ref struct
+        where TSource : unmanaged, IStatelesslyConvertible<TSource, TTarget>, allows ref struct
         where TTarget : notnull
     {
         static TTarget ReadAndConvert(object? state, in DuckDbVectorInfo vector, int index)
@@ -74,7 +74,7 @@ internal readonly partial struct VectorElementConverter
     /// The underlying type in .NET (behind the <see cref="Nullable{T}" />) of the vector element after converter.
     /// </typeparam>
     internal static unsafe VectorElementConverter CreateNullableFor<TSource, TTarget>()
-        where TSource : unmanaged, IStatelessConvertible<TSource, TTarget>, allows ref struct
+        where TSource : unmanaged, IStatelesslyConvertible<TSource, TTarget>, allows ref struct
         where TTarget : struct
     {
         static TTarget? ReadAndConvert(object? state, in DuckDbVectorInfo vector, int index)
@@ -94,7 +94,7 @@ internal readonly partial struct VectorElementConverter
     /// The underlying type in .NET (behind the box) of the vector element after converter.
     /// </typeparam>
     internal static unsafe VectorElementConverter CreateBoxingFor<TSource, TTarget>()
-        where TSource : unmanaged, IStatelessConvertible<TSource, TTarget>, allows ref struct
+        where TSource : unmanaged, IStatelesslyConvertible<TSource, TTarget>, allows ref struct
         where TTarget : struct
     {
         static object ReadAndConvert(object? state, in DuckDbVectorInfo vector, int index)

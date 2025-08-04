@@ -11,7 +11,7 @@ namespace Mallard;
 /// This structure is only used for reading, not for writing/sending values to DuckDB.
 /// </remarks>
 [StructLayout(LayoutKind.Sequential)]
-public readonly ref struct DuckDbVarInt : IStatelessConvertible<DuckDbVarInt, BigInteger>
+public readonly ref struct DuckDbVarInt : IStatelesslyConvertible<DuckDbVarInt, BigInteger>
 {
     /// <summary>
     /// The blob that stores the VARINT.
@@ -112,6 +112,6 @@ public readonly ref struct DuckDbVarInt : IStatelessConvertible<DuckDbVarInt, Bi
         }
     }
 
-    static BigInteger IStatelessConvertible<DuckDbVarInt, BigInteger>.Convert(ref readonly DuckDbVarInt item)
+    static BigInteger IStatelesslyConvertible<DuckDbVarInt, BigInteger>.Convert(ref readonly DuckDbVarInt item)
         => item.ToBigInteger();
 }
