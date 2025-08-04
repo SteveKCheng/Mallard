@@ -391,15 +391,45 @@ public class DuckDbVectorDelegateReader : IDuckDbVector
                 throw new InvalidOperationException("UTF-8 string is invalid and could not be converted to UTF-16. ");
         }
 
+        // Tracks the byte position from start of UTF-8 string, for caching after this round of conversion.
+        int byteOffset = 0;
+
+        // Adjustment to charsWritten below for any unpaired surrogates written out.
         int surrogateCount = 0;
+
         if (charOffset > 0)
         {
-            utf8Source = utf8Source[FindByteOffsetForCharOffset(utf8Source, charOffset, out char surrogate)..];
+            int oldCharOffset = 0;
+
+            // Read cached positioning information from the last call.
+            // Ignore it if it is not useful information.
+            var cachedInfo = _cachedStringOffsetInfo.Value;
+            if (cachedInfo.RowIndex == rowIndex && cachedInfo.CharOffset <= charOffset)
+            {
+                oldCharOffset = cachedInfo.CharOffset;
+                byteOffset = cachedInfo.ByteOffset;
+            }
+
+            // After this statement completes, byteOffset corresponds to charOffset,
+            // except in the case of a surrogate pair (see below).
+            byteOffset += FindByteOffsetForCharOffset(utf8Source[byteOffset..], 
+                                                      charOffset - oldCharOffset, 
+                                                      out char surrogate);
+            utf8Source = utf8Source[byteOffset..];
+
+            // If charOffset points to the middle of a surrogate pair, then
+            // FindByteOffsetForCharOffset skipped over the whole pair, i.e.
+            // byteOffset actually corresponds to the character after the surrogate
+            // pair.  "Back-fill" the trailing surrogate that was skipped,
+            // and adjust charOffset by +1 to match.  (Note that this calculation is
+            // consistent with the fact that the variable "charsRemaining" in that
+            // function always ends up as -1 whenever this case occurs.)
             if (surrogate != '\0')
             {
-                destination[0] = surrogate;
+                destination[0] = surrogate; // already ensured destination.Length >= 1
                 destination = destination[1..];
-                surrogateCount = 1;
+                surrogateCount++;
+                charOffset++;
             }
         }
 
@@ -410,17 +440,49 @@ public class DuckDbVectorDelegateReader : IDuckDbVector
         // Fix up again if destination buffer is too short for the last surrogate pair.
         if (charsWritten == destination.Length - 1 && bytesRead < utf8Source.Length)
         {
-            Span<char> surrogateBuffer = new char[2];
-            status = Utf8.ToUtf16(utf8Source[bytesRead..], surrogateBuffer,
+            Span<char> surrogatePair = new char[2];
+            status = Utf8.ToUtf16(utf8Source[bytesRead..], surrogatePair,
                                   out _, out var charsWritten2,
                                   replaceInvalidSequences: false, isFinalBlock: true);
             if (charsWritten2 != 2)
                 status = OperationStatus.InvalidData;
             CheckUtf8Status(status);
-            destination[^1] = surrogateBuffer[0];
+            destination[^1] = surrogatePair[0];
             surrogateCount++;
+        }
+
+        // Cache positioning information if conversion has not ended for the current string.
+        // Any unpaired surrogate coming from the "if" block immediately above shall not be counted.
+        if (status == OperationStatus.DestinationTooSmall)
+        {
+            _cachedStringOffsetInfo.Value = (RowIndex: rowIndex,
+                                             CharOffset: charOffset + charsWritten,
+                                             ByteOffset: byteOffset + bytesRead);
         }
 
         return charsWritten + surrogateCount;
     }
+
+    /// <summary>
+    /// Last result of the search for the byte offset in <see cref="GetChars(int, Span{char}, int)" />.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// If the user calls <see cref="GetChars(int, Span{char}, int)" /> in a loop to read
+    /// a single string in consecutive segments, this caching prevents the algorithm
+    /// from incurring running time that is quadratic in the length of the string.
+    /// </para>
+    /// <para>
+    /// <c>ByteOffset</c> is the position measured in bytes from the start of the UTF-8 string
+    /// that corresponds to <c>CharOffset</c> which is the position measured in UTF-16 code units
+    /// from the start of the UTF-16 string.
+    /// </para>
+    /// <para>
+    /// Since UTF-8 to UTF-16 conversion cannot be restarted
+    /// in the middle of the surrogate pair, there is an invariant that 
+    /// <c>ByteOffset</c> and <c>CharOffset</c> will never
+    /// be set to end up in the middle of a UTF-8 byte sequence / UTF-16 surrogate pair. 
+    /// </para>
+    /// </remarks>
+    private Antitear<(int RowIndex, int CharOffset, int ByteOffset)> _cachedStringOffsetInfo;
 }
