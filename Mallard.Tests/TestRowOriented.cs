@@ -59,7 +59,7 @@ public class TestRowOriented(DatabaseFixture fixture) : IClassFixture<DatabaseFi
             var o_custkey = chunkReader.GetColumn<long>(1);
             var o_orderstatus = chunkReader.GetColumn<string>(2);
             var o_totalprice = chunkReader.GetColumn<decimal>(3);
-            var o_orderdate = chunkReader.GetColumn<DateOnly>(4);
+            var o_orderdate = chunkReader.GetColumn<DateTime>(4);
             var o_orderpriority = chunkReader.GetColumn<string>(5);
             var o_clerk = chunkReader.GetColumn<string>(6);
             var o_shippriority = chunkReader.GetColumn<int>(7);
@@ -72,7 +72,7 @@ public class TestRowOriented(DatabaseFixture fixture) : IClassFixture<DatabaseFi
                 Assert.Equal(o_custkey.GetItem(i), adoReader.GetInt64(1));
                 Assert.Equal(o_orderstatus.GetItem(i), adoReader.GetString(2));
                 Assert.Equal(o_totalprice.GetItem(i), adoReader.GetDecimal(3));
-                Assert.Equal(o_orderdate.GetItem(i), adoReader.GetFieldValue<DateOnly>(4));
+                Assert.Equal(o_orderdate.GetItem(i), adoReader.GetDateTime(4));
                 Assert.Equal(o_orderpriority.GetItem(i), adoReader.GetString(5));
                 Assert.Equal(o_clerk.GetItem(i), adoReader.GetString(6));
                 Assert.Equal(o_shippriority.GetItem(i), adoReader.GetInt32(7));

@@ -191,4 +191,6 @@ internal unsafe readonly ref struct ConverterCreationContext
 
         return new(columnInfo, Unsafe.AsPointer(ref target), &logicalTypeImplFn, flags);
     }
+
+    internal bool ConvertDatesAsDateTime => (TypeMappingFlags & DuckDbTypeMappingFlags.DatesAsDateTime) != 0;
 }
