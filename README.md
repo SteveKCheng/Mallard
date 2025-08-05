@@ -1,5 +1,7 @@
 # Mallard
 
+![logo](art/mallard.png)
+
 *WORK IN PROGRESS*
 
 Alternative .NET bindings for [DuckDB](https://duckdb.org/).
