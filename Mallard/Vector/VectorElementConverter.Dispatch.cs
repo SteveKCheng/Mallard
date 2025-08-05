@@ -199,7 +199,8 @@ internal readonly partial struct VectorElementConverter
 
             // Other numbers
             DuckDbValueKind.VarInt when Match(type, typeof(BigInteger)) => CreateFor<DuckDbVarInt, BigInteger>(),
-            DuckDbValueKind.Decimal when Match(type, typeof(Decimal)) => DuckDbDecimal.GetVectorElementConverter(context.ColumnInfo),
+            DuckDbValueKind.Decimal when Match(type, typeof(Decimal)) => DuckDbDecimal.GetConverterForDecimal(context.ColumnInfo),
+            DuckDbValueKind.Decimal when type == typeof(DuckDbDecimal) => DuckDbDecimal.GetConverterForDuckDbDecimal(context.ColumnInfo),
 
             // UUIDs
             DuckDbValueKind.Uuid when Match(type, typeof(Guid)) => CreateFor<DuckDbUuid, Guid>(),

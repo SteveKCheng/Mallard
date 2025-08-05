@@ -216,61 +216,92 @@ public readonly struct DuckDbDecimal
     #region Type conversions for vector reader
 
     /// <summary>
-    /// Read a decimal value encoded inside a DuckDB vector and converto to a .NET <see cref="Decimal" />.
+    /// Read a decimal value encoded inside a DuckDB vector and convert to a .NET value.
     /// </summary>
+    /// <remarks>
+    /// This generic function is to be instantiated for a finite set of cases (all known at compile-time).
+    /// The genericity is only to reduce code duplication.
+    /// </remarks>
     /// <typeparam name="TStorage">
     /// The storage type of the decimal values inside the DuckDB vector.
+    /// One of: <see cref="Int16" />, <see cref="Int32" />, <see cref="Int64" />, <see cref="Int128" />.
     /// </typeparam>
-    private static Decimal ConvertToDecimalFromVector<TStorage>(object? state, in DuckDbVectorInfo vector, int index)
+    /// <typeparam name="TResult">
+    /// The .NET result type of the conversion.   
+    /// Must be the same as <typeparamref name="TUnderlyingResult" />,
+    /// or the nullable version of that, or <see cref="System.Object" />.
+    /// </typeparam>
+    /// <typeparam name="TUnderlyingResult">
+    /// Either <see cref="DuckDbDecimal" /> or <see cref="Decimal" />.
+    /// </typeparam>
+    private static TResult ConvertFromVector<TStorage, TResult, TUnderlyingResult>(object? state, in DuckDbVectorInfo vector, int index)
+        where TStorage: unmanaged, IBinaryInteger<TStorage>
+        where TUnderlyingResult: struct
     {
         var decimalScale = vector.ColumnInfo.DecimalScale;
-        if (typeof(TStorage) == typeof(Int16))
-            return ConvertToDecimal(vector.UnsafeRead<Int16>(index), decimalScale);
-        else if (typeof(TStorage) == typeof(Int32))
-            return ConvertToDecimal(vector.UnsafeRead<Int32>(index), decimalScale);
-        else if (typeof(TStorage) == typeof(Int64))
-            return ConvertToDecimal(vector.UnsafeRead<Int64>(index), decimalScale);
-        else if (typeof(TStorage) == typeof(Int128))
-            return ConvertToDecimal(vector.UnsafeRead<Int128>(index), decimalScale);
-        else
-            throw new UnreachableException();
+
+        if (typeof(TUnderlyingResult) == typeof(DuckDbDecimal))
+        {
+            var decimalWidth = (byte)vector.ColumnInfo.ElementSize;
+            var value = new DuckDbDecimal(Int128.CreateTruncating(vector.UnsafeRead<TStorage>(index)),
+                                          decimalScale, decimalWidth);
+            if (typeof(TResult) == typeof(DuckDbDecimal) || typeof(TResult) == typeof(object))
+                return (TResult)(object)value;
+            if (typeof(TResult) == typeof(DuckDbDecimal?))
+                return (TResult)(object)new Nullable<DuckDbDecimal>(value);
+        }
+
+        if (typeof(TUnderlyingResult) == typeof(Decimal))
+        {
+            // Converting to Decimal directly without going through DuckDbDecimal is faster.
+            // e.g. Most applications do not use 128-bit storage which eliminates all
+            //      exception-throwing code paths.
+
+            Decimal value;
+            if (typeof(TStorage) == typeof(Int16))
+                value = ConvertToDecimal(vector.UnsafeRead<Int16>(index), decimalScale);
+            else if (typeof(TStorage) == typeof(Int32))
+                value = ConvertToDecimal(vector.UnsafeRead<Int32>(index), decimalScale);
+            else if (typeof(TStorage) == typeof(Int64))
+                value = ConvertToDecimal(vector.UnsafeRead<Int64>(index), decimalScale);
+            else if (typeof(TStorage) == typeof(Int128))
+                value = ConvertToDecimal(vector.UnsafeRead<Int128>(index), decimalScale);
+            else
+                throw new UnreachableException();
+
+            if (typeof(TResult) == typeof(Decimal) || typeof(TResult) == typeof(object))
+                return (TResult)(object)value;
+            if (typeof(TResult) == typeof(Decimal?))
+                return (TResult)(object)new Nullable<Decimal>(value);
+        }
+
+        throw new UnreachableException();
     }
 
-    private static object ConvertToBoxedDecimalFromVector<TStorage>(object? state, in DuckDbVectorInfo vector, int index)
-        => (object)ConvertToDecimalFromVector<TStorage>(state, vector, index);
-
-    private static Decimal? ConvertToNullableDecimalFromVector<TStorage>(object? state, in DuckDbVectorInfo vector, int index)
-        => new Nullable<Decimal>(ConvertToDecimalFromVector<TStorage>(state, vector, index));
-
-    internal unsafe static VectorElementConverter GetVectorElementConverter(in DuckDbColumnInfo column)
+    private unsafe static VectorElementConverter GetConverterGeneric<TResult, TUnderlyingResult>(in DuckDbColumnInfo column)
+        where TUnderlyingResult : struct
         => column.StorageKind switch
         {
-            DuckDbValueKind.SmallInt => VectorElementConverter.Create(&ConvertToDecimalFromVector<Int16>),
-            DuckDbValueKind.Integer => VectorElementConverter.Create(&ConvertToDecimalFromVector<Int32>),
-            DuckDbValueKind.BigInt => VectorElementConverter.Create(&ConvertToDecimalFromVector<Int64>),
-            DuckDbValueKind.HugeInt => VectorElementConverter.Create(&ConvertToDecimalFromVector<Int128>),
+            DuckDbValueKind.SmallInt => VectorElementConverter.Create(&ConvertFromVector<Int16, TResult, TUnderlyingResult>),
+            DuckDbValueKind.Integer => VectorElementConverter.Create(&ConvertFromVector<Int32, TResult, TUnderlyingResult>),
+            DuckDbValueKind.BigInt => VectorElementConverter.Create(&ConvertFromVector<Int64, TResult, TUnderlyingResult>),
+            DuckDbValueKind.HugeInt => VectorElementConverter.Create(&ConvertFromVector<Int128, TResult, TUnderlyingResult>),
             _ => throw new InvalidOperationException("Cannot decode Decimal from a DuckDB vector with the given storage type. ")
         };
 
-    internal unsafe static VectorElementConverter GetBoxedVectorElementConverter(in DuckDbColumnInfo column)
-        => column.StorageKind switch
-        {
-            DuckDbValueKind.SmallInt => VectorElementConverter.Create(&ConvertToBoxedDecimalFromVector<Int16>),
-            DuckDbValueKind.Integer => VectorElementConverter.Create(&ConvertToBoxedDecimalFromVector<Int32>),
-            DuckDbValueKind.BigInt => VectorElementConverter.Create(&ConvertToBoxedDecimalFromVector<Int64>),
-            DuckDbValueKind.HugeInt => VectorElementConverter.Create(&ConvertToBoxedDecimalFromVector<Int128>),
-            _ => throw new InvalidOperationException("Cannot decode Decimal from a DuckDB vector with the given storage type. ")
-        };
+    internal static VectorElementConverter GetConverterForDuckDbDecimal(in DuckDbColumnInfo column)
+        => GetConverterGeneric<DuckDbDecimal, DuckDbDecimal>(column);
+    internal static VectorElementConverter GetConverterForNullableDuckDbDecimal(in DuckDbColumnInfo column)
+        => GetConverterGeneric<DuckDbDecimal?, DuckDbDecimal>(column);
+    internal static VectorElementConverter GetConverterForBoxedDuckDbDecimal(in DuckDbColumnInfo column)
+        => GetConverterGeneric<object, DuckDbDecimal>(column);
 
-    internal unsafe static VectorElementConverter GetNullableVectorElementConverter(in DuckDbColumnInfo column)
-        => column.StorageKind switch
-        {
-            DuckDbValueKind.SmallInt => VectorElementConverter.Create(&ConvertToNullableDecimalFromVector<Int16>),
-            DuckDbValueKind.Integer => VectorElementConverter.Create(&ConvertToNullableDecimalFromVector<Int32>),
-            DuckDbValueKind.BigInt => VectorElementConverter.Create(&ConvertToNullableDecimalFromVector<Int64>),
-            DuckDbValueKind.HugeInt => VectorElementConverter.Create(&ConvertToNullableDecimalFromVector<Int128>),
-            _ => throw new InvalidOperationException("Cannot decode Decimal from a DuckDB vector with the given storage type. ")
-        };
+    internal static VectorElementConverter GetConverterForDecimal(in DuckDbColumnInfo column)
+        => GetConverterGeneric<Decimal, Decimal>(column);
+    internal static VectorElementConverter GetConverterForNullableDecimal(in DuckDbColumnInfo column)
+        => GetConverterGeneric<Decimal?, Decimal>(column);
+    internal static VectorElementConverter GetConverterForBoxedDecimal(in DuckDbColumnInfo column)
+        => GetConverterGeneric<object, Decimal>(column);
 
     #endregion
 }

@@ -39,7 +39,7 @@ internal readonly partial struct VectorElementConverter
             DuckDbValueKind.UHugeInt => CreateForBoxedPrimitive<UInt128>(),
             DuckDbValueKind.HugeInt => CreateForBoxedPrimitive<Int128>(),
 
-            DuckDbValueKind.Decimal => DuckDbDecimal.GetBoxedVectorElementConverter(context.ColumnInfo),
+            DuckDbValueKind.Decimal => DuckDbDecimal.GetConverterForBoxedDecimal(context.ColumnInfo),
             DuckDbValueKind.VarInt => CreateBoxingFor<DuckDbVarInt, BigInteger>(),
 
             DuckDbValueKind.Uuid => CreateBoxingFor<DuckDbUuid, Guid>(),
@@ -110,7 +110,8 @@ internal readonly partial struct VectorElementConverter
             DuckDbValueKind.UHugeInt when underlyingType == typeof(UInt128) => CreateForNullablePrimitive<UInt128>(),
             DuckDbValueKind.HugeInt when underlyingType == typeof(Int128) => CreateForNullablePrimitive<Int128>(),
 
-            DuckDbValueKind.Decimal when underlyingType == typeof(Decimal) => DuckDbDecimal.GetNullableVectorElementConverter(context.ColumnInfo),
+            DuckDbValueKind.Decimal when underlyingType == typeof(Decimal) => DuckDbDecimal.GetConverterForNullableDecimal(context.ColumnInfo),
+            DuckDbValueKind.Decimal when underlyingType == typeof(DuckDbDecimal) => DuckDbDecimal.GetConverterForNullableDuckDbDecimal(context.ColumnInfo),
             DuckDbValueKind.VarInt when underlyingType == typeof(BigInteger) => CreateNullableFor<DuckDbVarInt, BigInteger>(),
 
             // UUIDs
