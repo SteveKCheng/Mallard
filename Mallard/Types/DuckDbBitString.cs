@@ -13,7 +13,7 @@ namespace Mallard;
 /// This structure is only used for reading, not for writing/sending values to DuckDB.
 /// </remarks>
 [StructLayout(LayoutKind.Sequential)]
-public readonly ref struct DuckDbBitString
+public readonly ref struct DuckDbBitString : IStatelesslyConvertible<DuckDbBitString, BitArray>
 {
     /// <summary>
     /// The blob that stores the bit string.
@@ -269,11 +269,8 @@ public readonly ref struct DuckDbBitString
 
     #region Vector element converter
 
-    private static BitArray ConvertToBitArrayFromVector(object? state, in DuckDbVectorInfo vector, int index)
-    => vector.UnsafeRead<DuckDbBitString>(index).ToBitArray();
-
-    internal unsafe static VectorElementConverter VectorElementConverter
-        => VectorElementConverter.Create(&ConvertToBitArrayFromVector);
+    static BitArray IStatelesslyConvertible<DuckDbBitString, BitArray>.Convert(ref readonly DuckDbBitString item)
+        => item.ToBitArray();
 
     #endregion
 }

@@ -30,7 +30,7 @@ namespace Mallard;
 /// </para>
 /// </remarks>
 [StructLayout(LayoutKind.Explicit)]
-public unsafe ref struct DuckDbBlob
+public unsafe ref struct DuckDbBlob : IStatelesslyConvertible<DuckDbBlob, byte[]>
 {
     /// <summary>
     /// Capacity of the inline buffer for short blobs.
@@ -82,11 +82,8 @@ public unsafe ref struct DuckDbBlob
 
     #region Vector element converter
 
-    private static byte[] ConvertToByteArrayFromVector(object? state, in DuckDbVectorInfo vector, int index)
-        => vector.UnsafeRead<DuckDbBlob>(index).AsSpan().ToArray();
-
-    internal unsafe static VectorElementConverter VectorElementConverter
-        => VectorElementConverter.Create(&ConvertToByteArrayFromVector);
+    static byte[] IStatelesslyConvertible<DuckDbBlob, byte[]>.Convert(ref readonly DuckDbBlob item)
+        => item.AsSpan().ToArray();
 
     #endregion
 }

@@ -27,24 +27,18 @@ namespace Mallard;
 /// </para>
 /// </remarks>
 [StructLayout(LayoutKind.Sequential)]
-public readonly ref struct DuckDbString
+public readonly ref struct DuckDbString : IStatelesslyConvertible<DuckDbString, string>
 {
     internal readonly DuckDbBlob _blob;
-
-    /// <summary>
-    /// Implementation of reading an element for <see cref="DuckDbVectorReader{string}" />.
-    /// </summary>
-    private static string ReadStringFromVector(object? state, in DuckDbVectorInfo vector, int index)
-        => vector.UnsafeRead<DuckDbString>(index).ToString();
-
-    internal unsafe static VectorElementConverter VectorElementConverter
-        => VectorElementConverter.Create(&ReadStringFromVector);
 
     /// <summary>
     /// Convert the UTF-8 string from DuckDB into a .NET string (in UTF-16).
     /// </summary>
     /// <returns>The string in UTF-16 encoding. </returns>
     public override string ToString() => Encoding.UTF8.GetString(DuckDbBlob.AsSpan(in _blob));
+
+    static string IStatelesslyConvertible<DuckDbString, string>.Convert(ref readonly DuckDbString item)
+        => item.ToString();
 }
 
 public static partial class DuckDbVectorMethods

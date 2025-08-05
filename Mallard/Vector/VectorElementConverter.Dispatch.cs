@@ -208,9 +208,9 @@ internal readonly partial struct VectorElementConverter
             DuckDbValueKind.Uuid when type == typeof(UInt128) => CreateForPrimitive<UInt128>(),
 
             // Variable-length types excluding generic containers
-            DuckDbValueKind.VarChar when Match(type, typeof(string)) => DuckDbString.VectorElementConverter,
-            DuckDbValueKind.Bit when Match(type, typeof(BitArray)) => DuckDbBitString.VectorElementConverter,
-            DuckDbValueKind.Blob when Match(type, typeof(byte[])) => DuckDbBlob.VectorElementConverter,
+            DuckDbValueKind.VarChar when Match(type, typeof(string)) => CreateFor<DuckDbString, string>(),
+            DuckDbValueKind.Bit when Match(type, typeof(BitArray)) => CreateFor<DuckDbBitString, BitArray>(),
+            DuckDbValueKind.Blob when Match(type, typeof(byte[])) => CreateFor<DuckDbBlob, byte[]>(),
 
             // N.B. This matches only T[] and not arbitrary System.Array objects
             // (with arbitrary ranks and lower/upper bounds)
