@@ -35,7 +35,7 @@ without intermediate copying or heavy conversions involving GC objects.  I think
 useful in applications involving machine learning or data science.  An ADO.NET-based interface would just 
 not be performant enough, and so I do not put high priority on it.
 
-## What works today (as of July 23, 2025)
+## What works today (as of August 5, 2025)
 
   - [X] Executing SQL queries and reading results incrementally
   - [X] Prepared statements with parameter binding
@@ -51,9 +51,11 @@ not be performant enough, and so I do not put high priority on it.
     - [X] bit strings (BITSTRING → ``System.Collections.BitArray``)
     - [X] blobs (BLOB → ``byte[]``)
     - [X] variable-length lists (LIST → .NET array or ``System.Collections.ImmutableArray<T>``)
-    - [X] date (DATE → ``System.Date``)
+    - [X] date (DATE → ``System.DateOnly`` or ``System.DateTime``)
     - [X] timestamp (TIMESTAMP → ``System.DateTime``)
     - [X] time intervals
+    - [X] UUIDs (UUID → ``System.Guid``)
+  - [X] ADO.NET-compatible data reader (``System.Data.Common.DbDataReader``)
   - [X] Null values in database can be checked explicitly or flagged implicitly with ``System.Nullable<T>`` element types
   - [X] Thread-safe and memory-safe public API 
     - If you do not use unsafe code, then even improper use of the public API should not crash the .NET run-time
@@ -68,10 +70,11 @@ not be performant enough, and so I do not put high priority on it.
     - STRUCT
     - arrays (fixed-length)
   - Not all types whose values can be read (from DuckDB vectors) can be bound to parameters in prepared statements
-  - ``System.Data`` (ADO.NET) -compatible interfaces
+  - ``System.Data`` (ADO.NET) -compatible interfaces for:
+    - connections
+    - prepared statements
   - Caching of objects
     - Open DuckDB database objects
-    - Certain converters (e.g. for enums) that are heavy to construct
   - User-defined functions
   - Appenders (DuckDB's API to insert many values quickly into a table)
   - Proper NuGet packaging
@@ -84,6 +87,42 @@ not be performant enough, and so I do not put high priority on it.
     - Conversion for primitive types does not require reflection; all code is statically visible to the compiler
   - Only tested on Windows so far
     - Although the .NET library makes no Windows-specific assumptions and should be portable to all the desktop platforms supported by .NET
+
+## Design philosophy
+
+As you might have guessed, Mallard's author is opinionated on the design.  The priorities, in order, are:
+
+  1. Always ensure memory and thread safety in the public API.
+  2. Highly efficient implementation, and an API that does not impair that efficiency.  
+     Avoid unnecessary use of GC objects and virtual method calls.
+  3. API shape leans towards being “functional”, and not “enterprisey” object orientation. 
+  4. Good coverage in documentation and testing.
+  
+In detail:
+  
+  - [1] is not compromisable.  (In contrast, DuckDB.NET states, in several places in its documentation, that misuse of its API can
+    cause memory corruption.  That is not acceptable for Mallard, which aims to be a well-behaved member of the .NET ecosystem.)
+  - Mallard uses the latest .NET and C# features to achieve the best efficiency [2] under the constraint of [1].  The notable
+    of those features are: 
+      - ``ref struct``
+      - function pointers (internally, not exposed in the public API
+      - specialization of generics (taking advantage of the fact that generics on value types are always monomorphized)
+  - Mallard is not AOT-compatible currently but there are plans to make it so.
+  - Mallard does not bother to be compatible with legacy .NET platforms such as .NET Framework 4.x.  If you want
+    efficiency, you probably would have upgraded already.
+  - On [3], Mallard prioritizes its own high-performance APIs, but will also implement the standard ADO.NET API 
+    in the most efficient yet safe way possible.  
+  - For both reasons of thread safety, and simplicity of its own implementation, Mallard's APIs make certain 
+    attributes of objects/values be immutable once constructed. Mallard's author in particular does not hold in 
+    high regard ADO.NET's tendency (and more generally, of the “enterprise” code style popular in the early 2000s)
+    to wrap everything in layers of objects with read/write properties.
+  - The “test bed” for Mallard's API will be “data science” applications, where column-oriented processing
+    of data is a normal state of affairs, which of course plays to DuckDB's strengths. (Traditional database APIs
+    like ADO.NET are usually row-oriented.)
+  - On [4], the author even takes the time to document internal aspects of the implementation.  This may help
+    you evaluate the quality of the construction of this library. 
+  - The testing of this library is unfortunately, at the moment, fairly weak but this should hopefully improve
+    in the future.
 
 ## About the name
 
