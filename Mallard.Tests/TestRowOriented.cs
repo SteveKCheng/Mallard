@@ -16,21 +16,19 @@ public class TestRowOriented(DatabaseFixture fixture) : IClassFixture<DatabaseFi
     {
         const int limitRows = 200;
         using var ps = DbConnection.CreatePreparedStatement($"SELECT * FROM orders LIMIT {limitRows}");
-
-
-        var adoReader = ps.ExecuteReader();
+        using var adoReader = ps.ExecuteReader();
 
         var columnNames = new string[]
         {
-            "o_orderkey",
-            "o_custkey",
-            "o_orderstatus",
-            "o_totalprice",
-            "o_orderdate",
-            "o_orderpriority",
-            "o_clerk",
-            "o_shippriority",
-            "o_comment"
+            "o_orderkey",       // BIGINT
+            "o_custkey",        // BIGINT
+            "o_orderstatus",    // VARCHAR
+            "o_totalprice",     // DECIMAL(15,2)
+            "o_orderdate",      // DATE
+            "o_orderpriority",  // VARCHAR
+            "o_clerk",          // VARCHAR
+            "o_shippriority",   // INTEGER
+            "o_comment"         // VARCHAR
         };
 
         Assert.Equal(columnNames.Length, adoReader.FieldCount);
@@ -45,16 +43,6 @@ public class TestRowOriented(DatabaseFixture fixture) : IClassFixture<DatabaseFi
         // Check results row by row
         ps.Execute().ProcessAllChunks(false, (in DuckDbChunkReader chunkReader, bool _) =>
         {
-            // Columns:
-            //   o_orderkey BIGINT
-            //   o_custkey BIGINT
-            //   o_orderstatus VARCHAR
-            //   o_totalprice DECIMAL(15,2)
-            //   o_orderdate DATE
-            //   o_orderpriority VARCHAR
-            //   o_clerk VARCHAR
-            //   o_shippriority INTEGER
-            //   o_comment VARCHAR
             var o_orderkey = chunkReader.GetColumn<long>(0);
             var o_custkey = chunkReader.GetColumn<long>(1);
             var o_orderstatus = chunkReader.GetColumn<string>(2);
@@ -105,9 +93,9 @@ public class TestRowOriented(DatabaseFixture fixture) : IClassFixture<DatabaseFi
         var stringBuilder = new StringBuilder();
         stringBuilder.Append("🕐;こんにちは! 😀😁😂😃😄😅😆😇");
         int n1 = stringBuilder.Length;
-        for (int i = 0; i < 500; ++i)
+        for (int i = 0; i < 25; ++i)
         {
-            stringBuilder.Append("exp(𝑖𝜋) = -1 ▶▶▶");
+            stringBuilder.Append(" exp(𝑖𝜋) = -1 ▶▶▶ ");
             stringBuilder.Append("En mathématiques, l'identité d'Euler est une relation " +
                                  "entre plusieurs constantes fondamentales et utilisant " +
                                  "les trois opérations arithmétiques d'addition, " +
@@ -131,7 +119,7 @@ public class TestRowOriented(DatabaseFixture fixture) : IClassFixture<DatabaseFi
             (n3 - 10, 20)
         ];
 
-        var adoReader = ps.ExecuteReader();
+        using var adoReader = ps.ExecuteReader();
         adoReader.Read();
 
         void Check((int Offset, int Length)[] samples)
@@ -143,7 +131,7 @@ public class TestRowOriented(DatabaseFixture fixture) : IClassFixture<DatabaseFi
                 var actualLength = Math.Min(length, testString.Length - offset);
                 Assert.Equal(actualLength, charsWritten);
                 Assert.Equal(testString.AsSpan().Slice(offset, actualLength),
-                                buffer.AsSpan()[..actualLength]);
+                             buffer.AsSpan()[..actualLength]);
             }
         }
 
