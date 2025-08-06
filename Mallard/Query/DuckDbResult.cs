@@ -54,6 +54,9 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
     {
         TypeMappingFlags = typeMappingFlags;
 
+        // FIXME This constructor needs to be passed this
+        _typeMapping = DuckDbTypeMapping.Default;
+
         _nativeResult = nativeResult;
 
         var columnCount = (int)NativeMethods.duckdb_column_count(ref _nativeResult);
@@ -209,7 +212,8 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
                 var columnInfo = new DuckDbColumnInfo(ref nativeResult, 0);
                 var vectorInfo = new DuckDbVectorInfo(nativeVector, length, columnInfo);
 
-                var reader = new DuckDbVectorReader<T>(vectorInfo);
+                // FIXME this function needs to be passed DuckDbTypeMapping
+                var reader = new DuckDbVectorReader<T>(vectorInfo, DuckDbTypeMapping.Default);
                 bool isValid = reader.TryGetItem(0, out var item);
                 if (!isValid && !reader.DefaultValueIsInvalid)
                 {
@@ -624,6 +628,11 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
     public DuckDbTypeMappingFlags TypeMappingFlags { get; }
 
     /// <summary>
+    /// Settings informing type conversion, ultimately passed in from the user.
+    /// </summary>
+    private readonly DuckDbTypeMapping _typeMapping;
+
+    /// <summary>
     /// The number of columns present in the result.
     /// </summary>
     public int ColumnCount => _columns.Length;
@@ -672,7 +681,7 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
         {
             using var _ = _refCount.EnterScope(_nativeResult);
             var descriptor = new ConverterCreationContext.ColumnDescriptor(ref _nativeResult, columnIndex);
-            var context = ConverterCreationContext.FromColumn(columnInfo, ref descriptor, TypeMappingFlags);
+            var context = ConverterCreationContext.FromColumn(columnInfo, ref descriptor, _typeMapping, TypeMappingFlags);
             var converter = VectorElementConverter.CreateForType(targetType, in context);
             if (!converter.IsValid)
                 DuckDbVectorInfo.ThrowForWrongParamType(columnInfo, targetType ?? typeof(object));

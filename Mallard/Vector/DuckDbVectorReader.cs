@@ -69,12 +69,15 @@ public unsafe readonly ref struct
     /// <param name="vector">
     /// The vector to read from.
     /// </param>
+    /// <param name="typeMapping">
+    /// Type mapping information from the user.
+    /// </param>
     /// <remarks>
     /// This constructor should only be used for "one-off" conversions where caching is not possible
     /// or beneficial.
     /// </remarks>
-    internal DuckDbVectorReader(scoped in DuckDbVectorInfo vector)
-        : this(vector, VectorElementConverter.CreateForVector(typeof(T), vector))
+    internal DuckDbVectorReader(scoped in DuckDbVectorInfo vector, DuckDbTypeMapping typeMapping)
+        : this(vector, VectorElementConverter.CreateForVector(typeof(T), typeMapping, vector))
     {
     }
 

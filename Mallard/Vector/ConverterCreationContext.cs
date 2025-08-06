@@ -40,7 +40,18 @@ internal unsafe readonly ref struct ConverterCreationContext
     /// </summary>
     public DuckDbColumnInfo ColumnInfo { get; }
 
+    /// <summary>
+    /// Conventions for mapping certain types "by default".
+    /// </summary>
+    /// <remarks>
+    /// This overrides <see cref="DuckDbTypeMapping.TypeMappingFlags" />.
+    /// </remarks>
     public DuckDbTypeMappingFlags TypeMappingFlags { get; }
+
+    /// <summary>
+    /// Information on how to convert types as passed in by the user.
+    /// </summary>
+    public DuckDbTypeMapping TypeMapping { get; }
 
     /// <summary>
     /// Obtain a handle to the "logical type" object from the native DuckDB library.
@@ -106,10 +117,13 @@ internal unsafe readonly ref struct ConverterCreationContext
     private ConverterCreationContext(DuckDbColumnInfo columnInfo, 
                                      void* logicalTypeImplState,
                                      LogicalTypeImplFn logicalTypeImplFn,
+                                     DuckDbTypeMapping typeMapping,
                                      DuckDbTypeMappingFlags flags)
     {
         ColumnInfo = columnInfo;
         TypeMappingFlags = flags;
+        TypeMapping = typeMapping;
+
         _logicalTypeImplState = logicalTypeImplState;
         _logicalTypeImplFn = logicalTypeImplFn;
     }
@@ -121,21 +135,24 @@ internal unsafe readonly ref struct ConverterCreationContext
         DuckDbColumnInfo columnInfo,
         T* logicalTypeImplState,
         delegate*<T*, _duckdb_logical_type*> logicalTypeImplFn,
+        DuckDbTypeMapping typeMapping,
         DuckDbTypeMappingFlags flags)
         where T : unmanaged, allows ref struct
     {
-        return new(columnInfo, logicalTypeImplState, (LogicalTypeImplFn)logicalTypeImplFn, flags);
+        return new(columnInfo, logicalTypeImplState, (LogicalTypeImplFn)logicalTypeImplFn, typeMapping, flags);
     }
 
     /// <summary>
     /// Construct context when an actual vector is available (not just the abstract column).
     /// </summary>
-    internal static ConverterCreationContext FromVector(in DuckDbVectorInfo vector, DuckDbTypeMappingFlags flags = default)
+    internal static ConverterCreationContext FromVector(in DuckDbVectorInfo vector, 
+                                                        DuckDbTypeMapping typeMapping,
+                                                        DuckDbTypeMappingFlags flags = default)
     {
         static _duckdb_logical_type* logicalTypeImplFn(_duckdb_vector* nativeVector)
             => NativeMethods.duckdb_vector_get_column_type(nativeVector);
 
-        return Create(vector.ColumnInfo, vector.NativeVector, &logicalTypeImplFn, flags);
+        return Create(vector.ColumnInfo, vector.NativeVector, &logicalTypeImplFn, typeMapping, flags);
     }
 
     /// <summary>
@@ -174,6 +191,7 @@ internal unsafe readonly ref struct ConverterCreationContext
     /// </param>
     internal static ConverterCreationContext FromColumn(in DuckDbColumnInfo columnInfo, 
                                                         ref ColumnDescriptor target, 
+                                                        DuckDbTypeMapping typeMapping,
                                                         DuckDbTypeMappingFlags flags)
     {
         static _duckdb_logical_type* logicalTypeImplFn(void* p)
@@ -189,7 +207,7 @@ internal unsafe readonly ref struct ConverterCreationContext
             return NativeMethods.duckdb_column_logical_type(ref target->_nativeResult, target->_columnIndex);
         }
 
-        return new(columnInfo, Unsafe.AsPointer(ref target), &logicalTypeImplFn, flags);
+        return new(columnInfo, Unsafe.AsPointer(ref target), &logicalTypeImplFn, typeMapping, flags);
     }
 
     internal bool ConvertDatesAsDateTime => (TypeMappingFlags & DuckDbTypeMappingFlags.DatesAsDateTime) != 0;

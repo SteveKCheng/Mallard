@@ -91,6 +91,7 @@ internal readonly partial struct VectorElementConverter
     /// for the element type of a vector and the desired .NET type.
     /// </summary>
     /// <param name="type">The desired .NET type to convert elements to. </param>
+    /// <param name="typeMapping">Settings for type conversion coming from the user. </param>
     /// <param name="vector">The target vector. </param>
     /// <returns>
     /// Instance of <see cref="VectorElementConverter" /> that is closed for
@@ -102,9 +103,9 @@ internal readonly partial struct VectorElementConverter
     /// of code when the generic type is instantiated.
     /// </remarks>
     internal static VectorElementConverter
-        CreateForVector(Type type, in DuckDbVectorInfo vector)
+        CreateForVector(Type type, DuckDbTypeMapping typeMapping, in DuckDbVectorInfo vector)
     {
-        var context = ConverterCreationContext.FromVector(vector);
+        var context = ConverterCreationContext.FromVector(vector, typeMapping);
         var converter = CreateForType(type, in context);
 
         if (!converter.IsValid)
