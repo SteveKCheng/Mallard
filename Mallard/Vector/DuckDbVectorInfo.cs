@@ -84,7 +84,13 @@ internal unsafe readonly struct DuckDbVectorInfo
         ColumnInfo = columnInfo;
 
         NativeVector = nativeVector;
-        DataPointer = NativeMethods.duckdb_vector_get_data(nativeVector);
+
+        // DuckDB's documentation says duckdb_vector_get_data should not be called for
+        // the STRUCT type.  It does not say so for the ARRAY type, but since there is
+        // a dedicated function to get the array data, we assume the same applies.
+        if (columnInfo.ValueKind != DuckDbValueKind.Struct && columnInfo.ValueKind != DuckDbValueKind.Array)
+            DataPointer = NativeMethods.duckdb_vector_get_data(nativeVector);
+
         _validityMask = NativeMethods.duckdb_vector_get_validity(nativeVector);
 
         Length = length;
@@ -235,6 +241,8 @@ internal unsafe readonly struct DuckDbVectorInfo
             DuckDbValueKind.Enum => typeof(T) == typeof(byte) ||
                                     typeof(T) == typeof(ushort) ||
                                     typeof(T) == typeof(uint),
+
+            DuckDbValueKind.Struct => typeof(T) == typeof(DuckDbStructRef),
             _ => false,
         };
     }

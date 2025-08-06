@@ -121,7 +121,7 @@ public readonly ref struct DuckDbVectorRawReader<T> : IDuckDbVector<T>
     /// <inheritdoc cref="IDuckDbVector{T}.GetItem(int)" />
     public unsafe T GetItem(int index)
     {
-        if (typeof(T) == typeof(DuckDbArrayRef))
+        if (typeof(T) == typeof(DuckDbArrayRef) || typeof(T) == typeof(DuckDbStructRef))
             DuckDbVectorMethods.ThrowForAccessingNonexistentItems(typeof(T));
 
         _info.VerifyItemIsValid(index);
@@ -131,7 +131,7 @@ public readonly ref struct DuckDbVectorRawReader<T> : IDuckDbVector<T>
     /// <inheritdoc cref="IDuckDbVector{T}.TryGetItem(int, out T)" />
     public unsafe bool TryGetItem(int index, out T item)
     {
-        if (typeof(T) == typeof(DuckDbArrayRef))
+        if (typeof(T) == typeof(DuckDbArrayRef) || typeof(T) == typeof(DuckDbStructRef))
             DuckDbVectorMethods.ThrowForAccessingNonexistentItems(typeof(T));
 
         if (_info.IsItemValid(index))

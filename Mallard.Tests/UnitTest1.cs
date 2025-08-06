@@ -152,4 +152,26 @@ public class UnitTest1(DatabaseFixture fixture) : IClassFixture<DatabaseFixture>
             return true;    // unused return value
         });
     }
+
+    [Fact]
+    public void ReadRawStruct()
+    {
+        using var dbConn = new DuckDbConnection("");
+        using var dbResult = dbConn.Execute("SELECT struct_pack(re := 0.0::DOUBLE, im := pi()::DOUBLE) AS z");
+
+        dbResult.ProcessNextChunk(false, (in DuckDbChunkReader reader, bool _) =>
+        {
+            var column = reader.GetColumnRaw<DuckDbStructRef>(0);
+            Assert.Equal(2, column.ColumnInfo.ElementSize);
+            Assert.Equal("re", column.GetMemberName(0));
+            Assert.Equal("im", column.GetMemberName(1));
+
+            var re = column.GetMemberItemsRaw<double>(0).GetItem(0);
+            var im = column.GetMemberItemsRaw<double>(1).GetItem(0);
+
+            Assert.Equal(0.0, re);
+            Assert.Equal(Math.PI, im, tolerance: 1e-15);
+            return true;    // unused return value
+        }, out _);
+    }
 }
