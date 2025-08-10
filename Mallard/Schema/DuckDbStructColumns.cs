@@ -17,14 +17,19 @@ public unsafe sealed class DuckDbStructColumns : IResultColumns, IDisposable
 {
     private HandleRefCount _refCount;
     private _duckdb_logical_type* _nativeType;
+    
+    internal DuckDbTypeMapping TypeMapping { get; }
 
     /// <inheritdoc cref="IResultColumns.ColumnCount" />
     public int ColumnCount { get; }
 
-    VectorElementConverter IResultColumns.GetColumnConverter(int columnIndex, Type? targetType)
+    internal VectorElementConverter GetColumnConverter(int columnIndex, Type? targetType)
     {
         throw new NotImplementedException();
     }
+
+    VectorElementConverter IResultColumns.GetColumnConverter(int columnIndex, Type? targetType)
+        => GetColumnConverter(columnIndex, targetType);
 
     private void CheckColumnIndex(int columnIndex)
     {
@@ -37,7 +42,7 @@ public unsafe sealed class DuckDbStructColumns : IResultColumns, IDisposable
     }
 
     /// <inheritdoc cref="IResultColumns.GetColumnInfo(int)" />
-    DuckDbColumnInfo IResultColumns.GetColumnInfo(int columnIndex)
+    public DuckDbColumnInfo GetColumnInfo(int columnIndex)
     {
         CheckColumnIndex(columnIndex);
 
@@ -68,13 +73,29 @@ public unsafe sealed class DuckDbStructColumns : IResultColumns, IDisposable
     /// for a STRUCT type.  Ownership is transferred from the caller when an instance
     /// is successfully constructed.
     /// </param>
-    internal DuckDbStructColumns(ref _duckdb_logical_type* nativeType)
+    internal DuckDbStructColumns(ref _duckdb_logical_type* nativeType, DuckDbTypeMapping typeMapping)
     {
+        TypeMapping = typeMapping;
+
         _nativeType = nativeType;
         ColumnCount = (int)NativeMethods.duckdb_struct_type_child_count(nativeType);
 
         // Ownership transfer from the caller.
         nativeType = default;
+    }
+
+    internal static DuckDbStructColumns Create(ref readonly ConverterCreationContext context)
+    {
+        var nativeType = context.GetNativeLogicalType();
+        try
+        {
+            return new DuckDbStructColumns(ref nativeType, context.TypeMapping);
+        }
+        catch
+        {
+            NativeMethods.duckdb_destroy_logical_type(ref nativeType);
+            throw;
+        }
     }
 
     private void DisposeImpl(bool disposing)

@@ -221,6 +221,8 @@ internal readonly partial struct VectorElementConverter
             DuckDbValueKind.List when type.GetGenericUnderlyingType(typeof(ImmutableArray<>)) is Type elementType
                 => ListConverter.ConstructForImmutableArray(elementType, in context),
 
+            DuckDbValueKind.Struct when Match(type, typeof(DuckDbStruct)) => StructConverter.GetConverter(in context),
+
             // Enumerations
             DuckDbValueKind.Enum when type != null && type.IsEnum => EnumConverter.CreateElementConverter(in context, type),
             DuckDbValueKind.Enum when context.ColumnInfo.StorageKind == DuckDbValueKind.UTinyInt
