@@ -10,6 +10,14 @@ namespace Mallard;
 /// <summary>
 /// Retrieves the names of the members in a DuckDB enumeration.
 /// </summary>
+/// <remarks>
+/// <para>
+/// The names may be retrieved on-demand from DuckDB, since the enumeration may be
+/// quite large yet most of its members may not be used in a particular query's results.
+/// Thus this class holds a native resource (handle to a DuckDB logical type)
+/// and is disposable.
+/// </para>
+/// </remarks>
 public unsafe sealed class DuckDbEnumDictionary : IReadOnlyDictionary<uint, string>, IDisposable
 {
     private _duckdb_logical_type* _nativeType;
