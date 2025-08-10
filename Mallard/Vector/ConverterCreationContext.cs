@@ -60,8 +60,21 @@ internal unsafe readonly ref struct ConverterCreationContext
     /// A freshly-created handle.  The caller is responsible for disposing it:
     /// use of <see cref="NativeLogicalTypeHolder" /> is suggested.
     /// </returns>
+    /// <exception cref="DuckDbException">
+    /// DuckDB returned a null handle.
+    /// </exception>
     internal _duckdb_logical_type* GetNativeLogicalType()
-        => _logicalTypeImplFn(_logicalTypeImplState);
+    {
+        var p = _logicalTypeImplFn(_logicalTypeImplState);
+        if (p == null)
+        {
+            throw new DuckDbException(
+                "Could not query the logical type from DuckDB. " +
+                "There is either a bug (in Mallard or DuckDB), or memory was exhausted in obtaining a native resource. ");
+        }
+
+        return p;
+    }
 
     /// <summary>
     /// Create an "enumeration dictionary" over the members of the enumeration.
