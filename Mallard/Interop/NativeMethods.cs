@@ -303,6 +303,10 @@ internal unsafe static partial class NativeMethods
     internal static partial void duckdb_destroy_logical_type(ref _duckdb_logical_type* type);
 
     [LibraryImport(LibraryName)]
+    [return: MarshalUsing(typeof(Utf8StringMarshallerWithFree))]
+    internal static partial string duckdb_logical_type_get_alias(_duckdb_logical_type* type);
+
+    [LibraryImport(LibraryName)]
     internal static partial DuckDbValueKind duckdb_get_type_id(_duckdb_logical_type* type);
 
     [LibraryImport(LibraryName)]
@@ -329,6 +333,9 @@ internal unsafe static partial class NativeMethods
     [LibraryImport(LibraryName)]
     [return: MarshalUsing(typeof(Utf8StringMarshallerWithFree))]
     internal static partial string duckdb_struct_type_child_name(_duckdb_logical_type* type, idx_t index);
+
+    [LibraryImport(LibraryName)]
+    internal static partial _duckdb_logical_type* duckdb_struct_type_child_type(_duckdb_logical_type* type, idx_t index);
 
     [LibraryImport(LibraryName)]
     internal static partial idx_t duckdb_union_type_member_count(_duckdb_logical_type* type);
