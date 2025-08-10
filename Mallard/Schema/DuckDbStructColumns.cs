@@ -25,7 +25,19 @@ public unsafe sealed class DuckDbStructColumns : IResultColumns, IDisposable
 
     internal VectorElementConverter GetColumnConverter(int columnIndex, Type? targetType)
     {
-        throw new NotImplementedException();
+        var columnInfo = GetColumnInfo(columnIndex);
+
+        using var _ = _refCount.EnterScope(this);
+        var context = ConverterCreationContext.Indexed.FromStructType(columnInfo,
+                                                                      _nativeType,
+                                                                      columnIndex,
+                                                                      TypeMapping,
+                                                                      out var state);
+
+        var converter = VectorElementConverter.CreateForType(targetType, in context);
+        if (!converter.IsValid)
+            DuckDbVectorInfo.ThrowForWrongParamType(columnInfo, targetType ?? typeof(object));
+        return converter;
     }
 
     VectorElementConverter IResultColumns.GetColumnConverter(int columnIndex, Type? targetType)
@@ -46,7 +58,7 @@ public unsafe sealed class DuckDbStructColumns : IResultColumns, IDisposable
     {
         CheckColumnIndex(columnIndex);
 
-        // Not cached currently.
+        // FIXME: Not cached currently.
         using var _ = _refCount.EnterScope(this);
         using var holder = new NativeLogicalTypeHolder(NativeMethods.duckdb_struct_type_child_type(_nativeType, columnIndex));
         return new DuckDbColumnInfo(holder.NativeHandle);

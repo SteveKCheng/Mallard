@@ -234,7 +234,7 @@ internal unsafe readonly ref struct ConverterCreationContext
                 // Suppress warning:
                 // "This takes the address of, gets the size of, or declares a pointer to a managed type"
                 //
-                // This is fine because ResultAndColumnIndex is a ref struct so it cannot ever move
+                // This is fine because the type is a ref struct so it cannot ever move
                 // (i.e. does not need pinning)
 #pragma warning disable CS8500
                 var target = (Indexed*)p;
@@ -245,7 +245,57 @@ internal unsafe readonly ref struct ConverterCreationContext
             }
 
             state = new(ref Unsafe.As<duckdb_result, byte>(ref nativeResult), columnIndex);
-            return new(columnInfo, Unsafe.AsPointer(ref state), &logicalTypeImplFn, typeMapping, flags);
+            return new(columnInfo, Unsafe.AsPointer(ref state), &logicalTypeImplFn, 
+                       typeMapping, flags);
+        }
+
+        /// <summary>
+        /// Construct context for a member of a DuckDB STRUCT type.
+        /// </summary>
+        /// <param name="columnInfo">
+        /// Basic type information already gathered on the STRUCT member.
+        /// </param>
+        /// <param name="nativeStructType">
+        /// Native handle to the logical type of the (parent) STRUCT, borrowed for the scope of the
+        /// returned context.
+        /// </param>
+        /// <param name="memberIndex">
+        /// The index of the member to select from the DuckDB STRUCT.
+        /// </param>
+        /// <param name="typeMapping">
+        /// Type mapping settings passed in by the user.
+        /// </param>
+        /// <param name="state">
+        /// Extra state that hangs off of the returned context, that must be kept alive
+        /// as long as the context is in use.
+        /// (The annotation <see cref="UnscopedRefAttribute" /> applied
+        /// to this argument makes the C# compiler enforce this rule.)
+        /// </param>
+        internal static ConverterCreationContext FromStructType(
+            scoped in DuckDbColumnInfo columnInfo,
+            _duckdb_logical_type* nativeStructType,
+            int memberIndex,
+            DuckDbTypeMapping typeMapping,
+            [UnscopedRef] out Indexed state)
+        {
+            static _duckdb_logical_type* logicalTypeImplFn(void* p)
+            {
+                // Suppress warning:
+                // "This takes the address of, gets the size of, or declares a pointer to a managed type"
+                //
+                // This is fine because the type is a ref struct so it cannot ever move
+                // (i.e. does not need pinning)
+#pragma warning disable CS8500
+                var target = (Indexed*)p;
+#pragma warning restore CS8500
+                return NativeMethods.duckdb_struct_type_child_type(
+                        (_duckdb_logical_type*)Unsafe.AsPointer(ref target->_parent),    
+                        target->_index);
+            }
+
+            state = new(ref Unsafe.AsRef<byte>(nativeStructType), memberIndex);
+            return new(columnInfo, Unsafe.AsPointer(ref state), &logicalTypeImplFn, 
+                       typeMapping, typeMapping.TypeMappingFlags);
         }
     }
 
