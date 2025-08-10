@@ -680,8 +680,13 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
         VectorElementConverter CreateConverter(in DuckDbColumnInfo columnInfo, int columnIndex, Type? targetType)
         {
             using var _ = _refCount.EnterScope(this);
-            var descriptor = new ConverterCreationContext.ColumnDescriptor(ref _nativeResult, columnIndex);
-            var context = ConverterCreationContext.FromColumn(columnInfo, ref descriptor, _typeMapping, TypeMappingFlags);
+            var context = ConverterCreationContext.Indexed.FromNativeResult(columnInfo,
+                                                                            ref _nativeResult,
+                                                                            columnIndex,
+                                                                            _typeMapping,
+                                                                            TypeMappingFlags,
+                                                                            out var state);
+
             var converter = VectorElementConverter.CreateForType(targetType, in context);
             if (!converter.IsValid)
                 DuckDbVectorInfo.ThrowForWrongParamType(columnInfo, targetType ?? typeof(object));

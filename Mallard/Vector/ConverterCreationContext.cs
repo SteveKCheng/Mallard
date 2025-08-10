@@ -1,5 +1,6 @@
 ﻿using Mallard.C_API;
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
 namespace Mallard;
@@ -169,58 +170,83 @@ internal unsafe readonly ref struct ConverterCreationContext
     }
 
     /// <summary>
-    /// State (to be created on the stack only) required for <see cref="FromColumn" />. 
+    /// State (to be created on the stack only) required for <see cref="FromNativeResult" />. 
     /// </summary>
-    internal readonly ref struct ColumnDescriptor
+    internal readonly ref struct Indexed
     {
         /// <summary>
-        /// Borrowed handle to DuckDB result object.
+        /// Borrowed handle to DuckDB native object.
         /// </summary>
-        internal readonly ref duckdb_result _nativeResult;
+        /// <remarks>
+        /// This field needs to be a managed reference, not merely an unmanaged pointer (<c>void*</c>) 
+        /// to accommodate <see cref="duckdb_result" /> which is a caller-owned structure which may 
+        /// live in GC memory (and therefore may move around).
+        /// </remarks>
+        private readonly ref byte _parent;
 
         /// <summary>
-        /// Index of desired column to create a converter context for.
+        /// Index of the desired column or member of the parent object 
+        /// to create a converter context for.
         /// </summary>
-        internal readonly int _columnIndex;
+        private readonly int _index;
 
-        internal ColumnDescriptor(ref duckdb_result nativeResult, int columnIndex)
+        private Indexed(ref byte parent, int index)
         {
-            _nativeResult = ref nativeResult;
-            _columnIndex = columnIndex;
+            _parent = ref parent;
+            _index = index;
         }
-    }
 
-    /// <summary>
-    /// Construct context for a DuckDB column (without an actual vector).
-    /// </summary>
-    /// <param name="columnInfo">
-    /// Basic information already gathered on the column.
-    /// </param>
-    /// <param name="target">
-    /// Holds the native result object from DuckDB, and the target column index.
-    /// This structure must be created by the caller, and the caller must keep it alive
-    /// to it while the returned context is active, because the returned context
-    /// takes a pointer to this argument.
-    /// </param>
-    internal static ConverterCreationContext FromColumn(in DuckDbColumnInfo columnInfo, 
-                                                        ref ColumnDescriptor target, 
-                                                        DuckDbTypeMapping typeMapping,
-                                                        DuckDbTypeMappingFlags flags)
-    {
-        static _duckdb_logical_type* logicalTypeImplFn(void* p)
+        /// <summary>
+        /// Construct context for a DuckDB column (without an actual vector).
+        /// </summary>
+        /// <param name="columnInfo">
+        /// Basic information already gathered on the column.
+        /// </param>
+        /// <param name="nativeResult">
+        /// Native handle to the result object from DuckDB, borrowed for the scope of the
+        /// returned context.
+        /// </param>
+        /// <param name="columnIndex">
+        /// The index of the column to select from the DuckDB result.
+        /// </param>
+        /// <param name="typeMapping">
+        /// Type mapping settings passed in by the user.
+        /// </param>
+        /// <param name="flags">
+        /// Override to the default type mapping conventions.
+        /// </param>
+        /// <param name="state">
+        /// Extra state that hangs off of the returned context, that must be kept alive
+        /// as long as the context is in use.
+        /// (The annotation <see cref="UnscopedRefAttribute" /> applied
+        /// to this argument makes the C# compiler enforce this rule.)
+        /// </param>
+        internal static ConverterCreationContext FromNativeResult(
+            scoped in DuckDbColumnInfo columnInfo,
+            ref duckdb_result nativeResult,
+            int columnIndex,
+            DuckDbTypeMapping typeMapping,
+            DuckDbTypeMappingFlags flags,
+            [UnscopedRef] out Indexed state)
         {
-            // Suppress warning:
-            // "This takes the address of, gets the size of, or declares a pointer to a managed type"
-            //
-            // This is fine because ResultAndColumnIndex is a ref struct so it cannot ever move
-            // (i.e. does not need pinning)
-#pragma warning disable CS8500 
-            var target = (ColumnDescriptor*)p;
+            static _duckdb_logical_type* logicalTypeImplFn(void* p)
+            {
+                // Suppress warning:
+                // "This takes the address of, gets the size of, or declares a pointer to a managed type"
+                //
+                // This is fine because ResultAndColumnIndex is a ref struct so it cannot ever move
+                // (i.e. does not need pinning)
+#pragma warning disable CS8500
+                var target = (Indexed*)p;
 #pragma warning restore CS8500
-            return NativeMethods.duckdb_column_logical_type(ref target->_nativeResult, target->_columnIndex);
-        }
+                return NativeMethods.duckdb_column_logical_type(
+                        ref Unsafe.As<byte, duckdb_result>(ref target->_parent), 
+                        target->_index);
+            }
 
-        return new(columnInfo, Unsafe.AsPointer(ref target), &logicalTypeImplFn, typeMapping, flags);
+            state = new(ref Unsafe.As<duckdb_result, byte>(ref nativeResult), columnIndex);
+            return new(columnInfo, Unsafe.AsPointer(ref state), &logicalTypeImplFn, typeMapping, flags);
+        }
     }
 
     internal bool ConvertDatesAsDateTime => (TypeMappingFlags & DuckDbTypeMappingFlags.DatesAsDateTime) != 0;
