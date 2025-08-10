@@ -40,7 +40,7 @@ public readonly ref struct DuckDbVarInt : IStatelesslyConvertible<DuckDbVarInt, 
     /// </exception>
     public T ConvertTo<T>() where T : IBinaryInteger<T>
     {
-        var buffer = _blob.AsSpan();
+        var buffer = _blob.Span;
 
         // The format is not described in the public API documentation but can be 
         // determined by reading DuckDB's source code.  Note that this storage format

@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Collections;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -18,7 +18,7 @@ namespace Mallard;
 /// </para>
 /// <para>Semantically, this structure
 /// is nothing more than <see cref="ReadOnlySpan{byte}" /> on the blob data,
-/// which can be accessed through the extension method <see cref="DuckDbVectorMethods.AsSpan(ref Mallard.DuckDbBlob)" />.
+/// which can be accessed through the property <see cref="Span" />.
 /// DuckDB's representation of blobs
 /// is obviously different from <see cref="ReadOnlySpan{byte}" /> so that type cannot be used
 /// directly in <see cref="DuckDbVectorReader{T}" /> to read vector elements.  
@@ -64,49 +64,38 @@ public unsafe ref struct DuckDbBlob : IStatelesslyConvertible<DuckDbBlob, byte[]
     private readonly byte* _ptr;
 
     /// <summary>
-    /// Get the content of the blob.
+    /// The content of the blob.
     /// </summary>
     /// <remarks>
-    /// This method is deliberately not an instance method, to disallow calling it on rvalues.
-    /// Pointers to the inline buffer would become dangling when the originating rvalue
-    /// disappears.
+    /// <para>
+    /// There is an inlined buffer within <see cref="DuckDbBlob" /> for short blobs which the 
+    /// returned span may point to.
+    /// So this instance must outlive the span, enforced by this property being marked to be
+    /// an "unscoped reference".
+    /// </para>
     /// </remarks>
-    internal static ReadOnlySpan<byte> AsSpan(ref readonly DuckDbBlob blob)
+    [UnscopedRef]
+    public readonly ReadOnlySpan<byte> Span
     {
-        void* p = (blob._length <= InlinedSize)
-                ? Unsafe.AsPointer(ref Unsafe.AsRef(in blob._inlined[0]))
-                : blob._ptr;
+        get
+        {
+            var length = checked((int)_length);
 
-        return new ReadOnlySpan<byte>(p, checked((int)blob._length));
+            // We used to use pointers in computing the first argument, which depended
+            // on the fact that this structure is a "ref struct" and hence cannot ever move
+            // in memory.  But to be defensive (in case this code is copied and pasted
+            // somewhere else outside of a "ref struct"), we now use managed references.
+            return MemoryMarshal.CreateReadOnlySpan(
+                in (length <= InlinedSize) ? ref _inlined[0]
+                                           : ref Unsafe.AsRef<byte>(_ptr),
+                length);
+        }
     }
 
     #region Vector element converter
 
     static byte[] IStatelesslyConvertible<DuckDbBlob, byte[]>.Convert(ref readonly DuckDbBlob item)
-        => item.AsSpan().ToArray();
+        => item.Span.ToArray();
 
     #endregion
-}
-
-public static partial class DuckDbVectorMethods
-{
-    /// <summary>
-    /// Get the content of the blob.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// This functionality exists as an extension method rather than an instance method 
-    /// of <see cref="DuckDbBlob" /> only so that the "ref readonly" qualifier can be
-    /// applied to the receiver argument in C#.
-    /// </para>
-    /// </remarks>
-    /// <param name="blob">
-    /// The native DuckDB structure representing the blob.
-    /// The "ref readonly" qualifier is only to ensure that the argument is an lvalue,
-    /// so that the returned span does not point to a rvalue that might disappear
-    /// (go out of scope) before the span does.  There is an inlined buffer
-    /// within <see cref="DuckDbBlob" /> for short blobs which the span may point to.
-    /// </param>
-    public static ReadOnlySpan<byte> AsSpan(ref readonly this DuckDbBlob blob)
-        => DuckDbBlob.AsSpan(in blob);
 }

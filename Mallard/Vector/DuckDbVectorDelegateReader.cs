@@ -269,7 +269,7 @@ public class DuckDbVectorDelegateReader : IDuckDbVector
         {
             var reader = new DuckDbVectorRawReader<DuckDbBlob>(_vector);
             var blob = reader.GetItem(rowIndex);
-            var source = blob.AsSpan();
+            var source = blob.Span;
             ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(offset, source.Length);
             totalBytes = source.Length - offset;
             bytesWritten = Math.Min(destination.Length, totalBytes);
@@ -332,7 +332,7 @@ public class DuckDbVectorDelegateReader : IDuckDbVector
 
         var reader = new DuckDbVectorRawReader<DuckDbString>(_vector);
         var sourceItem = reader.GetItem(rowIndex);
-        var utf8Source = sourceItem.AsUtf8();
+        var utf8Source = sourceItem.Utf8;
 
         if (destination.Length == 0)
             return 0;

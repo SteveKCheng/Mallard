@@ -28,7 +28,7 @@ public readonly ref struct DuckDbBitString : IStatelesslyConvertible<DuckDbBitSt
     /// </returns>
     public BitArray ToBitArray()
     {
-        var buffer = _blob.AsSpan();
+        var buffer = _blob.Span;
 
         // DuckDB uses a really wacky encoding of bit strings.
         // See src/common/types/bit.cpp.
@@ -106,7 +106,7 @@ public readonly ref struct DuckDbBitString : IStatelesslyConvertible<DuckDbBitSt
     /// </exception>
     public bool GetBit(int index)
     {
-        var buffer = _blob.AsSpan();
+        var buffer = _blob.Span;
         int numPaddingBits = buffer[0];
 
         int len = (buffer.Length - 1) * 8 - numPaddingBits;
@@ -129,7 +129,7 @@ public readonly ref struct DuckDbBitString : IStatelesslyConvertible<DuckDbBitSt
     {
         get
         {
-            var buffer = _blob.AsSpan();
+            var buffer = _blob.Span;
             int numPaddingBits = buffer[0];
 
             int len = (buffer.Length - 1) * 8 - numPaddingBits;
@@ -170,7 +170,7 @@ public readonly ref struct DuckDbBitString : IStatelesslyConvertible<DuckDbBitSt
         const int BitsPerByte = 8;
         const int BitsPerWord = BitsPerByte * sizeof(ulong);
 
-        var source = _blob.AsSpan();
+        var source = _blob.Span;
         int numPaddingBits = source[0];
         Debug.Assert(numPaddingBits < BitsPerByte);
 
