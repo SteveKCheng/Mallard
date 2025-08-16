@@ -26,7 +26,18 @@ internal static class Program
                 {
                     if (DuckDbDllHandle == IntPtr.Zero)
                     {
-                        var path = Path.Join(SolutionDirectory, "native", RuntimeInformation.RuntimeIdentifier, libraryName);
+                        // According to https://learn.microsoft.com/en-us/dotnet/standard/native-interop/native-library-loading,
+                        // NativeLibrary.Load does not adapt file names of the library for the OS conventions 
+                        // if an absolute path is given, so we have to do so ourselves.
+                        string fileName;
+                        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                            fileName = $"{libraryName}.dll";
+                        else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                            fileName = $"lib{libraryName}.dylib";
+                        else // assume Linux-like
+                            fileName = $"lib{libraryName}.so";
+
+                        var path = Path.Join(SolutionDirectory, "native", RuntimeInformation.RuntimeIdentifier, fileName);
                         DuckDbDllHandle = NativeLibrary.Load(path);
                     }
 
