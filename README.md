@@ -22,6 +22,10 @@ You need to separately download the native library files for DuckDB, e.g. ``duck
   - ``‹platform›`` is the .NET run-time identifier, e.g. ``win-x64`` for Windows on x64, ``linux-x64`` for 
     common glibc-based Linux distributions on x64.
 
+If not using Visual Studio (Code) to open the solution file, then:
+
+  - Run ``dotnet build`` on the command line.
+
 ## Relation to other .NET bindings
 
 There is another, much more mature project, called [DuckDB.NET](https://duckdb.net/docs/introduction.html).
@@ -37,7 +41,7 @@ without intermediate copying or heavy conversions involving GC objects.  I think
 useful in applications involving machine learning or data science.  An ADO.NET-based interface would just 
 not be performant enough, and so I do not put high priority on it.
 
-## What works today (as of August 5, 2025)
+## What works today (as of August 15, 2025)
 
   - [X] Executing SQL queries and reading results incrementally
   - [X] Prepared statements with parameter binding
@@ -63,6 +67,7 @@ not be performant enough, and so I do not put high priority on it.
     - If you do not use unsafe code, then even improper use of the public API should not crash the .NET run-time
     - ``ref struct`` is used to carefully control lifetime so user sees no dangling pointers to DuckDB native objects
   - [X] Design minimizes unnecessary GC allocations
+  - [X] Tested on Windows and Linux.  (The .NET library makes no Windows- or Linux-specific assumptions and should be portable to all the desktop platforms supported by .NET.)
 
 ## Major features missing
 
@@ -87,8 +92,6 @@ not be performant enough, and so I do not put high priority on it.
     - Reflection is required at least for conversion of composite types, e.g. ``MyEnum[]``
     - Does not use MSIL code generation but does instantiate generic methods for types only known at run-time
     - Conversion for primitive types does not require reflection; all code is statically visible to the compiler
-  - Only tested on Windows so far
-    - Although the .NET library makes no Windows-specific assumptions and should be portable to all the desktop platforms supported by .NET
 
 ## Design philosophy
 
