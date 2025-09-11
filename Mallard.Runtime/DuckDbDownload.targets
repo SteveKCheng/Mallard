@@ -7,6 +7,10 @@
          this file is a platform-agnostic .NET project. -->
     <DuckDbPlatform Condition="'$(RuntimeIdentifier)' != ''">$(RuntimeIdentifier)</DuckDbPlatform>
     <DuckDbPlatform Condition="'$(RuntimeIdentifier)' == ''">$(NETCoreSdkPortableRuntimeIdentifier)</DuckDbPlatform>
+
+    <!-- The directory where the DuckDB DLLs for the desired platform
+         is downloaded to. -->
+    <DuckDbDirectory>$([System.IO.Path]::Combine($(MSBuildThisFileDirectory), '../native/$(DuckDbVersion)/$(DuckDbPlatform)/'))</DuckDbDirectory>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(DuckDbPlatform)' == 'linux-x64'">
@@ -27,8 +31,9 @@
     <Message Importance="high" Text="Downloading $(DuckDbZipUrl)" />
     <DownloadFile SourceUrl="$(DuckDbZipUrl)" SkipUnchangedFiles="true" DestinationFolder="$(IntermediateOutputPath)" />
 
-    <Message Importance="high" Text="Unzipping $(DuckDbZipFileName)" />
-    <Unzip SourceFiles="$(IntermediateOutputPath)/$(DuckDbZipFileName)" DestinationFolder="$(IntermediateOutputPath)" Include="$(DuckDbDllFileName)" />
+    <Message Importance="high" Text="Unzipping $(DuckDbDllFileName) from $(DuckDbZipFileName), into $(DuckDbDirectory)" />
+    <MakeDir Directories="$(DuckDbDirectory)" />
+    <Unzip SourceFiles="$(IntermediateOutputPath)/$(DuckDbZipFileName)" DestinationFolder="$(DuckDbDirectory)" Include="$(DuckDbDllFileName)" />
   </Target>
 
   <!-- Check that the DuckDbPlatform property has a valid value. -->

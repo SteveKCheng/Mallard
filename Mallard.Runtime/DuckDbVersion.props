@@ -4,7 +4,8 @@
 	 specified in the syntax of .NET runtime identifiers. -->
     <DuckDbPlatforms>linux-x64;win-x64</DuckDbPlatforms>
 
-    <!-- The version of DuckDB to download, use and package -->
+    <!-- The version of DuckDB to download, use and package.
+         Change this value on upgrading DuckDB. -->
     <DuckDbVersion>1.3.2</DuckDbVersion>
   </PropertyGroup>
 </Project>
