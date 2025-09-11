@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Mallard.Tests;
 
-public class TestPreparedStatement(DatabaseFixture fixture) : IClassFixture<DatabaseFixture>
+public class TestPreparedStatement(DatabaseFixture fixture)
 {
     private readonly DatabaseFixture _fixture = fixture;
     private DuckDbConnection DbConnection => _fixture.DbConnection;

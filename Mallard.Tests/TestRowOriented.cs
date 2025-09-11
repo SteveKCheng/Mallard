@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Mallard.Tests;
 
-public class TestRowOriented(DatabaseFixture fixture) : IClassFixture<DatabaseFixture>
+public class TestRowOriented(DatabaseFixture fixture)
 {
     private readonly DatabaseFixture _fixture = fixture;
     private DuckDbConnection DbConnection => _fixture.DbConnection;

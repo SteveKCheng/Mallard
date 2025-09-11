@@ -6,7 +6,7 @@ using System.Linq;
 
 namespace Mallard.Tests;
 
-public class UnitTest1(DatabaseFixture fixture) : IClassFixture<DatabaseFixture>
+public class UnitTest1(DatabaseFixture fixture)
 {
     private readonly DatabaseFixture _fixture = fixture;
 
