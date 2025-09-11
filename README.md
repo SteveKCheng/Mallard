@@ -14,17 +14,20 @@ Do not expect anything to work right now.  This page will be updated as the code
 
 ## Build instructions
 
-You need to separately download the native library files for DuckDB, e.g. ``duckdb.dll`` for Windows. 
+  - Simply open the solution file ``Mallard.slnx`` in your .NET IDE and tell it to build;
+  - or, on the command line, run ``dotnet build`` from the top-level directory.
+
+The build process will automatically download the native library files for DuckDB 
+(e.g. ``duckdb.dll`` for Windows), assuming the platform you are running
+.NET on is supported.  If you prefer, you can download the files yourself:
 
   - Go to [the DuckDB releases page](https://github.com/duckdb/duckdb/releases) and get the ``libduckdb-*.zip`` file
     appropriate for your platform.
-  - Extract ``duckdb.dll`` (or ``duckdb.so`` etc.) and put it inside the directory ``native/‹platform›/``.
-  - ``‹platform›`` is the .NET run-time identifier, e.g. ``win-x64`` for Windows on x64, ``linux-x64`` for 
+  - Extract ``duckdb.dll`` (or ``duckdb.so`` etc.) and put it inside the directory ``native/‹version›/‹platform›/``.
+    - ``‹platform›`` is the .NET run-time identifier, e.g. ``win-x64`` for Windows on x64, ``linux-x64`` for 
     common glibc-based Linux distributions on x64.
-
-If not using Visual Studio (Code) to open the solution file, then:
-
-  - Run ``dotnet build`` on the command line.
+    - ``‹version›`` is the DuckDB version that is set in ``Mallard.Runtime/DuckDbVersion.props``.  If you want to change the version you can do so in that file or in ``Mallard/Directory.Build.props``.
+  - If you want to use another/custom build of DuckDB, you can place the library files in the same locations indicated.
 
 ## Relation to other .NET bindings
 

@@ -35,5 +35,9 @@
 
   <Import Project="../Mallard.Runtime/DuckDbDownload.targets" />
 
+  <Target Name="CustomAfterBuild" 
+          AfterTargets="Build" 
+          DependsOnTargets="EnsureDuckDbDownloaded" />
+
 </Project>
 

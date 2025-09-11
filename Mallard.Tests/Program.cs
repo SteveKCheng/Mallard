@@ -37,7 +37,10 @@ internal static class Program
                         else // assume Linux-like
                             fileName = $"lib{libraryName}.so";
 
-                        var path = Path.Join(SolutionDirectory, "native", RuntimeInformation.RuntimeIdentifier, fileName);
+                        var versionString = DuckDbConnection.OriginalNativeLibraryVersion;
+                        var path = Path.Join(SolutionDirectory, 
+                            "native", versionString, RuntimeInformation.RuntimeIdentifier, fileName);
+
                         DuckDbDllHandle = NativeLibrary.Load(path);
                     }
 
