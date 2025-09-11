@@ -11,6 +11,7 @@
     <!-- The directory where the DuckDB DLLs for the desired platform
          is downloaded to. -->
     <DuckDbDirectory>$([System.IO.Path]::Combine($(MSBuildThisFileDirectory), '../native/$(DuckDbVersion)/$(DuckDbPlatform)/'))</DuckDbDirectory>
+
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(DuckDbPlatform)' == 'linux-x64'">
@@ -26,14 +27,16 @@
   <Target Name="DownloadDuckDb" DependsOnTargets="CheckDuckDbPlatform">
     <PropertyGroup>
       <DuckDbZipUrl>https://github.com/duckdb/duckdb/releases/download/v$(DuckDbVersion)/$(DuckDbZipFileName)</DuckDbZipUrl>
+      <DuckDbIntermediateDirectory>$([System.IO.Path]::Combine($(ArtifactsPath), 'DuckDbDownloads', $(DuckDbVersion)))</DuckDbIntermediateDirectory>
     </PropertyGroup>
 
     <Message Importance="high" Text="Downloading $(DuckDbZipUrl)" />
-    <DownloadFile SourceUrl="$(DuckDbZipUrl)" SkipUnchangedFiles="true" DestinationFolder="$(IntermediateOutputPath)" />
+    <DownloadFile SourceUrl="$(DuckDbZipUrl)" SkipUnchangedFiles="true" DestinationFolder="$(DuckDbIntermediateDirectory)" />
 
     <Message Importance="high" Text="Unzipping $(DuckDbDllFileName) from $(DuckDbZipFileName), into $(DuckDbDirectory)" />
     <MakeDir Directories="$(DuckDbDirectory)" />
-    <Unzip SourceFiles="$(IntermediateOutputPath)/$(DuckDbZipFileName)" DestinationFolder="$(DuckDbDirectory)" Include="$(DuckDbDllFileName)" />
+    <MakeDir Directories="$(DuckDbIntermediateDirectory)" />
+    <Unzip SourceFiles="$(DuckDbIntermediateDirectory)/$(DuckDbZipFileName)" DestinationFolder="$(DuckDbDirectory)" Include="$(DuckDbDllFileName)" />
   </Target>
 
   <!-- Check that the DuckDbPlatform property has a valid value. -->
