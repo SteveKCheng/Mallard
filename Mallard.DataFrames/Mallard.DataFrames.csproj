@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Mallard\Mallard.csproj" />
+    <ProjectReference Include="../Mallard/Mallard.csproj" />
   </ItemGroup>
 
 </Project>
