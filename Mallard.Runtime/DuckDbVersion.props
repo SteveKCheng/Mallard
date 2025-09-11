@@ -5,7 +5,9 @@
     <DuckDbPlatforms>linux-x64;win-x64</DuckDbPlatforms>
 
     <!-- The version of DuckDB to download, use and package.
-         Change this value on upgrading DuckDB. -->
-    <DuckDbVersion>1.3.2</DuckDbVersion>
+         Change this value on upgrading DuckDB. 
+         Alternatively, override this property's value 
+         in ../Directory.Build.props. -->
+    <DuckDbVersion Condition="'$(DuckDbVersion)' == ''">1.3.2</DuckDbVersion>
   </PropertyGroup>
 </Project>
