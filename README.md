@@ -12,6 +12,10 @@ Do not expect anything to work right now.  This page will be updated as the code
 
   - .NET 9 or later
 
+(Mallard requires .NET 9+ for substituting ``ref struct`` types in generic parameters.
+.NET 10 (version with long-term support) is currently in preview, and Mallard will switch
+to target that exclusively once a release version is widely available.)
+
 ## Build instructions
 
   - Simply open the solution file ``Mallard.slnx`` in your .NET IDE and tell it to build;
