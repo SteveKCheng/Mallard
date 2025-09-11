@@ -1,0 +1,62 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <RuntimeIdentifiers>linux-x64;win-x64</RuntimeIdentifiers>
+    <RuntimeIdentifier>linux-x64</RuntimeIdentifier>
+    
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+
+    <Authors>Steve Cheng</Authors>
+    <Description>Native library for DuckDB on platform $(RuntimeIdentifier)</Description>
+    
+    <PackageId>Mallard.Runtime.$(RuntimeIdentifier)</PackageId>
+    <DuckDbVersion>1.3.2</DuckDbVersion>
+    <Version>$(DuckDbVersion)</Version>
+
+    <BeforePack>CheckRuntimeIdentifier</BeforePack>
+    <NoWarn>NU5128;$(NoWarn)</NoWarn>
+        
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' == 'linux-x64'">
+    <SourceZipFileName>libduckdb-linux-amd64.zip</SourceZipFileName>
+    <SourceDllFileName>libduckdb.so</SourceDllFileName>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' == 'win-x64'">
+    <SourceZipFileName>libduckdb-windows-amd64.zip</SourceZipFileName>
+    <SourceDllFileName>duckdb.dll</SourceDllFileName>
+  </PropertyGroup>
+    
+  <ItemGroup>
+    <Content Include="../native/$(RuntimeIdentifier)/$(SourceDllFileName)">
+      <PackagePath>runtimes/$(RuntimeIdentifier)/native/%(Filename)%(Extension)</PackagePath>
+      <Pack>true</Pack>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <Target Name="DownloadNativeFiles" DependsOnTargets="CheckRuntimeIdentifier">
+    <PropertyGroup>
+      <SourceZipUrl>https://github.com/duckdb/duckdb/releases/download/v$(DuckDbVersion)/$(SourceZipFileName)</SourceZipUrl>
+    </PropertyGroup>
+    <Message Importance="high" Text="Downloading $(SourceZipUrl)" />
+    <DownloadFile SourceUrl="$(SourceZipUrl)" SkipUnchangedFiles="true" DestinationFolder="$(IntermediateOutputPath)" />
+    <Message Importance="high" Text="Unzipping $(SourceZipFileName)" />
+    <Unzip SourceFiles="$(IntermediateOutputPath)/$(SourceZipFileName)" DestinationFolder="$(IntermediateOutputPath)" Include="$(SourceDllFileName)" />
+  </Target>
+
+  <Target Name="CheckRuntimeIdentifier">
+    <ItemGroup>
+      <AllowedRuntimeIdentifiers Include="$(RuntimeIdentifiers)" />
+      <MatchedRuntimeIdentifier Include="@(AllowedRuntimeIdentifiers)" 
+			        Condition="'%(Identity)' == '$(RuntimeIdentifier)'" />
+    </ItemGroup>
+    <Error 
+      Condition="'@(MatchedRuntimeIdentifier)' == ''" 
+      Text="To build this package, the RuntimeIdentifier property must be set to be one of the supported values: @(AllowedRuntimeIdentifiers->'%(Identity)', ' ') " />
+  </Target>
+
+</Project>
