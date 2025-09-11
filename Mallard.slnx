@@ -3,7 +3,6 @@
     <File Path=".editorconfig" />
   </Folder>
   <Project Path="Mallard.DataFrames/Mallard.DataFrames.csproj" />
-  <Project Path="Mallard.Runtime\Mallard.Runtime.csproj" />
   <Project Path="Mallard.Tests/Mallard.Tests.csproj" />
   <Project Path="Mallard/Mallard.csproj" />
 </Solution>
