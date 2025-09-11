@@ -5,7 +5,7 @@
     <OutputType>Library</OutputType>
     <TargetFramework>net9.0</TargetFramework>
     <RuntimeIdentifiers>$(DuckDbPlatforms)</RuntimeIdentifiers>
-    <RuntimeIdentifier>linux-x64</RuntimeIdentifier>
+    <RuntimeIdentifier>$(NETCoreSdkPortableRuntimeIdentifier)</RuntimeIdentifier>
     
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
 
