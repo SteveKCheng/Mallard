@@ -23,12 +23,18 @@
     <DuckDbZipFileName>libduckdb-windows-amd64.zip</DuckDbZipFileName>
     <DuckDbDllFileName>duckdb.dll</DuckDbDllFileName>
   </PropertyGroup>
-    
+ 
   <Target Name="DownloadDuckDb" DependsOnTargets="CheckDuckDbPlatform">
     <PropertyGroup>
+      <IsStandardVersion>false</IsStandardVersion>
+      <IsStandardVersion Condition="$([System.Text.RegularExpressions.Regex]::IsMatch($(DuckDbVersion), '[0-9]+\.[0-9]+\.[0-9]+'))">true</IsStandardVersion>
+
       <DuckDbZipUrl>https://github.com/duckdb/duckdb/releases/download/v$(DuckDbVersion)/$(DuckDbZipFileName)</DuckDbZipUrl>
       <DuckDbIntermediateDirectory>$([System.IO.Path]::Combine($(ArtifactsPath), 'DuckDbDownloads', $(DuckDbVersion)))</DuckDbIntermediateDirectory>
     </PropertyGroup>
+
+    <Error Condition="'$(IsStandardVersion)' != 'true'"
+           Text="The specified DuckDbVersion, $(DuckDbVersion), is non-standard; cannot automatically download the required native library files" />
 
     <Message Importance="high" Text="Downloading $(DuckDbZipUrl)" />
     <DownloadFile SourceUrl="$(DuckDbZipUrl)" SkipUnchangedFiles="true" DestinationFolder="$(DuckDbIntermediateDirectory)" />
@@ -56,6 +62,10 @@
           DependsOnTargets="CheckDuckDbPlatform">
     <Message Condition="Exists('$(DuckDbDirectory)$(DuckDbDllFileName)')"
              Text="Native files for DuckDB are already present; no need to download" />
+
+    <PropertyGroup>
+    </PropertyGroup>
+
     <CallTarget Targets="DownloadDuckDb"
                 Condition="!Exists('$(DuckDbDirectory)$(DuckDbDllFileName)')" />
   </Target>
