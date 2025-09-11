@@ -33,11 +33,7 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
-  <ItemGroup>
-    <AssemblyAttribute Include="Mallard.Tests.DuckDbVersionAttribute">
-      <_Parameter1>$(DuckDbVersion)</_Parameter1>
-    </AssemblyAttribute>
-  </ItemGroup>
+  <Import Project="../Mallard.Runtime/DuckDbDownload.targets" />
 
 </Project>
 

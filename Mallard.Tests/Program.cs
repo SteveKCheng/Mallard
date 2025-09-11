@@ -6,21 +6,6 @@ using System.Runtime.InteropServices;
 
 namespace Mallard.Tests;
 
-/// <summary>
-/// Reports the version of DuckDB that the test program has been compiled with.
-/// </summary>
-/// <remarks>
-/// This attribute is injected by MSBuild.
-/// </remarks>
-[AttributeUsage(AttributeTargets.Assembly)]
-public sealed class DuckDbVersionAttribute(string value) : Attribute
-{
-    /// <summary>
-    /// The version as a string.
-    /// </summary>
-    public string Value { get; } = value;
-}
-
 internal static class Program
 {
     private static IntPtr DuckDbDllHandle;
