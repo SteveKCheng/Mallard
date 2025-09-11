@@ -49,4 +49,12 @@
       Text="The currently set platform (generally from the RuntimeIdentifier property) is not supported for DuckDB.  The platform must be one of: @(AllowedDuckDbPlatforms->'%(Identity)', ' ') " />
   </Target>
 
+  <Target Name="EnsureDuckDbDownloaded" 
+          DependsOnTargets="CheckDuckDbPlatform">
+    <Message Condition="Exists('$(DuckDbDirectory)$(DuckDbDllFileName)')"
+             Text="Native files for DuckDB are already present; no need to download" />
+    <CallTarget Targets="DownloadDuckDb"
+                Condition="!Exists('$(DuckDbDirectory)$(DuckDbDllFileName)')" />
+  </Target>
+
 </Project>

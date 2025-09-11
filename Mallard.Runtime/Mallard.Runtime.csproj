@@ -8,7 +8,10 @@
     <RuntimeIdentifier>linux-x64</RuntimeIdentifier>
     
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+
+    <!-- There is no C# assembly to build -->
     <IncludeBuildOutput>false</IncludeBuildOutput>
+    <NoBuild>true</NoBuild>
 
     <Authors>Steve Cheng</Authors>
     <Description>Native library for DuckDB on platform $(RuntimeIdentifier)</Description>
@@ -16,15 +19,14 @@
     <PackageId>Mallard.Runtime.$(RuntimeIdentifier)</PackageId>
     <Version>$(DuckDbVersion)</Version>
 
-    <BeforePack>CheckRuntimeIdentifier</BeforePack>
     <NoWarn>NU5128;$(NoWarn)</NoWarn>
-        
+    <GenerateNuspecDependsOn>$(GenerateNuspecDependsOn);EnsureDuckDbDownloaded</GenerateNuspecDependsOn>
   </PropertyGroup>
 
   <Import Project="DuckDbDownload.targets" />
 
   <ItemGroup>
-    <Content Include="../native/$(DuckDbPlatform)/$(DuckDbDllFileName)">
+    <Content Include="$(DuckDbDirectory)$(DuckDbDllFileName)">
       <PackagePath>runtimes/$(DuckDbPlatform)/native/%(Filename)%(Extension)</PackagePath>
       <Pack>true</Pack>
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
