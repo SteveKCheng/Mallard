@@ -1,0 +1,8 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!-- Properties for NuGet packaging common to all projects -->
+  <PropertyGroup>
+    <Authors>Steve Cheng</Authors>
+    <PackageTags>duckdb;database;bindings</PackageTags>
+    <RepositoryUrl>https://github.com/SteveKCheng/Mallard/</RepositoryUrl>
+  </PropertyGroup>
+</Project>

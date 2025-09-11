@@ -1,5 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <Import Project="DuckDbVersion.props" />
+  <Import Project="../NuPkg.props" />
 
   <PropertyGroup>
     <OutputType>Library</OutputType>
@@ -13,7 +14,6 @@
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <NoBuild>true</NoBuild>
 
-    <Authors>Steve Cheng</Authors>
     <Description>Native library for DuckDB on platform $(RuntimeIdentifier)</Description>
     
     <PackageId>Mallard.Runtime.$(RuntimeIdentifier)</PackageId>
