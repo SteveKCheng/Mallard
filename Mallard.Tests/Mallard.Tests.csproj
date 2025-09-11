@@ -7,6 +7,7 @@
     <IsPackable>false</IsPackable>
     <OutputType></OutputType>
     <RootNamespace>Mallard.Tests</RootNamespace>
+    <RollForward>LatestMajor</RollForward>
   </PropertyGroup>
 
   <ItemGroup>
