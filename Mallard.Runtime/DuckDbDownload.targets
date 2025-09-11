@@ -1,0 +1,47 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <!-- The platform (OS / CPU architecture) for DuckDB that is being 
+         downloaded, used, or packaged.  This setting should be aligned
+         with the standard MSBuild property RuntimeIdentifier, except
+         that the latter may be blank if the parent project that imports
+         this file is a platform-agnostic .NET project. -->
+    <DuckDbPlatform Condition="'$(RuntimeIdentifier)' != ''">$(RuntimeIdentifier)</DuckDbPlatform>
+    <DuckDbPlatform Condition="'$(RuntimeIdentifier)' == ''">$(NETCoreSdkPortableRuntimeIdentifier)</DuckDbPlatform>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(DuckDbPlatform)' == 'linux-x64'">
+    <DuckDbZipFileName>libduckdb-linux-amd64.zip</DuckDbZipFileName>
+    <DuckDbDllFileName>libduckdb.so</DuckDbDllFileName>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(DuckDbPlatform)' == 'win-x64'">
+    <DuckDbZipFileName>libduckdb-windows-amd64.zip</DuckDbZipFileName>
+    <DuckDbDllFileName>duckdb.dll</DuckDbDllFileName>
+  </PropertyGroup>
+    
+  <Target Name="DownloadDuckDb" DependsOnTargets="CheckDuckDbPlatform">
+    <PropertyGroup>
+      <DuckDbZipUrl>https://github.com/duckdb/duckdb/releases/download/v$(DuckDbVersion)/$(DuckDbZipFileName)</DuckDbZipUrl>
+    </PropertyGroup>
+
+    <Message Importance="high" Text="Downloading $(DuckDbZipUrl)" />
+    <DownloadFile SourceUrl="$(DuckDbZipUrl)" SkipUnchangedFiles="true" DestinationFolder="$(IntermediateOutputPath)" />
+
+    <Message Importance="high" Text="Unzipping $(DuckDbZipFileName)" />
+    <Unzip SourceFiles="$(IntermediateOutputPath)/$(DuckDbZipFileName)" DestinationFolder="$(IntermediateOutputPath)" Include="$(DuckDbDllFileName)" />
+  </Target>
+
+  <!-- Check that the DuckDbPlatform property has a valid value. -->
+  <Target Name="CheckDuckDbPlatform">
+    <ItemGroup>
+      <AllowedDuckDbPlatforms Include="$(DuckDbPlatforms)" />
+      <MatchedDuckDbPlatform Include="@(AllowedDuckDbPlatforms)" 
+                             Condition="'%(Identity)' == '$(DuckDbPlatform)'" />
+    </ItemGroup>
+
+    <Error 
+      Condition="'@(MatchedDuckDbPlatform)' == ''" 
+      Text="The currently set platform (generally from the RuntimeIdentifier property) is not supported for DuckDB.  The platform must be one of: @(AllowedDuckDbPlatforms->'%(Identity)', ' ') " />
+  </Target>
+
+</Project>
