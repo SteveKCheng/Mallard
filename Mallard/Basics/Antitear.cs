@@ -49,13 +49,15 @@ internal struct Antitear<T>(T initialValue) where T : struct
                 {
                     var d = _data;
 
+                    #if NET10_0_OR_GREATER
+                    Volatile.ReadBarrier();
+                    #else
                     // Dummy write to prevent re-ordering of read of d to follow the
                     // verifying read of _version below.
                     Volatile.Write(ref v, v);
-
-                    // Volatile.Read may not be necessary here but we code defensively,
-                    // and there is no real (performance) downside to it.
-                    if (Volatile.Read(ref _version) == v)
+                    #endif
+                    
+                    if (_version == v)
                         return d;
                 }
 
