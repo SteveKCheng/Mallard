@@ -8,6 +8,10 @@ Alternative .NET bindings for [DuckDB](https://duckdb.org/).
 
 Do not expect anything to work right now.  This page will be updated as the code approaches a working state.
 
+## Build status
+
+[![Build&Test status](https://github.com/SteveKCheng/Mallard/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/SteveKCheng/Mallard/actions/workflows/build-and-test.yml)
+
 ## Requirements
 
   - .NET 9 or later
