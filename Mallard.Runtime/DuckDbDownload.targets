@@ -19,11 +19,26 @@
     <DuckDbDllFileName>libduckdb.so</DuckDbDllFileName>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(DuckDbPlatform)' == 'linux-arm64'">
+    <DuckDbZipFileName>libduckdb-linux-arm64.zip</DuckDbZipFileName>
+    <DuckDbDllFileName>libduckdb.so</DuckDbDllFileName>
+  </PropertyGroup>
+
   <PropertyGroup Condition="'$(DuckDbPlatform)' == 'win-x64'">
     <DuckDbZipFileName>libduckdb-windows-amd64.zip</DuckDbZipFileName>
     <DuckDbDllFileName>duckdb.dll</DuckDbDllFileName>
   </PropertyGroup>
+
+  <PropertyGroup Condition="'$(DuckDbPlatform)' == 'win-arm64'">
+    <DuckDbZipFileName>libduckdb-windows-arm64.zip</DuckDbZipFileName>
+    <DuckDbDllFileName>duckdb.dll</DuckDbDllFileName>
+  </PropertyGroup>
  
+  <PropertyGroup Condition="'$(DuckDbPlatform)' == 'osx-x64' or '$(DuckDbPlatform)' == 'osx-arm64'">
+    <DuckDbZipFileName>libduckdb-osx-universal.zip</DuckDbZipFileName>
+    <DuckDbDllFileName>libduckdb.dylib</DuckDbDllFileName>
+  </PropertyGroup>
+
   <Target Name="DownloadDuckDb" DependsOnTargets="_CheckDuckDbDownloadSupported">
     <PropertyGroup>
       <DuckDbZipUrl>https://github.com/duckdb/duckdb/releases/download/v$(DuckDbVersion)/$(DuckDbZipFileName)</DuckDbZipUrl>
