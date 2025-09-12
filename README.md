@@ -30,8 +30,24 @@ The build process will automatically download the native library files for DuckD
   - Extract ``duckdb.dll`` (or ``duckdb.so`` etc.) and put it inside the directory ``native/‹version›/‹platform›/``.
     - ``‹platform›`` is the .NET run-time identifier, e.g. ``win-x64`` for Windows on x64, ``linux-x64`` for 
     common glibc-based Linux distributions on x64.
-    - ``‹version›`` is the DuckDB version that is set in ``Mallard.Runtime/DuckDbVersion.props``.  If you want to change the version you can do so in that file or in ``Mallard/Directory.Build.props``.
+    - ``‹version›`` is the DuckDB version that is set in ``Mallard.Runtime/DuckDbVersion.props``.  If you want to change the version you can do so in that file or in ``Directory.Build.props``.
   - If you want to use another/custom build of DuckDB, you can place the library files in the same locations indicated.  You can run Mallard & DuckDB on platforms that are not officially supported with a binary release this way.
+
+### To run tests
+
+  - Use your IDE's “Test Explorer” on the project ``Mallard.Tests``;
+  - or execute the command: ``dotnet run`` from the ``Mallard.Tests/`` directory.
+
+### To create NuGet packages
+
+  - For the .NET bindings: 
+      - Execute ``dotnet pack`` from the ``Mallard/`` directory.
+      - Output will be in ``out/package/release/Mallard.«version».nupkg``.
+      - Note that the ``«version»`` here is that of Mallard, not of DuckDB.
+  - For the DuckDB native library (re-packaged into NuGet packages):
+      - Execute ``dotnet pack -p:RuntimeIdentifier=«platform»`` from the ``Mallard.Runtime/`` directory.
+      - Output will be in ``out/package/release/Mallard.Runtime.«platform».«version».nupkg``.
+      - ``«version»`` here refers to DuckDB's version.
 
 ## Relation to other .NET bindings
 
