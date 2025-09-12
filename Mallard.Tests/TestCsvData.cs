@@ -3,20 +3,21 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
-using System.Globalization;
 using System.IO;
 using System.Linq;
-using CsvHelper;
-using CsvHelper.Configuration;
-using CsvHelper.TypeConversion;
+using Dameng.SepEx;
+using nietras.SeparatedValues;
 using Xunit;
 using TUnit.Core;
 
 namespace Mallard.Tests;
 
 // Wrapper around ImmutableArray to implement structural equality.
+// Also handles parsing from CSV as a semicolon-delimited list since
+// Dameng.SepEx does not support non-intrusive type converters.
 internal readonly struct ValueArray<T>(ImmutableArray<T> values) 
-    : IReadOnlyList<T>, IEquatable<ValueArray<T>> where T : IEquatable<T>
+    : IReadOnlyList<T>, IEquatable<ValueArray<T>>, ISpanParsable<ValueArray<T>>
+    where T : IEquatable<T>, ISpanParsable<T>
 {
     private readonly ImmutableArray<T> _values = values;
     public T this[int index] => _values[index];
@@ -37,21 +38,58 @@ internal readonly struct ValueArray<T>(ImmutableArray<T> values)
 
     public bool Equals(ValueArray<T> other)
         => _values.SequenceEqual(other._values);
+
+    static ValueArray<T> IParsable<ValueArray<T>>.Parse(string s, IFormatProvider? provider)
+        => Parse(s.AsSpan(), provider); 
+    
+    static bool IParsable<ValueArray<T>>.TryParse([NotNullWhen(true)] string? s, IFormatProvider? provider, out ValueArray<T> result)
+        => TryParse(s.AsSpan(), provider, out result);
+
+    public static ValueArray<T> Parse(ReadOnlySpan<char> s, IFormatProvider? provider)
+    {
+        if (TryParse(s, provider, out var result))
+            return result;
+        
+        throw new FormatException($"Could not parse semicolon-delimited list of type {typeof(T).Name}");
+    }
+
+    public static bool TryParse(ReadOnlySpan<char> s, IFormatProvider? provider, out ValueArray<T> result)
+    {
+        result = new ValueArray<T>(ImmutableArray<T>.Empty);
+
+        if (s.IsEmpty)
+            return true;
+        
+        // Count number of items to allocate array exactly
+        int count = 1;
+        foreach (var c in s)
+            if (c == ';') ++count;
+        
+        var builder = ImmutableArray.CreateBuilder<T>(count);
+        int i = -1;
+        do
+        {
+            s = s[(i + 1)..];
+            i = s.IndexOf(';');
+            var t = (i >= 0) ? s[..i] : s;
+            if (!T.TryParse(t, provider, out var item))
+                return false;
+            builder.Add(item);
+        } while (i >= 0);
+
+        result = new ValueArray<T>(builder.MoveToImmutable());
+        return true;
+    }
 }
 
 internal static class ImmutableArrayExtensions
 {
-    public static ValueArray<T>? ToValueArray<T>(this ImmutableArray<T>? values) where T : IEquatable<T> 
+    public static ValueArray<T>? ToValueArray<T>(this ImmutableArray<T>? values) 
+        where T : IEquatable<T>, ISpanParsable<T> 
         => values.HasValue ? new ValueArray<T>(values.GetValueOrDefault()) : null;
-    public static ValueArray<T> ToValueArray<T>(this ImmutableArray<T> values) where T : IEquatable<T>
+    public static ValueArray<T> ToValueArray<T>(this ImmutableArray<T> values) 
+        where T : IEquatable<T>, ISpanParsable<T>
         => new(values);
-}
-
-// Turn a string from the CSV file into a list of strings, assuming the item separator is ';'
-internal sealed class StringListConverter : DefaultTypeConverter
-{
-    public override object? ConvertFromString(string? text, IReaderRow row, MemberMapData memberMapData)
-        => text != null ? ImmutableArray.Create(text.Split(';')).ToValueArray() : null;
 }
 
 // Enum defined consistently with Recipes.sql
@@ -61,7 +99,8 @@ internal enum 菜類_enum
 }
 
 // One row of the Recipes.csv in strongly-typed format
-internal sealed record Recipe
+[GenSepParsable]
+internal sealed partial record Recipe
 {
     public int 頁 { get; init; }
     public 菜類_enum 菜類 { get; init; }
@@ -77,15 +116,14 @@ public class TestCsvData
 {
     private static List<Recipe> GetRecipes()
     {
-        using var textReader = File.OpenText(Path.Combine(Program.TestDataDirectory, "Recipes.csv"));
-        using var csv = new CsvReader(textReader, new CsvConfiguration(CultureInfo.InvariantCulture)
+        var csvOptions = new SepReaderOptions()
         {
-            HasHeaderRecord = true,
-        });
-        csv.Context.TypeConverterCache.AddConverter<ValueArray<string>>(new StringListConverter());
-        csv.Context.TypeConverterOptionsCache.GetOptions<ValueArray<string>>().NullValues.Add("");
-        
-        return csv.GetRecords<Recipe>().OrderBy(r => r.頁).ToList();
+            HasHeader = true,
+            Unescape = true,
+        };
+
+        using var csvReader = csvOptions.FromFile(Path.Combine(Program.TestDataDirectory, "Recipes.csv"));
+        return csvReader.GetRecords<Recipe>().OrderBy(r => r.頁).ToList();
     }
 
     private static ValueArray<string>? ReadList(in DuckDbVectorRawReader<DuckDbListRef> vector, int index)

@@ -14,7 +14,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="CsvHelper" Version="33.1.0" />
+    <PackageReference Include="Dameng.SepEx" Version="0.3.0" />
     <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" Version="17.14.2" />
     <PackageReference Include="TUnit.Engine" Version="0.57.65" />
     <PackageReference Include="xunit.v3.assert" Version="3.0.1" />
@@ -25,6 +25,12 @@
     <ProjectReference Include="../Mallard/Mallard.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Work around bug in Dameng.SepEx which forgets the "using namespace" 
+         declaration in a generated source file. -->
+    <Using Include="System.Collections.Generic" />
+  </ItemGroup>
+  
   <Import Project="../Mallard.Runtime/DuckDbDownload.targets" />
 
   <Target Name="CustomAfterBuild" AfterTargets="Build" DependsOnTargets="EnsureDuckDbDownloaded" />
