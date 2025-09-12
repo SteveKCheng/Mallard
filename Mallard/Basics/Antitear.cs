@@ -12,6 +12,7 @@ namespace Mallard;
 /// </typeparam>
 /// <remarks>
 /// Uses a version counter to signal when reads/writes should be re-tried (in a loop).
+/// Also known as a "seqlock".
 /// </remarks>
 internal struct Antitear<T>(T initialValue) where T : struct
 {
@@ -50,15 +51,31 @@ internal struct Antitear<T>(T initialValue) where T : struct
                     var d = _data;
 
                     #if NET10_0_OR_GREATER
-                    Volatile.ReadBarrier();
-                    #else
-                    // Dummy write to prevent re-ordering of read of d to follow the
-                    // verifying read of _version below.
-                    Volatile.Write(ref v, v);
-                    #endif
                     
+                    Volatile.ReadBarrier();
                     if (_version == v)
                         return d;
+                    
+                    #else
+                    
+                    // See:
+                    // https://stackoverflow.com/questions/56419723/which-of-these-implementations-of-seqlock-are-correct
+                    // https://github.com/dotnet/runtime/issues/98837
+                    // https://github.com/dotnet/runtime/blob/main/docs/design/specs/Memory-model.md
+                    //
+                    // We need a Read-Read barrier (as above) but there is no API to do so before .NET 10,
+                    // so we add a dummy "release" write and an "acquire" load, hoping that the compiler
+                    // does not re-order the accesses, and inserts any necessary fences on architectures
+                    // with weaker memory ordering.  According to the literal reading of the .NET memory
+                    // model, even this sequence of operations does not strictly guarantee that the
+                    // reads will not be re-ordered, but we have no alternative short of an expensive,
+                    // full fence (Interlocked.MemoryBarrier).
+                    Volatile.Write(ref v, v);
+
+                    if (Volatile.Read(ref _version) == v)
+                        return d;
+                        
+                    #endif
                 }
 
                 spinWait.SpinOnce();
