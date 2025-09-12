@@ -16,9 +16,9 @@ Do not expect anything to work right now.  This page will be updated as the code
 
   - .NET 9 or later
 
-(Mallard requires .NET 9+ for substituting ``ref struct`` types in generic parameters.
+Mallard requires .NET 9+ for substituting ``ref struct`` types in generic parameters.
 .NET 10 (version with long-term support) is currently in preview, and Mallard will switch
-to target that exclusively once a release version is widely available.)
+to target that exclusively once a release version is widely available.
 
 ## Build instructions
 
@@ -39,8 +39,10 @@ The build process will automatically download the native library files for DuckD
 
 ### To run tests
 
-  - Use your IDE's “Test Explorer” on the project ``Mallard.Tests``;
-  - or execute the command: ``dotnet run`` from the ``Mallard.Tests/`` directory.
+  - Use your IDE's “Test Explorer” on the project ``Mallard.Tests``.
+    - On JetBrains rider, you have to select “Enable Testing Platform support” under the IDE's settings.  
+    - The latest versions of Visual Studio should not require further configuration.
+  - Or, execute the command: ``dotnet run`` from the ``Mallard.Tests/`` directory.
 
 ### To create NuGet packages
 

@@ -1,7 +1,4 @@
 ﻿using System;
-using Xunit;
-
-[assembly: AssemblyFixture(typeof(Mallard.Tests.DatabaseFixture))]
 
 namespace Mallard.Tests;
 

@@ -1,14 +1,16 @@
 ﻿using System;
 using Xunit;
+using TUnit.Core;
 
 namespace Mallard.Tests;
 
+[ClassDataSource<DatabaseFixture>(Shared = SharedType.PerTestSession)]
 public class TestPreparedStatement(DatabaseFixture fixture)
 {
     private readonly DatabaseFixture _fixture = fixture;
     private DuckDbConnection DbConnection => _fixture.DbConnection;
 
-    [Fact]
+    [Test]
     public void TestPreparedStatementCreation()
     {
         const int limitRows = 10;
@@ -26,7 +28,7 @@ public class TestPreparedStatement(DatabaseFixture fixture)
         Assert.Equal(limitRows, dbResult.DestructiveGetNumberOfResults());
     }
 
-    [Fact]
+    [Test]
     public void DecimalParameter()
     {
         const int limitRows = 50;

@@ -3,12 +3,13 @@ using Microsoft.Data.Analysis;
 using System;
 using System.IO;
 using Xunit;
+using TUnit.Core;
 
 namespace Mallard.Tests;
 
 public class TestDataFrames
 {
-    [Fact]
+    [Test]
     public void PopulateDataFrame()
     {
         using var dbConn = new DuckDbConnection("");

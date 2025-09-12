@@ -2,21 +2,23 @@
 using System.Collections;
 using System.IO;
 using Xunit;
+using TUnit.Core;
 
 namespace Mallard.Tests;
 
+[ClassDataSource<DatabaseFixture>(Shared = SharedType.PerTestSession)]
 public class UnitTest1(DatabaseFixture fixture)
 {
     private readonly DatabaseFixture _fixture = fixture;
 
-    [Fact]
+    [Test]
     public void Test1()
     {
         using var dbConn = new DuckDbConnection(@"test.db");
         return;
     }
 
-    [Fact]
+    [Test]
     public void Test2()
     {
         using var dbConn = new DuckDbConnection("");
@@ -72,7 +74,7 @@ public class UnitTest1(DatabaseFixture fixture)
         Assert.InRange(totalRows, 1000, 2000);
     }
 
-    [Fact]
+    [Test]
     public void Test3()
     {
         var dbConn = _fixture.DbConnection;
@@ -110,7 +112,7 @@ public class UnitTest1(DatabaseFixture fixture)
         => s.AsSpan().ContainsAnyExceptInRange('\u0020', '\u007E') == false;
 
     // Test "raw" way of reading bit strings
-    [Fact]
+    [Test]
     public void BitStringRaw()
     {
         using var dbConn = new DuckDbConnection("");
@@ -152,7 +154,7 @@ public class UnitTest1(DatabaseFixture fixture)
         });
     }
 
-    [Fact]
+    [Test]
     public void ReadRawStruct()
     {
         using var dbConn = new DuckDbConnection("");

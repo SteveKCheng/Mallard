@@ -10,6 +10,7 @@ using CsvHelper;
 using CsvHelper.Configuration;
 using CsvHelper.TypeConversion;
 using Xunit;
+using TUnit.Core;
 
 namespace Mallard.Tests;
 
@@ -99,7 +100,7 @@ public class TestCsvData
         return arrayBuilder.DrainToImmutable().ToValueArray();
     }
 
-    [Fact]
+    [Test]
     public void ReadListVector1()
     {
         var recipesCsv = GetRecipes();
@@ -152,7 +153,7 @@ public class TestCsvData
     }
 
     // Same as ReadListVector1 but without any "raw" conversions
-    [Fact]
+    [Test]
     public void ReadListVector2()
     {
         var recipesCsv = GetRecipes();

@@ -3,12 +3,13 @@ using System.Collections;
 using System.Linq;
 using System.Numerics;
 using Xunit;
+using TUnit.Core;
 
 namespace Mallard.Tests;
 
 public class TestExecuteScalar
 {
-    [Fact]
+    [Test]
     public void Decimal()
     {
         using var dbConn = new DuckDbConnection("");
@@ -24,7 +25,7 @@ public class TestExecuteScalar
         Assert.StrictEqual(v, (decimal)v_out);
     }
 
-    [Fact]
+    [Test]
     public void BigInteger()
     {
         using var dbConn = new DuckDbConnection("");
@@ -77,7 +78,7 @@ public class TestExecuteScalar
         }
     }
 
-    [Fact]
+    [Test]
     public void BitString()
     {
         using var dbConn = new DuckDbConnection("");
@@ -118,7 +119,7 @@ public class TestExecuteScalar
                 buffer[i] = a[i + start] ? '1' : '0';
         });
 
-    [Fact]
+    [Test]
     public void IntegerPromotion()
     {
         using var dbConn = new DuckDbConnection("");
@@ -141,7 +142,7 @@ public class TestExecuteScalar
         Assert.ThrowsAny<Exception>(() => ps.ExecuteValue<UInt128>());
     }
 
-    [Fact]
+    [Test]
     public void EnumPromotion()
     {
         using var dbConn = new DuckDbConnection("");

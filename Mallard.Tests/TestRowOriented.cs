@@ -2,15 +2,17 @@
 using System.Linq;
 using System.Text;
 using Xunit;
+using TUnit.Core;
 
 namespace Mallard.Tests;
 
+[ClassDataSource<DatabaseFixture>(Shared = SharedType.PerTestSession)]
 public class TestRowOriented(DatabaseFixture fixture)
 {
     private readonly DatabaseFixture _fixture = fixture;
     private DuckDbConnection DbConnection => _fixture.DbConnection;
 
-    [Fact]
+    [Test]
     public void DataReader()
     {
         const int limitRows = 200;
@@ -80,7 +82,7 @@ public class TestRowOriented(DatabaseFixture fixture)
         Assert.False(adoReader.Read());
     }
 
-    [Fact]
+    [Test]
     public void GetChars()
     {
         using var dbConn = new DuckDbConnection("");

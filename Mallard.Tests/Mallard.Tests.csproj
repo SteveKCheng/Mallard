@@ -9,17 +9,15 @@
     <OutputType></OutputType>
     <RootNamespace>Mallard.Tests</RootNamespace>
     <RollForward>LatestMajor</RollForward>
-    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
-    <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
+    <TUnitImplicitUsings>false</TUnitImplicitUsings>
+    <TUnitAssertionsImplicitUsings>false</TUnitAssertionsImplicitUsings>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="coverlet.collector" Version="6.0.4">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
     <PackageReference Include="CsvHelper" Version="33.1.0" />
-    <PackageReference Include="xunit.v3" Version="3.0.1" />
+    <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" Version="17.14.2" />
+    <PackageReference Include="TUnit.Engine" Version="0.57.65" />
+    <PackageReference Include="xunit.v3.assert" Version="3.0.1" />
   </ItemGroup>
 
   <ItemGroup>
@@ -29,9 +27,7 @@
 
   <Import Project="../Mallard.Runtime/DuckDbDownload.targets" />
 
-  <Target Name="CustomAfterBuild" 
-          AfterTargets="Build" 
-          DependsOnTargets="EnsureDuckDbDownloaded" />
+  <Target Name="CustomAfterBuild" AfterTargets="Build" DependsOnTargets="EnsureDuckDbDownloaded" />
 
 </Project>
 
