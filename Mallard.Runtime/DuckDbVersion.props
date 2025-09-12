@@ -1,7 +1,13 @@
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
-    <!-- The platforms that both DuckDB and .NET can run on,
-	 specified in the syntax of .NET runtime identifiers. -->
+    <!-- The platforms that .NET can run on and have officially-
+         published binary releases from DuckDB, specified in the 
+         syntax of .NET runtime identifiers. 
+
+         Mallard may still be able to run against DuckDB on a 
+         platform that is not listed here.  You will have to build
+         or otherwise provide the native library files yourself,
+         however. -->
     <DuckDbPlatforms>linux-x64;win-x64</DuckDbPlatforms>
 
     <!-- The version of DuckDB to download, use and package.
@@ -12,9 +18,8 @@
          A version string that is not of the form "x.y.z" is assumed 
          to refer to a non-official or unpublished version.  In that
          case you must provide the required native library files manually,
-         in the ../native directory; the build process cannot automatically
-         download it from DuckDB's GitHub releases page. -->
-
+         in the ../native directory; the build process obviously 
+         cannot download it from DuckDB's GitHub releases page. -->
     <DuckDbVersion Condition="'$(DuckDbVersion)' == ''">1.3.2</DuckDbVersion>
   </PropertyGroup>
 </Project>

@@ -31,7 +31,7 @@ The build process will automatically download the native library files for DuckD
     - ``‹platform›`` is the .NET run-time identifier, e.g. ``win-x64`` for Windows on x64, ``linux-x64`` for 
     common glibc-based Linux distributions on x64.
     - ``‹version›`` is the DuckDB version that is set in ``Mallard.Runtime/DuckDbVersion.props``.  If you want to change the version you can do so in that file or in ``Mallard/Directory.Build.props``.
-  - If you want to use another/custom build of DuckDB, you can place the library files in the same locations indicated.
+  - If you want to use another/custom build of DuckDB, you can place the library files in the same locations indicated.  You can run Mallard & DuckDB on platforms that are not officially supported with a binary release this way.
 
 ## Relation to other .NET bindings
 
