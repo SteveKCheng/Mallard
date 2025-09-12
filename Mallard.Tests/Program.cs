@@ -1,9 +1,7 @@
 ﻿using System;
 using System.IO;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using Xunit;
 
 namespace Mallard.Tests;
 
@@ -53,7 +51,7 @@ internal static class Program
     }
 
     public static readonly string SolutionDirectory =
-        Path.Join(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "..", "..", "..", "..");
+        Path.Join(System.AppContext.BaseDirectory, "..", "..", "..", "..");
     
     public static readonly string TestDataDirectory =
         Path.Join(SolutionDirectory, "testData");

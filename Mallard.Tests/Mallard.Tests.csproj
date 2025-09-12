@@ -3,14 +3,20 @@
 
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
-    <ImplicitUsings>disable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <IsPackable>false</IsPackable>
-    <OutputType></OutputType>
-    <RootNamespace>Mallard.Tests</RootNamespace>
+    <OutputType>exe</OutputType>
     <RollForward>LatestMajor</RollForward>
+
+    <RootNamespace>Mallard.Tests</RootNamespace>
+
+    <ImplicitUsings>disable</ImplicitUsings>
     <TUnitImplicitUsings>false</TUnitImplicitUsings>
     <TUnitAssertionsImplicitUsings>false</TUnitAssertionsImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <IsPackable>false</IsPackable>
+    <PublishAot>true</PublishAot>
+    <EnableAotAnalyzer>true</EnableAotAnalyzer>
+    <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
 
   <ItemGroup>
