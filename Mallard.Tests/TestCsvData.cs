@@ -9,6 +9,7 @@ using System.Linq;
 using CsvHelper;
 using CsvHelper.Configuration;
 using CsvHelper.TypeConversion;
+using Xunit;
 
 namespace Mallard.Tests;
 

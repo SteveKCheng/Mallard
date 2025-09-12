@@ -27,10 +27,6 @@
     <ProjectReference Include="../Mallard/Mallard.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Using Include="Xunit" />
-  </ItemGroup>
-
   <Import Project="../Mallard.Runtime/DuckDbDownload.targets" />
 
   <Target Name="CustomAfterBuild" 
