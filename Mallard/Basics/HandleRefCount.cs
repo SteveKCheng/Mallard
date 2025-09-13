@@ -56,12 +56,21 @@ internal struct HandleRefCount
     /// </summary>
     public ref struct Scope
     {
+        /// <summary>
+        /// Reference count from the parent <see cref="HandleRefCount" />.
+        /// Set to null if this instance is invalid.
+        /// </summary>
         private ref int _counter;
         
         /// <summary>
         /// Whether this instance (scope) is the first of the active references.
         /// </summary>
         public bool IsFirst { get; }
+        
+        /// <summary>
+        /// Whether this instance is valid.
+        /// </summary>
+        public bool IsValid => !Unsafe.IsNullRef(in _counter);
 
         /// <summary>
         /// Throw an exception if this scope is not the first of active references.
@@ -77,31 +86,71 @@ internal struct HandleRefCount
         }
 
         /// <summary>
+        /// Establishes the dynamic scope, on an owning object that is still alive.
+        /// </summary>
+        /// <param name="parent">The <see cref="HandleRefCount" /> instance that controls
+        /// access on some owning managed object. </param>
+        /// <remarks>
+        /// If the owning object has already been disposed, establishing the dynamic
+        /// scope fails, and is indicated by <see cref="IsValid" /> being false when this constructor
+        /// returns.  No exception is thrown in that case.  
+        /// </remarks>
+        internal Scope(ref HandleRefCount parent)
+        {
+            ref int counter = ref parent._counter;
+
+            int v = Interlocked.Increment(ref counter);
+            if (v <= 0)
+            {
+                Interlocked.Decrement(ref counter);
+                return;
+            }
+
+            _counter = ref counter;
+            IsFirst = (v == 1);
+        }
+
+        /// <summary>
         /// Establishes the dynamic scope.
         /// </summary>
         /// <param name="parent">The <see cref="HandleRefCount" /> instance that controls
         /// access on some owning managed object. </param>
-        /// <param name="targetObject">
-        /// The managed object, used only for reporting errors when the dynamic scope cannot be entered.
+        /// <param name="resurrect">
+        /// If true, this constructor will try to mark the owning object as resurrected,
+        /// if it is dead (disposed).  If false, the behavior is the same as
+        /// the other constructor, <see cref="Scope(ref HandleRefCount)" />. 
         /// </param>
-        /// <exception cref="ObjectDisposedException">
-        /// <paramref name="parent" /> indicates its owning object has already been disposed 
-        /// (or is in the middle of being disposed by another thread).
-        /// </exception>
-        internal Scope(ref HandleRefCount parent, object targetObject)
+        /// <remarks>
+        /// If <paramref name="resurrect"/> is true, and
+        /// the owning object has not already been disposed, establishing the dynamic
+        /// scope fails, and is indicated by <see cref="IsValid" /> being false when this constructor
+        /// returns.  No exception is thrown in that case.  
+        /// </remarks>
+        internal Scope(ref HandleRefCount parent, bool resurrect)
         {
-            _counter = ref parent._counter;
-
-            int v = Interlocked.Increment(ref _counter);
-            if (v <= 0)
+            if (!resurrect)
             {
-                Interlocked.Decrement(ref _counter);
-                throw new ObjectDisposedException(targetObject.GetType().FullName, "Cannot operate on a disposed object. ");
+                this = new Scope(ref parent);
+                return;
             }
 
-            IsFirst = (v == 1);
-        }
+            ref int counter = ref parent._counter;
+            int v = counter;
+            int w;
+            do
+            {
+                // Fail if object is already alive
+                if (v >= 0)
+                    return;
 
+                w = v;
+                v = Interlocked.CompareExchange(ref counter, 1, w);
+            } while (v != w);
+
+            _counter = ref counter;
+            IsFirst = true;
+        }
+        
         /// <summary>
         /// Exit the dynamic scope.
         /// </summary>
@@ -172,8 +221,55 @@ internal struct HandleRefCount
     /// <param name="targetObject">
     /// The managed object, used only for reporting errors when the dynamic scope cannot be entered.
     /// </param>
+    /// <exception cref="ObjectDisposedException">
+    /// The owning object of this instance has been indicated to be disposed 
+    /// (or is in the middle of being disposed by another thread).
+    /// </exception>
     /// <returns>Scope object that should be the subject of a <c>using</c> statement in C#. </returns>
     [UnscopedRef]
-    public Scope EnterScope(object targetObject)
-        => new Scope(ref this, targetObject);
+    public Scope EnterScope(object? targetObject)
+    {
+        var s = new Scope(ref this);
+        if (!s.IsValid)
+            throw new ObjectDisposedException(targetObject?.GetType().FullName, "Cannot operate on a disposed object. ");
+        return s;
+    }
+
+    /// <summary>
+    /// Transition from a disposed state to having one active reference.
+    /// </summary>
+    /// <param name="scope">
+    /// Established dynamic scope with an active reference count of one if the object is
+    /// considered successfully resurrected.  Otherwise the scope is invalid. 
+    /// </param>
+    /// <remarks>
+    /// <para>
+    /// Resurrecting objects requires special care by the caller.  Ordinarily,
+    /// if resurrection is not allowed, and the owning object may establish the invariant
+    /// that (some of) its member variables are immutable since construction of that
+    /// object, and hence the variables may be thread-safe for reading as long as the
+    /// object is alive (not disposed).  Then when <see cref="PrepareToDisposeOwner" />
+    /// is called and returns true, the caller can perform clean up on those variables with
+    /// the guarantee that no other thread will be attempting to read them again.
+    /// </para>
+    /// <para>
+    /// When resurrection becomes allowed, the above thread-safety assumptions go out
+    /// the window.  When <see cref="PrepareToDisposeOwner" /> is called,
+    /// another thread can race to make the object alive again.  So member variables
+    /// generally cannot be assumed to be immutable.  The loss of this assumption
+    /// makes the code more complex and difficult to reason about, so making objects
+    /// resurrectable is not recommended.  But in this library, some interfaces
+    /// we have to implement for compatibility may imply resurrection of objects,
+    /// and so this facility is made available.
+    /// </para>
+    /// </remarks>
+    /// <returns>
+    /// Whether the object has been successfully resurrected.
+    /// </returns>
+    [UnscopedRef]
+    public bool TryResurrect(out Scope scope)
+    {
+        scope = new Scope(ref this, resurrect: true);
+        return scope.IsValid;
+    }
 }
