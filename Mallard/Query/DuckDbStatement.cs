@@ -5,7 +5,7 @@ using System.Collections.Generic;
 namespace Mallard;
 
 /// <summary>
-/// Prepared statement.
+/// Prepared statement from DuckDB.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -18,7 +18,7 @@ namespace Mallard;
 /// multiple threads, each thread must work with its own instance of this class.
 /// </para>
 /// </remarks>
-public unsafe class DuckDbCommand : IDisposable
+public unsafe class DuckDbStatement : IDisposable
 {
     private _duckdb_prepared_statement* _nativeStatement;
     private readonly int _numParams;
@@ -132,7 +132,7 @@ public unsafe class DuckDbCommand : IDisposable
     /// <param name="sql">
     /// The SQL statement to prepare. 
     /// </param>
-    internal DuckDbCommand(_duckdb_connection* nativeConn, string sql)
+    internal DuckDbStatement(_duckdb_connection* nativeConn, string sql)
     {
         var status = NativeMethods.duckdb_prepare(nativeConn, sql, out var nativeStatement);
         try
@@ -249,7 +249,7 @@ public unsafe class DuckDbCommand : IDisposable
         NativeMethods.duckdb_destroy_prepare(ref _nativeStatement);
     }
 
-    ~DuckDbCommand()
+    ~DuckDbStatement()
     {
         // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
         DisposeImpl(disposing: false);

@@ -173,7 +173,7 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
     /// </summary>
     /// <remarks>
     /// This method is common code used to implement <see cref="DuckDbConnection.ExecuteNonQuery" />
-    /// and <see cref="DuckDbCommand.ExecuteNonQuery" />.
+    /// and <see cref="DuckDbStatement.ExecuteNonQuery" />.
     /// </remarks>
     internal static long TakeNumberOfChangedRows(ref duckdb_result nativeResult)
         => ExtractNumberOfChangedRows(ref nativeResult, out _, destroyNativeResult: true);

@@ -196,10 +196,10 @@ public unsafe sealed partial class DuckDbConnection : IDisposable
     // DuckDbCommand class will probably be renamed to DuckDbPreparedStatement; and
     // we will offer a new (non-interface) method to create a prepared statement in
     // the DuckDB "native way", for efficiency.
-    public DuckDbCommand CreatePreparedStatement(string sql)
+    public DuckDbStatement CreatePreparedStatement(string sql)
     {
         using var _ = _refCount.EnterScope(this);
-        return new DuckDbCommand(_nativeConn, sql);
+        return new DuckDbStatement(_nativeConn, sql);
     }
 
     #endregion
