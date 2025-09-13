@@ -106,11 +106,11 @@ public class TestExecuteScalar
             var bitArray2 = ps.ExecuteValue<BitArray>();
             Assert.NotNull(bitArray2);
 
-            // BitArray does not do structural equality, so convert to IEnumerable<bool> first 
-            Assert.Equal(bitArray.Cast<bool>().Take(len), bitArray2.Cast<bool>());
+            // BitArray does not do structural equality, so convert to IEnumerable<bool> first.
+            Assert2.Equal(bitArray.Cast<bool>().Take(len), bitArray2.Cast<bool>());
         }
     }
-
+    
     internal static string CreateStringFromBitArray(BitArray a, int start, int length)
         => string.Create(length, (a, start), static (buffer, state) =>
         {
