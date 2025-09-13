@@ -1,6 +1,7 @@
 ﻿using Mallard.C_API;
 using System;
 using System.Collections.Generic;
+using System.Threading;
 
 namespace Mallard;
 
@@ -13,6 +14,27 @@ public unsafe sealed partial class DuckDbConnection : IDisposable
     /// This is set to null when this instance has been completely disposed.
     /// </remarks>
     private _duckdb_connection* _nativeConn;
+
+    /// <summary>
+    /// Signals when this object is safe to be resurrected.   
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The value of this variable basically aligns with <see cref="_nativeConn" />
+    /// being null.  However, we need to do an explicit "volatile" write as part
+    /// of avoiding unsafe races between disposal and resurrection of this object.
+    /// Unfortunately, C# does not allow that for pointer-typed variables,
+    /// so we have to use a separate boolean variable.
+    /// </para>
+    /// <para>
+    /// Note there is a short window of time between when <see cref="_refCount" />
+    /// considers this instance to be disposed, and when this flag is set to true.
+    /// In the middle of the disposal, this flag remains false.
+    /// (This complicated dance is to avoid additional locking to accommodate
+    /// re-opening connections, which we do not even recommend doing.)
+    /// </para>
+    /// </remarks>
+    private bool _isSafeToResurrect;
 
     private HandleRefCount _refCount;
     
@@ -238,23 +260,18 @@ public unsafe sealed partial class DuckDbConnection : IDisposable
         if (!_refCount.PrepareToDisposeOwner())
             return;
 
-        // _nativeConn being set to null signals completion of disposal, 
-        // so we need to get the database object reference first so 
-        // we do not release the wrong object in case this method races
-        // with resurrection from IDbConnection.Open.  (The .NET memory model
-        // does not allow speculative writes so the changing of the _database
-        // field in IDbConnection.Open cannot be re-ordered to happen before
-        // _nativeConn is set to null here.  This complicated dance is to
-        // avoid additional locking, just to accommodate IDbConnection.Open
-        // which we do not even recommend using.)
+        // Get the database object reference first so we do not release the
+        // wrong object in case this method races with resurrection from
+        // IDbConnection.Open.  (The .NET memory model does not allow speculative
+        // writes so the writing to the _database field in that other method
+        // cannot be re-ordered to happen before _isSafeToResurrect is set to
+        // true here.  And the "volatile" write / read barrier
+        // below ensures this read here is not re-ordered to occur after.)
         var database = _database;
         
-        // Set _nativeConn to null ourselves to ensure it is a single atomic write
-        // in the .NET memory model.
-        var nativeConn = _nativeConn;
-        _nativeConn = null;
+        NativeMethods.duckdb_disconnect(ref _nativeConn);
+        Volatile.Write(ref _isSafeToResurrect, true);
 
-        NativeMethods.duckdb_disconnect(ref nativeConn);
         database.ReleaseRef();
     }
 

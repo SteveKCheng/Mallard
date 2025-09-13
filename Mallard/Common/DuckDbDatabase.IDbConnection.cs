@@ -97,15 +97,12 @@ public sealed partial class DuckDbConnection : IDbConnection
         {
             lock (MutexForIDbConnection)
             {
-                bool isOpen;
-                unsafe { isOpen = (_nativeConn != null); }
-                
-                if (isOpen)
+                if (!_isSafeToResurrect)
                 {
                     throw new InvalidOperationException(
                         "ConnectionString cannot be changed while the connection is still open. ");
                 }
-                    
+                
                 _connectionString = value ?? string.Empty;
                 _connectionStringChanged = true;
             }
@@ -147,11 +144,7 @@ public sealed partial class DuckDbConnection : IDbConnection
     {
         lock (MutexForIDbConnection)
         {
-            // _nativeConn == null signals that this instance has been completely
-            // disposed, i.e. not just being marked for disposal (in the call to
-            // HandleRefCount.PrepareToDispose() in DisposeImpl).  We do not want
-            // this method to be racing against the middle of the disposal process.
-            if (_nativeConn != null)
+            if (!_isSafeToResurrect)
                 throw new InvalidOperationException("Database is already open. ");
             
             // Only this method can resurrect this instance, and all code here
@@ -190,6 +183,7 @@ public sealed partial class DuckDbConnection : IDbConnection
             _connectionStringChanged = false;
 
             // Resurrection should never fail with the assumptions given above
+            _isSafeToResurrect = false;
             _refCount.TryResurrect(out var scope);
             scope.Dispose();
         }
