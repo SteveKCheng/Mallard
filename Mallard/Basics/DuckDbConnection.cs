@@ -38,6 +38,29 @@ public unsafe sealed partial class DuckDbConnection : IDisposable
 
     private HandleRefCount _refCount;
     
+    /// <summary>
+    /// Represents the underlying DuckDB database that this instance connects to. 
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// There may be more than one connection on a single database, e.g. for issuing
+    /// queries from multiple threads.  To make it easier to spin up new connections,
+    /// the reference to the database object is retained.  The database object
+    /// is not needed for the queries themselves.
+    /// </para>
+    /// <para>
+    /// When this object is disposed, the additional reference count that this object
+    /// holds on the database object is released (by <see cref="DuckDbDatabase.Release" />),
+    /// which may entail releasing native resources.  But the managed database object
+    /// (wrapper) is retained, so that a connection instance can be identified by the
+    /// user even if disposed (by the file path the database has been opened by, etc.),
+    /// and so that a connection can be easily re-opened. 
+    /// </para>
+    /// <para>
+    /// Thus, re-connecting may change the database object but this member is never null
+    /// (after construction).
+    /// </para>
+    /// </remarks>
     private DuckDbDatabase _database;
 
     /// <summary>
@@ -52,18 +75,7 @@ public unsafe sealed partial class DuckDbConnection : IDisposable
     /// </param>
     public DuckDbConnection(string path, IEnumerable<KeyValuePair<string, string>>? options = null)
     {
-        var database = new DuckDbDatabase(path, options);
-        try
-        {
-            _nativeConn = database.Connect();
-        }
-        catch
-        {
-            database.ReleaseRef();
-            throw;
-        }
-
-        _database = database;
+        _nativeConn = DuckDbDatabase.Connect(path, options, out _database);
     }
 
     #region Executing statements from SQL strings
@@ -169,8 +181,7 @@ public unsafe sealed partial class DuckDbConnection : IDisposable
 
     private DuckDbConnection(DuckDbDatabase database)
     {
-        _nativeConn = database.Connect();
-        database.AcquireRef();
+        _nativeConn = DuckDbDatabase.Reconnect(ref database);
         _database = database;
     }
 
@@ -272,7 +283,7 @@ public unsafe sealed partial class DuckDbConnection : IDisposable
         NativeMethods.duckdb_disconnect(ref _nativeConn);
         Volatile.Write(ref _isSafeToResurrect, true);
 
-        database.ReleaseRef();
+        database.Release();
     }
 
     ~DuckDbConnection()

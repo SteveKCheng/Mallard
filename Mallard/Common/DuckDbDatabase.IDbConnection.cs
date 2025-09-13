@@ -153,17 +153,19 @@ public sealed partial class DuckDbConnection : IDbConnection
             // the lock.  
             
             DuckDbDatabase database;
+            _duckdb_connection* nativeConn;
             
             if (_connectionStringChanged)
             {
                 // The user has set the connection string so we need to parse it 
                 ParseConnectionString(_connectionString, out var path, out var options);
-                database = new DuckDbDatabase(path, options);
+                nativeConn = DuckDbDatabase.Connect(path, options, out database);
             }
             else
             {
-                // Connection string did not change; can re-use path and options from before  
-                database = new DuckDbDatabase(_database.Path, _database.Options);
+                // Connection string did not change; can re-use path and options from before
+                database = _database;
+                nativeConn = DuckDbDatabase.Reconnect(ref database); 
             }
            
             // Changing these variables is allowed here because:
@@ -176,7 +178,7 @@ public sealed partial class DuckDbConnection : IDbConnection
             //
             // If connecting fails, then this object remains in the disposed state,
             // and the variables are left unchanged.
-            _nativeConn = database.Connect();
+            _nativeConn = nativeConn;
             _database = database;
             
             // database.Options already contains the parsed options
