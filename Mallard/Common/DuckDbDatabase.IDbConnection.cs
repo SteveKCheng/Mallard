@@ -6,6 +6,7 @@ using System.Data;
 using System.Data.Common;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
+using Mallard.C_API;
 
 namespace Mallard;
 
@@ -95,6 +96,15 @@ public sealed partial class DuckDbConnection : IDbConnection
         {
             lock (MutexForIDbConnection)
             {
+                bool isOpen;
+                unsafe { isOpen = (_nativeConn != null); }
+                
+                if (isOpen)
+                {
+                    throw new InvalidOperationException(
+                        "ConnectionString cannot be changed while the connection is still open. ");
+                }
+                    
                 _connectionString = value ?? string.Empty;
                 _connectionStringChanged = true;
             }
