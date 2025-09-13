@@ -74,23 +74,24 @@ public sealed partial class DuckDbConnection : IDbConnection
     {
         get
         {
-            lock (MutexForIDbConnection)
+            var connectionString = _connectionString;
+            if (connectionString != null)
+                return connectionString;
+
+            var database = _database;
+            var builder = new DbConnectionStringBuilder(useOdbcRules: true);
+            builder.Add(ConnectionStringPathKey, database.Path);
+            if (!database.Options.IsDefault)
             {
-                if (_connectionString != null)
-                    return _connectionString;
-
-                var database = _database;
-                var builder = new DbConnectionStringBuilder(useOdbcRules: true);
-                builder.Add(ConnectionStringPathKey, database.Path);
-                if (!database.Options.IsDefault)
-                {
-                    foreach (var (key, value) in database.Options)
-                        builder.Add(key, value);
-                }
-
-                _connectionString = builder.ConnectionString;
-                return _connectionString;
+                foreach (var (key, value) in database.Options)
+                    builder.Add(key, value);
             }
+
+            connectionString = builder.ConnectionString;
+            
+            // If some other thread changed _connectString first then return that one instead.
+            return Interlocked.CompareExchange(ref _connectionString, connectionString, null) 
+                   ?? connectionString;
         }
         set
         {
