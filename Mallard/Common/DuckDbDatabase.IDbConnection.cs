@@ -1,7 +1,11 @@
 ﻿using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Data;
 using System.Data.Common;
 using System.Diagnostics.CodeAnalysis;
+using System.Threading;
 
 namespace Mallard;
 
@@ -32,6 +36,36 @@ public sealed partial class DuckDbConnection : IDbConnection
     /// <see cref="IDbConnection.Open" /> is called.
     /// </remarks>
     private bool _connectionStringChanged;
+    
+    /// <summary>
+    /// The settings key in an ADO.NET-style connection string that is used
+    /// to specify the path to the DuckDB database.
+    /// </summary>
+    private const string ConnectionStringPathKey = "path"; 
+
+    private Lock? _mutexForIDbConnection;
+
+    /// <summary>
+    /// Lock object to implement properties/methods of <see cref="IDbConnection" />
+    /// pertaining to changing which database to connect to. 
+    /// </summary>
+    /// <remarks>
+    /// Changing which database to connect to is not recommended usage in Mallard;
+    /// it is only supported for compatibility with ADO.NET.  Thus this lock
+    /// object is only allocated on first use.
+    /// </remarks>
+    private Lock MutexForIDbConnection
+    {
+        get
+        {
+            var t = _mutexForIDbConnection;
+            if (t != null)
+                return t;
+
+            t = new Lock();
+            return Interlocked.CompareExchange(ref _mutexForIDbConnection, t, null) ?? t;
+        }
+    }
 
     [AllowNull] // This attribute appears in the IDbConnection interface:
                 // "get" should not return null but "set" accepts null for this property.
@@ -39,25 +73,31 @@ public sealed partial class DuckDbConnection : IDbConnection
     {
         get
         {
-            if (_connectionString != null)
-                return _connectionString;
-
-            var database = _database;
-            var builder = new DbConnectionStringBuilder(useOdbcRules: true);
-            builder.Add("path", database.Path);
-            if (!database.Options.IsDefault)
+            lock (MutexForIDbConnection)
             {
-                foreach (var (key, value) in database.Options)
-                    builder.Add(key, value);
-            }
+                if (_connectionString != null)
+                    return _connectionString;
 
-            _connectionString = builder.ConnectionString;
-            return _connectionString;
+                var database = _database;
+                var builder = new DbConnectionStringBuilder(useOdbcRules: true);
+                builder.Add(ConnectionStringPathKey, database.Path);
+                if (!database.Options.IsDefault)
+                {
+                    foreach (var (key, value) in database.Options)
+                        builder.Add(key, value);
+                }
+
+                _connectionString = builder.ConnectionString;
+                return _connectionString;
+            }
         }
         set
         {
-            _connectionString = value ?? string.Empty;
-            _connectionStringChanged = true;
+            lock (MutexForIDbConnection)
+            {
+                _connectionString = value ?? string.Empty;
+                _connectionStringChanged = true;
+            }
         }
     }
 
@@ -72,7 +112,7 @@ public sealed partial class DuckDbConnection : IDbConnection
     IDbTransaction IDbConnection.BeginTransaction(IsolationLevel il)
     {
         if (!(il == IsolationLevel.Snapshot || il == IsolationLevel.Unspecified))
-            throw new NotSupportedException("Specified isolation level is not supported by DuckDB");
+            throw new NotSupportedException("Specified isolation level is not supported by DuckDB. ");
 
         return BeginTransaction();
     }
@@ -92,8 +132,104 @@ public sealed partial class DuckDbConnection : IDbConnection
         throw new NotImplementedException();
     }
 
-    void IDbConnection.Open()
+    unsafe void IDbConnection.Open()
     {
-        throw new NotImplementedException();
+        lock (MutexForIDbConnection)
+        {
+            // _nativeConn == null signals that this instance has been completely
+            // disposed, i.e. not just being marked for disposal (in the call to
+            // HandleRefCount.PrepareToDispose() in DisposeImpl).  We do not want
+            // this method to be racing against the middle of the disposal process.
+            if (_nativeConn != null)
+                throw new InvalidOperationException("Database is already open. ");
+            
+            // Only this method can resurrect this instance, and all code here
+            // runs under a lock, so from this point of execution we can assume this
+            // instance remains dead, until it is resurrected just before we release
+            // the lock.  
+            
+            DuckDbDatabase database;
+            
+            if (_connectionStringChanged)
+            {
+                // The user has set the connection string so we need to parse it 
+                ParseConnectionString(_connectionString, out var path, out var options);
+                database = new DuckDbDatabase(path, options);
+            }
+            else
+            {
+                // Connection string did not change; can re-use path and options from before  
+                database = new DuckDbDatabase(_database.Path, _database.Options);
+            }
+           
+            // Changing these variables is allowed here because:
+            //   (a) DisposeImpl has finished,
+            //   (b) this method is the only place where these variables are changed
+            //       (outside the constructor and DisposeImpl), and
+            //   (c) LockForIDbConnection is still locked;
+            // so other threads are guaranteed not to touch these variables,
+            // until this method resurrects the instance.
+            //
+            // If connecting fails, then this object remains in the disposed state,
+            // and the variables are left unchanged.
+            _nativeConn = database.Connect();
+            _database = database;
+            
+            // database.Options already contains the parsed options
+            _connectionStringChanged = false;
+
+            // Resurrection should never fail with the assumptions given above
+            _refCount.TryResurrect(out var scope);
+            scope.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// Parse a ADO.NET-style connection string to a database path and options
+    /// for <see cref="DuckDbDatabase" />.
+    /// </summary>
+    /// <param name="connectionString">
+    /// The ADO.NET-style connection string.
+    /// </param>
+    /// <param name="path">
+    /// Path to the database file in DuckDB syntax.
+    /// </param>
+    /// <param name="options">
+    /// List of key-value pairs for setting options on the DuckDB database.
+    /// The keys are not necessarily in the order that they appear in the
+    /// connection string.
+    /// </param>
+    private static void ParseConnectionString(string? connectionString, 
+                                              out string path, 
+                                              out ImmutableArray<KeyValuePair<string, string>> options)
+    {
+        path = string.Empty;
+
+        if (connectionString == null)
+        {
+            options = ImmutableArray<KeyValuePair<string, string>>.Empty;
+            return;
+        }
+        
+        var builder = new DbConnectionStringBuilder(useOdbcRules: true)
+        {
+            ConnectionString = connectionString
+        };
+
+        var arrayBuilder = ImmutableArray.CreateBuilder<KeyValuePair<string, string>>(builder.Count);
+
+        // DbConnectionStringBuilder is a .NET 1.0-era non-strongly-typed collection
+        var e = ((IDictionary)builder).GetEnumerator();
+        while (e.MoveNext())
+        {
+            var key = (string)e.Key;
+            var value = (string?)e.Value ?? string.Empty;
+            if (string.Equals(key, ConnectionStringPathKey, StringComparison.OrdinalIgnoreCase))
+                path = value;
+            else
+                arrayBuilder.Add(new KeyValuePair<string, string>(key, value));
+        }
+
+        options = arrayBuilder.DrainToImmutable();
     }
 }

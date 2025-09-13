@@ -6,9 +6,16 @@ namespace Mallard;
 
 public unsafe sealed partial class DuckDbConnection : IDisposable
 {
+    /// <summary>
+    /// Handle to the native DuckDB connection backing this instance. 
+    /// </summary>
+    /// <remarks>
+    /// This is set to null when this instance has been completely disposed.
+    /// </remarks>
     private _duckdb_connection* _nativeConn;
 
     private HandleRefCount _refCount;
+    
     private DuckDbDatabase _database;
 
     /// <summary>
@@ -231,8 +238,24 @@ public unsafe sealed partial class DuckDbConnection : IDisposable
         if (!_refCount.PrepareToDisposeOwner())
             return;
 
-        NativeMethods.duckdb_disconnect(ref _nativeConn);
-        _database.ReleaseRef();
+        // _nativeConn being set to null signals completion of disposal, 
+        // so we need to get the database object reference first so 
+        // we do not release the wrong object in case this method races
+        // with resurrection from IDbConnection.Open.  (The .NET memory model
+        // does not allow speculative writes so the changing of the _database
+        // field in IDbConnection.Open cannot be re-ordered to happen before
+        // _nativeConn is set to null here.  This complicated dance is to
+        // avoid additional locking, just to accommodate IDbConnection.Open
+        // which we do not even recommend using.)
+        var database = _database;
+        
+        // Set _nativeConn to null ourselves to ensure it is a single atomic write
+        // in the .NET memory model.
+        var nativeConn = _nativeConn;
+        _nativeConn = null;
+
+        NativeMethods.duckdb_disconnect(ref nativeConn);
+        database.ReleaseRef();
     }
 
     ~DuckDbConnection()
