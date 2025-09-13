@@ -1,26 +1,9 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace Mallard;
-
-/// <summary>
-/// Extension methods used internally for multi-thread synchronization.
-/// </summary>
-internal static partial class SynchronizationMethods
-{
-    /// <summary>
-    /// Enter a dynamic scope where shared ownership of an object is to be taken.
-    /// </summary>
-    /// <param name="parent">The <see cref="HandleRefCount" /> instance that controls
-    /// access on some owning managed object. </param>
-    /// <param name="targetObject">
-    /// The managed object, used only for reporting errors when the dynamic scope cannot be entered.
-    /// </param>
-    /// <returns>Scope object that should be the subject of a <c>using</c> statement in C#. </returns>
-    public static HandleRefCount.Scope EnterScope(this ref HandleRefCount handleRefCount, object targetObject)
-        => new(ref handleRefCount, targetObject);
-}
 
 /// <summary>
 /// Internal helper to implement "safe handle" functionality on objects
@@ -105,7 +88,7 @@ internal struct HandleRefCount
         /// <paramref name="parent" /> indicates its owning object has already been disposed 
         /// (or is in the middle of being disposed by another thread).
         /// </exception>
-        public Scope(ref HandleRefCount parent, object targetObject)
+        internal Scope(ref HandleRefCount parent, object targetObject)
         {
             _counter = ref parent._counter;
 
@@ -182,4 +165,15 @@ internal struct HandleRefCount
             throw new ObjectDisposedException(targetObject.GetType().FullName, "The object is already disposed. ");
         }
     }
+
+    /// <summary>
+    /// Enter a dynamic scope where shared ownership of an object is to be taken.
+    /// </summary>
+    /// <param name="targetObject">
+    /// The managed object, used only for reporting errors when the dynamic scope cannot be entered.
+    /// </param>
+    /// <returns>Scope object that should be the subject of a <c>using</c> statement in C#. </returns>
+    [UnscopedRef]
+    public Scope EnterScope(object targetObject)
+        => new Scope(ref this, targetObject);
 }

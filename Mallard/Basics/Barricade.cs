@@ -1,31 +1,9 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
 namespace Mallard;
-
-internal static partial class SynchronizationMethods
-{
-    /// <summary>
-    /// Enter a dynamic scope where unique ownership of an object is to be taken.
-    /// </summary>
-    /// <param name="parent">The <see cref="HandleRefCount" /> instance that controls
-    /// access on some owning managed object. </param>
-    /// <param name="targetObject">
-    /// The managed object, used only for reporting errors when the dynamic scope cannot be entered.
-    /// </param>
-    /// <param name="allowRentrancy">
-    /// If true, do not throw an exception if the barricade has been entered by this
-    /// same thread.  Instead, the returned scope object does nothing, so assuming 
-    /// the scopes for this thread are all properly nested, the barricade is truly exited 
-    /// when the first scope exits.
-    /// </param>
-    /// <returns>Scope object that should be the subject of a <c>using</c> statement in C#. </returns>
-    public static Barricade.Scope EnterScope(this ref Barricade barricade, 
-                                             object targetObject, 
-                                             bool allowReentrancy = false)
-        => new(ref barricade, targetObject, allowReentrancy);
-}
 
 /// <summary>
 /// Internal helper to implement a "lock" on objects
@@ -111,7 +89,7 @@ internal struct Barricade
         /// <paramref name="parent" /> indicates its owning object has already been disposed 
         /// (or is in the middle of being disposed by another thread).
         /// </exception>
-        public Scope(ref Barricade parent, object targetObject, bool allowReentrancy)
+        internal Scope(ref Barricade parent, object targetObject, bool allowReentrancy)
         {
             _state = ref parent._state;
 
@@ -184,4 +162,21 @@ internal struct Barricade
 
         return true;
     }
+    
+    /// <summary>
+    /// Enter a dynamic scope where unique ownership of an object is to be taken.
+    /// </summary>
+    /// <param name="targetObject">
+    /// The managed object, used only for reporting errors when the dynamic scope cannot be entered.
+    /// </param>
+    /// <param name="allowReentrancy">
+    /// If true, do not throw an exception if the barricade has been entered by this
+    /// same thread.  Instead, the returned scope object does nothing, so assuming 
+    /// the scopes for this thread are all properly nested, the barricade is truly exited 
+    /// when the first scope exits.
+    /// </param>
+    /// <returns>Scope object that should be the subject of a <c>using</c> statement in C#. </returns>
+    [UnscopedRef]
+    public Scope EnterScope(object targetObject, bool allowReentrancy = false)
+        => new(ref this, targetObject, allowReentrancy);
 }
