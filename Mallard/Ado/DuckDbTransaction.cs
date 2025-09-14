@@ -20,7 +20,7 @@ namespace Mallard;
 /// or roll back the transaction.)
 /// </para>
 /// </remarks>
-public readonly struct DuckDbTransaction : IDbTransaction
+public readonly struct DuckDbTransaction : IDbTransaction, IEquatable<DuckDbTransaction>
 {
     /// <summary>
     /// The database connection that this transaction was created on.
@@ -33,7 +33,7 @@ public readonly struct DuckDbTransaction : IDbTransaction
     /// Version number of this transaction assigned by <see cref="DuckDbConnection" />,
     /// used for run-time checking of correctness.
     /// </summary>
-    private readonly int _version;
+    private int Version { get; }
 
     /// <summary>
     /// The isolation level of the database transaction.
@@ -44,23 +44,38 @@ public readonly struct DuckDbTransaction : IDbTransaction
     /// </remarks>
     public IsolationLevel IsolationLevel => IsolationLevel.Snapshot;
 
-    internal DuckDbTransaction(DuckDbConnection connection)
+    internal DuckDbTransaction(DuckDbConnection connection, int version)
     {
-        _version = connection.BeginTransactionInternal();
         Connection = connection;
+        Version = version;
     }
 
     /// <inheritdoc cref="IDbTransaction.Commit" />
-    public void Commit() => Connection.CommitTransactionInternal(_version);
+    public void Commit() => Connection.CommitTransactionInternal(Version);
 
     /// <inheritdoc cref="IDbTransaction.Rollback" />
-    public void Rollback() => Connection.RollbackTransactionInternal(_version, isDisposing: false);
+    public void Rollback() => Connection.RollbackTransactionInternal(Version, isDisposing: false);
 
     /// <summary>
     /// Disposes of the transaction, equivalent to rolling it back if 
     /// it has not been committed or rolled back already.
     /// </summary>
-    public void Dispose() => Connection.RollbackTransactionInternal(_version, isDisposing: true);
+    public void Dispose() => Connection.RollbackTransactionInternal(Version, isDisposing: true);
+
+    /// <summary>
+    /// Whether this instance and the other instance refers to the same transaction
+    /// on the same database. 
+    /// </summary>
+    public bool Equals(DuckDbTransaction other) 
+        => Connection == other.Connection && Version == other.Version;
+
+    /// <inheritdoc cref="object.Equals" />
+    public override bool Equals(object? obj)
+        => obj is DuckDbTransaction other && Equals(other);
+    
+    /// <inheritdoc cref="object.GetHashCode" />
+    public override int GetHashCode()
+        => HashCode.Combine(Connection.GetHashCode(), Version);
 }
 
 public sealed partial class DuckDbConnection
@@ -70,7 +85,7 @@ public sealed partial class DuckDbConnection
     /// <summary>
     /// Begin a transaction on the current connection.
     /// </summary>
-    internal int BeginTransactionInternal()
+    private int BeginTransactionInternal()
     {
         // Allocate a version number for the new transaction.
         int currentVersion = _transactionVersion;
@@ -168,7 +183,25 @@ public sealed partial class DuckDbConnection
         if (version != _transactionVersion)
             throw new InvalidOperationException("Cannot commit or roll back a transaction that is no longer active. ");
     }
-    
+
+    /// <summary>
+    /// Get the current transaction, to report for the <see cref="IDbCommand.Transaction" /> property.
+    /// </summary>
+    internal bool TryGetCurrentTransaction(out DuckDbTransaction transaction)
+    {
+        int version = _transactionVersion;
+        if (version == 0)
+        {
+            transaction = default;
+            return false;
+        }
+        else
+        {
+            transaction = new DuckDbTransaction(this, version);
+            return true;
+        }
+    }
+
     /// <summary>
     /// Begin a transaction on the current connection.
     /// </summary>
@@ -176,7 +209,8 @@ public sealed partial class DuckDbConnection
     /// A "holder" object that is used to either commit the transaction or
     /// tp roll it back.  Put it in a <c>using</c> block in C#.
     /// </returns>
-    public DuckDbTransaction BeginTransaction() => new DuckDbTransaction(this);
+    public DuckDbTransaction BeginTransaction()
+        => new DuckDbTransaction(this, BeginTransactionInternal());
 
     #endregion
 }

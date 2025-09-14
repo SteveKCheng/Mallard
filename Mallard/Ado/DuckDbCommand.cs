@@ -9,11 +9,14 @@ namespace Mallard;
 /// </summary>
 public sealed class DuckDbCommand : IDbCommand
 {
-    private readonly DuckDbConnection _connection;
     private DuckDbStatement? _statement;
-    
+  
+    /// <inheritdoc cref="IDisposable.Dispose" />
     public void Dispose()
     {
+        var statement = _statement;
+        _statement = null;
+        statement?.Dispose();
     }
 
     public void Cancel()
@@ -28,10 +31,11 @@ public sealed class DuckDbCommand : IDbCommand
 
     private void BindParameters(DuckDbStatement statement)
     {
-        foreach (var p in _parameters)
+        foreach (var p in Parameters)
             statement.BindParameter(p.ParameterName, p.Value);
     }
 
+    /// <inheritdoc cref="IDbCommand.ExecuteNonQuery" />
     public int ExecuteNonQuery()
     {
         var statement = GetPreparedStatement();
@@ -39,18 +43,21 @@ public sealed class DuckDbCommand : IDbCommand
         return (int)statement.ExecuteNonQuery();
     }
 
-    public IDataReader ExecuteReader()
+    public DuckDbDataReader ExecuteReader()
     {
         var statement = GetPreparedStatement();
         BindParameters(statement);
         return statement.ExecuteReader();
     }
+    
+    IDataReader IDbCommand.ExecuteReader() => ExecuteReader();
 
     public IDataReader ExecuteReader(CommandBehavior behavior)
     {
         throw new System.NotImplementedException();
     }
 
+    /// <inheritdoc cref="IDbCommand.ExecuteScalar" />
     public object? ExecuteScalar()
     {
         var statement = GetPreparedStatement();
@@ -58,6 +65,7 @@ public sealed class DuckDbCommand : IDbCommand
         return statement.ExecuteScalar();
     }
 
+    /// <inheritdoc cref="IDbCommand.Prepare" />
     public void Prepare()
     {
         GetPreparedStatement();
@@ -67,7 +75,7 @@ public sealed class DuckDbCommand : IDbCommand
     {
         var statement = _statement;
         if (statement == null)
-            statement = _statement = _connection.CreatePreparedStatement(CommandText);
+            statement = _statement = Connection.CreatePreparedStatement(CommandText);
         return statement;
     }
 
@@ -77,13 +85,14 @@ public sealed class DuckDbCommand : IDbCommand
         get => _sql;
         set
         {
-            _sql = value ?? string.Empty;
             _statement = null;  // invalidate prepared statement
+            _sql = value ?? string.Empty;
         }
     }
 
     private string _sql = string.Empty;
     
+    // Value is ignored
     int IDbCommand.CommandTimeout { get; set; }
 
     CommandType IDbCommand.CommandType
@@ -98,22 +107,84 @@ public sealed class DuckDbCommand : IDbCommand
 
     IDbConnection? IDbCommand.Connection
     {
-        get => _connection;
-        set => throw new System.NotImplementedException("The Connection property may not be set on DuckDbCommand. ");
+        get => Connection;
+        set
+        {
+            if (value is not DuckDbConnection c)
+            {
+                throw new InvalidOperationException(
+                    "The Connection property on DuckDbCommand must be set to an instance of DuckDbConnection. ");
+            }
+            
+            _statement = null;  // invalidate prepared statement
+            Connection = c;
+        }
     }
     
-    public DuckDbConnection Connection => _connection;
+    /// <summary>
+    /// The connection that this command works on.
+    /// </summary>
+    public DuckDbConnection Connection { get; private set; }
 
-    private readonly DuckDbParameterCollection _parameters = new DuckDbParameterCollection();
+    /// <summary>
+    /// The parameters that should be applied to a parameterized SQL query or statement.
+    /// </summary>
+    public DuckDbParameterCollection Parameters { get; } = new DuckDbParameterCollection();
     
-    IDataParameterCollection IDbCommand.Parameters => _parameters;
+    IDataParameterCollection IDbCommand.Parameters => Parameters;
 
-    public IDbTransaction? Transaction { get; set; }
+    /// <summary>
+    /// Cached boxed instance of <see cref="DuckDbTransaction" />.
+    /// </summary>
+    /// <remarks>
+    /// This member exists solely to implement the rather useless interface property
+    /// <see cref="IDbCommand.Transaction" />.  There is no interaction with
+    /// <see cref="DuckDbTransaction" /> otherwise within this class.
+    /// The parent connection always maintains the state of the transaction, but
+    /// an object reference is cached so that the same .NET object (after boxing
+    /// the <see cref="DuckDbTransaction" /> structure) can be
+    /// consistently returned from the <see cref="IDbCommand.Transaction" /> property.
+    /// </remarks>
+    private IDbTransaction? _transaction;
+
+    IDbTransaction? IDbCommand.Transaction
+    {
+        get
+        {
+            if (!Connection.TryGetCurrentTransaction(out var s))
+                return null;
+            
+            var transaction = _transaction;
+            if (!s.Equals(transaction))
+                _transaction = transaction = (IDbTransaction)s;
+                
+            return transaction;
+        }
+        set
+        {
+            var newTransaction = value as DuckDbTransaction?;
+            
+            // Wrong type of transaction object
+            if (value != null && newTransaction == null)
+                throw new InvalidOperationException("A non-DuckDB transaction may not be set on DuckDbCommand. ");
+
+            bool isMatching =
+                Connection.TryGetCurrentTransaction(out var s)
+                    ? newTransaction != null && s.Equals(newTransaction.Value)
+                    : newTransaction == null;
+
+            if (!isMatching)
+                throw new InvalidOperationException("A non-current transaction may not be set onto DuckDbCommand. ");
+
+            _transaction = (IDbTransaction?)newTransaction;
+        }
+    }
     
+    /// <inheritdoc cref="IDbCommand.UpdatedRowSource" />
     public UpdateRowSource UpdatedRowSource { get; set; }
 
     internal DuckDbCommand(DuckDbConnection connection)
     {
-        _connection = connection;
+        Connection = connection;
     }
 }
