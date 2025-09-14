@@ -21,7 +21,17 @@ namespace Mallard;
 /// </remarks>
 public struct DuckDbTransaction : IDbTransaction
 {
-    public IDbConnection? Connection => throw new NotImplementedException();
+    /// <summary>
+    /// The connection that this transaction is on.
+    /// </summary>
+    /// <remarks>
+    /// This property becomes null when the transaction is committed or rolled back.
+    /// </remarks>
+    public DuckDbConnection? Connection => _connection;
+
+    IDbConnection? IDbTransaction.Connection => Connection;
+
+    private DuckDbConnection? _connection;
 
     /// <summary>
     /// The isolation level of the database transaction.
@@ -31,8 +41,6 @@ public struct DuckDbTransaction : IDbTransaction
     /// and that is what this property always reports.
     /// </remarks>
     public readonly IsolationLevel IsolationLevel => IsolationLevel.Snapshot;
-
-    private DuckDbConnection? _connection;
 
     internal DuckDbTransaction(DuckDbConnection connection)
     {
