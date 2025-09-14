@@ -12,6 +12,8 @@ namespace Mallard;
 
 public sealed partial class DuckDbConnection : IDbConnection
 {
+    #region Connection strings
+    
     /// <summary>
     /// Cached connection string returned by <see cref="IDbConnection.ConnectionString" />.
     /// </summary>
@@ -42,34 +44,10 @@ public sealed partial class DuckDbConnection : IDbConnection
     /// The settings key in an ADO.NET-style connection string that is used
     /// to specify the path to the DuckDB database.
     /// </summary>
-    private const string ConnectionStringPathKey = "path"; 
-
-    private Lock? _mutexForIDbConnection;
-
-    /// <summary>
-    /// Lock object to implement properties/methods of <see cref="IDbConnection" />
-    /// pertaining to changing which database to connect to. 
-    /// </summary>
-    /// <remarks>
-    /// Changing which database to connect to is not recommended usage in Mallard;
-    /// it is only supported for compatibility with ADO.NET.  Thus this lock
-    /// object is only allocated on first use.
-    /// </remarks>
-    private Lock MutexForIDbConnection
-    {
-        get
-        {
-            var t = _mutexForIDbConnection;
-            if (t != null)
-                return t;
-
-            t = new Lock();
-            return Interlocked.CompareExchange(ref _mutexForIDbConnection, t, null) ?? t;
-        }
-    }
-
+    private const string ConnectionStringPathKey = "path";
+    
     [AllowNull] // This attribute appears in the IDbConnection interface:
-                // "get" should not return null but "set" accepts null for this property.
+    // "get" should not return null but "set" accepts null for this property.
     string IDbConnection.ConnectionString
     {
         get
@@ -106,88 +84,6 @@ public sealed partial class DuckDbConnection : IDbConnection
                 _connectionString = value ?? string.Empty;
                 _connectionStringChanged = true;
             }
-        }
-    }
-
-    int IDbConnection.ConnectionTimeout => throw new NotImplementedException();
-
-    string IDbConnection.Database => throw new NotImplementedException();
-
-    ConnectionState IDbConnection.State => throw new NotImplementedException();
-
-    IDbTransaction IDbConnection.BeginTransaction() => BeginTransaction();
-
-    IDbTransaction IDbConnection.BeginTransaction(IsolationLevel il)
-    {
-        if (!(il == IsolationLevel.Snapshot || il == IsolationLevel.Unspecified))
-            throw new NotSupportedException("Specified isolation level is not supported by DuckDB. ");
-
-        return BeginTransaction();
-    }
-
-    void IDbConnection.ChangeDatabase(string databaseName)
-    {
-        throw new NotImplementedException();
-    }
-
-    void IDbConnection.Close()
-    {
-        Dispose();
-    }
-
-    IDbCommand IDbConnection.CreateCommand()
-    {
-        throw new NotImplementedException();
-    }
-
-    unsafe void IDbConnection.Open()
-    {
-        lock (MutexForIDbConnection)
-        {
-            if (!_isSafeToResurrect)
-                throw new InvalidOperationException("Database is already open. ");
-            
-            // Only this method can resurrect this instance, and all code here
-            // runs under a lock, so from this point of execution we can assume this
-            // instance remains dead, until it is resurrected just before we release
-            // the lock.  
-            
-            DuckDbDatabase database;
-            _duckdb_connection* nativeConn;
-            
-            if (_connectionStringChanged)
-            {
-                // The user has set the connection string so we need to parse it 
-                ParseConnectionString(_connectionString, out var path, out var options);
-                nativeConn = DuckDbDatabase.Connect(path, options, out database);
-            }
-            else
-            {
-                // Connection string did not change; can re-use path and options from before
-                database = _database;
-                nativeConn = DuckDbDatabase.Reconnect(ref database); 
-            }
-           
-            // Changing these variables is allowed here because:
-            //   (a) DisposeImpl has finished,
-            //   (b) this method is the only place where these variables are changed
-            //       (outside the constructor and DisposeImpl), and
-            //   (c) LockForIDbConnection is still locked;
-            // so other threads are guaranteed not to touch these variables,
-            // until this method resurrects the instance.
-            //
-            // If connecting fails, then this object remains in the disposed state,
-            // and the variables are left unchanged.
-            _nativeConn = nativeConn;
-            _database = database;
-            
-            // database.Options already contains the parsed options
-            _connectionStringChanged = false;
-
-            // Resurrection should never fail with the assumptions given above
-            _isSafeToResurrect = false;
-            _refCount.TryResurrect(out var scope);
-            scope.Dispose();
         }
     }
 
@@ -239,4 +135,125 @@ public sealed partial class DuckDbConnection : IDbConnection
 
         options = arrayBuilder.DrainToImmutable();
     }
+
+    #endregion
+    
+    #region Re-opening connections
+    
+    private Lock? _mutexForIDbConnection;
+
+    /// <summary>
+    /// Lock object to implement properties/methods of <see cref="IDbConnection" />
+    /// pertaining to re-opening connections. 
+    /// </summary>
+    /// <remarks>
+    /// Changing which database to connect to is not recommended usage in Mallard;
+    /// it is only supported for compatibility with ADO.NET.  Thus this lock
+    /// object is only allocated on first use.
+    /// </remarks>
+    private Lock MutexForIDbConnection
+    {
+        get
+        {
+            var t = _mutexForIDbConnection;
+            if (t != null)
+                return t;
+
+            t = new Lock();
+            return Interlocked.CompareExchange(ref _mutexForIDbConnection, t, null) ?? t;
+        }
+    }
+
+    void IDbConnection.Close() => Dispose();
+
+    unsafe void IDbConnection.Open()
+    {
+        lock (MutexForIDbConnection)
+        {
+            if (!_isSafeToResurrect)
+                throw new InvalidOperationException("Database is already open. ");
+            
+            // Only this method can resurrect this instance, and all code here
+            // runs under a lock, so from this point of execution we can assume this
+            // instance remains dead, until it is resurrected just before we release
+            // the lock.  
+            
+            DuckDbDatabase database;
+            _duckdb_connection* nativeConn;
+            
+            if (_connectionStringChanged)
+            {
+                // The user has set the connection string so we need to parse it 
+                ParseConnectionString(_connectionString, out var path, out var options);
+                nativeConn = DuckDbDatabase.Connect(path, options, out database);
+            }
+            else
+            {
+                // Connection string did not change; can re-use path and options from before
+                database = _database;
+                nativeConn = DuckDbDatabase.Reconnect(ref database); 
+            }
+           
+            // Changing these variables is allowed here because:
+            //   (a) DisposeImpl has finished,
+            //   (b) this method is the only place where these variables are changed
+            //       (outside the constructor and DisposeImpl), and
+            //   (c) LockForIDbConnection is still locked;
+            // so other threads are guaranteed not to touch these variables,
+            // until this method resurrects the instance.
+            //
+            // If connecting fails, then this object remains in the disposed state,
+            // and the variables are left unchanged.
+            _nativeConn = nativeConn;
+            _database = database;
+            
+            // database.Options already contains the parsed options
+            _connectionStringChanged = false;
+
+            // Resurrection should never fail with the assumptions given above
+            _isSafeToResurrect = false;
+            _refCount.TryResurrect(out var scope);
+            scope.Dispose();
+        }
+    }
+    
+    #endregion
+
+    #region Other connection state
+
+    int IDbConnection.ConnectionTimeout => 0;
+
+    ConnectionState IDbConnection.State
+        => _isSafeToResurrect ? ConnectionState.Closed 
+            : ConnectionState.Open;
+    
+    #endregion
+
+    #region Which database is being used in SQL statements
+
+    string IDbConnection.Database 
+        => ExecuteValue<string>("SELECT current_database()") ?? string.Empty;
+
+    void IDbConnection.ChangeDatabase(string databaseName)
+    {
+        ExecuteNonQuery($"USE {new SqlIdentifier(databaseName)}");
+    }
+    
+    #endregion
+
+    #region Transactions and commands
+    
+    IDbTransaction IDbConnection.BeginTransaction() => BeginTransaction();
+
+    IDbTransaction IDbConnection.BeginTransaction(IsolationLevel il)
+    {
+        if (!(il == IsolationLevel.Snapshot || il == IsolationLevel.Unspecified))
+            throw new NotSupportedException("Specified isolation level is not supported by DuckDB. ");
+
+        return BeginTransaction();
+    }
+    
+    IDbCommand IDbConnection.CreateCommand() => new DuckDbCommand(this);
+
+    #endregion
 }
