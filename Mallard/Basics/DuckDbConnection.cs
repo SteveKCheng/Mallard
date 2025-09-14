@@ -204,8 +204,6 @@ public unsafe sealed partial class DuckDbConnection : IDisposable
 
     #endregion
 
-    #region Transactions
-
     /// <summary>
     /// Execute a command (SQL statement) in DuckDB and only check for errors.
     /// </summary>
@@ -225,45 +223,7 @@ public unsafe sealed partial class DuckDbConnection : IDisposable
             NativeMethods.duckdb_destroy_result(ref nativeResult);
         }
     }
-
-    /// <summary>
-    /// Begin a transaction on the current connection.
-    /// </summary>
-    /// <remarks>
-    /// We do not need to check for an existing transaction being active because
-    /// DuckDB already does that.
-    /// </remarks>
-    internal void BeginTransactionInternal() => ExecuteCommand("BEGIN TRANSACTION");
-
-    /// <summary>
-    /// Commit a transaction that was begun by <see cref="BeginTransaction" />.
-    /// </summary>
-    /// <remarks>
-    /// We do not need to check for an existing transaction being active because
-    /// DuckDB already does that.
-    /// </remarks>
-    internal void CommitTransactionInternal() => ExecuteCommand("COMMIT");
-
-    /// <summary>
-    /// Roll back a transaction that was begun by <see cref="BeginTransaction" />.
-    /// </summary>
-    /// <remarks>
-    /// We do not need to check for an existing transaction being active because
-    /// DuckDB already does that.
-    /// </remarks>
-    internal void RollbackTransactionInternal() => ExecuteCommand("ROLLBACK");
-
-    /// <summary>
-    /// Begin a transaction on the current connection.
-    /// </summary>
-    /// <returns>
-    /// A "holder" object that is used to either commit the transaction or
-    /// tp roll it back.  Put it in a <c>using</c> block in C#.
-    /// </returns>
-    public DuckDbTransaction BeginTransaction() => new DuckDbTransaction(this);
-
-    #endregion
-
+   
     #region Resource management
 
     private void DisposeImpl(bool disposing)
