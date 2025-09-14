@@ -10,35 +10,35 @@ namespace Mallard;
 
 public sealed class DuckDbParameterCollection : IDataParameterCollection
 {
-    private List<DbParameter> _parameters = new List<DbParameter>();
+    private List<DbParameter> _items = new List<DbParameter>();
     private Dictionary<string, int> _nameMap = new Dictionary<string, int>();
-    
-    public IEnumerator GetEnumerator() => _parameters.GetEnumerator();
+
+    public IEnumerator GetEnumerator() => _items.GetEnumerator();
 
     public void CopyTo(Array array, int index)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(index, "index");
         
-        if (_parameters.Count > array.Length - index)
+        if (_items.Count > array.Length - index)
         {
             throw new ArgumentException(
                 "The number of elements in this collection is greater than " +
                 "the number of elements from the specified index to the end of the destination array.");
         }
 
-        for (int j = 0; j < _parameters.Count; ++j)
-            array.SetValue(_parameters[j], index + j);
+        for (int j = 0; j < _items.Count; ++j)
+            array.SetValue(_items[j], index + j);
     }
 
-    public int Count => _parameters.Count;
+    public int Count => _items.Count;
     public bool IsSynchronized => false;
-    public object SyncRoot => _parameters;
+    public object SyncRoot => _items;
 
     public int Add(DbParameter value) => Add(value.ParameterName, value);
 
     private int Add(string parameterName, DbParameter value)
     {
-        int index = _parameters.Count;
+        int index = _items.Count;
 
         if (parameterName != value.ParameterName)
         {
@@ -53,7 +53,7 @@ public sealed class DuckDbParameterCollection : IDataParameterCollection
                 $"A parameter with the same name already exists in the same collection. Key: {parameterName}");
         }
         
-        _parameters.Add(value);
+        _items.Add(value);
 
         return index;
     }
@@ -66,14 +66,14 @@ public sealed class DuckDbParameterCollection : IDataParameterCollection
 
     public void Clear()
     {
-        _parameters.Clear();
+        _items.Clear();
         _nameMap.Clear();
     }
 
     public bool Contains(DbParameter value)
     {
         int index = IndexOf(value.ParameterName);
-        return index >= 0 && _parameters[index] == value;
+        return index >= 0 && _items[index] == value;
     }
     
     bool IList.Contains(object? value)
@@ -85,7 +85,7 @@ public sealed class DuckDbParameterCollection : IDataParameterCollection
     public int IndexOf(DbParameter value)
     {
         int index = IndexOf(value.ParameterName);
-        return index >= 0 && _parameters[index] == value ? index : -1;
+        return index >= 0 && _items[index] == value ? index : -1;
     }
 
     int IList.IndexOf(object? value)
@@ -114,11 +114,11 @@ public sealed class DuckDbParameterCollection : IDataParameterCollection
 
     public DbParameter this[int index]
     {
-        get => _parameters[index];
+        get => _items[index];
         set
         {
             ArgumentOutOfRangeException.ThrowIfLessThan(index, 0);
-            ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(index, _parameters.Count);
+            ArgumentOutOfRangeException.ThrowIfGreaterThanOrEqual(index, _items.Count);
 
             var newParameterName = value.ParameterName;
             
@@ -126,7 +126,7 @@ public sealed class DuckDbParameterCollection : IDataParameterCollection
             // from the old DbParameter instance at the same index.
             if (!_nameMap.TryGetValue(newParameterName, out int oldIndex))
             {
-                var oldParameterName = _parameters[index].ParameterName;
+                var oldParameterName = _items[index].ParameterName;
                 
                 // Need to linearly scan if the user changed the parameter name out from under us
                 if (_nameMap.GetValueOrDefault(oldParameterName, -1) != index)
@@ -143,13 +143,13 @@ public sealed class DuckDbParameterCollection : IDataParameterCollection
                 throw new ArgumentException("A parameter with the same name already exists at a different index. ");
             }
 
-            _parameters[index] = value;
+            _items[index] = value;
         }
     }
 
     object? IList.this[int index]
     {
-        get => _parameters[index];
+        get => _items[index];
         set
         {
             ArgumentNullException.ThrowIfNull(value);
@@ -171,7 +171,7 @@ public sealed class DuckDbParameterCollection : IDataParameterCollection
                 $"A parameter by the given name does not exist in this collection.  Key: {parameterName}");
         }
         
-        _parameters.RemoveAt(index);
+        _items.RemoveAt(index);
         
         // Update indices of parameters that occur after the removed parameter
         foreach (var key in _nameMap.Keys)
@@ -198,7 +198,7 @@ public sealed class DuckDbParameterCollection : IDataParameterCollection
         get
         {
             int index = _nameMap[parameterName];
-            return _parameters[index];
+            return _items[index];
         }
         set
         {
