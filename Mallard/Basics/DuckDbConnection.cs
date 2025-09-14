@@ -207,10 +207,14 @@ public unsafe sealed partial class DuckDbConnection : IDisposable
     /// <summary>
     /// Execute a command (SQL statement) in DuckDB and only check for errors.
     /// </summary>
-    private void ExecuteCommand(string sql)
+    /// <remarks>
+    /// <para>
+    /// The caller must have acquired shared ownership of the native DuckDB resource.
+    /// This method takes a dummy parameter to make that requirement clear. 
+    /// </para>
+    /// </remarks>
+    private void ExecuteCommand(ref readonly HandleRefCount.Scope _, string sql)
     {
-        using var _ = _refCount.EnterScope(this);
-
         var status = NativeMethods.duckdb_query(_nativeConn, sql, out var nativeResult);
 
         try
@@ -239,8 +243,10 @@ public unsafe sealed partial class DuckDbConnection : IDisposable
         // true here.  And the "volatile" write / read barrier
         // below ensures this read here is not re-ordered to occur after.)
         var database = _database;
-        
+
         NativeMethods.duckdb_disconnect(ref _nativeConn);
+        
+        _transactionVersion = 0;
         Volatile.Write(ref _isSafeToResurrect, true);
 
         database.Release();

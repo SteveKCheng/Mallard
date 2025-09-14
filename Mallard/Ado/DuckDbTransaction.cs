@@ -87,6 +87,8 @@ public sealed partial class DuckDbConnection
     /// </summary>
     private int BeginTransactionInternal()
     {
+        using var scope = _refCount.EnterScope(this);
+        
         // Allocate a version number for the new transaction.
         int currentVersion = _transactionVersion;
         int oldVersion;
@@ -107,7 +109,7 @@ public sealed partial class DuckDbConnection
 
         try
         {
-            ExecuteCommand("BEGIN TRANSACTION");
+            ExecuteCommand(in scope, "BEGIN TRANSACTION");
         }
         catch
         {
@@ -123,10 +125,12 @@ public sealed partial class DuckDbConnection
     /// </summary>
     internal void CommitTransactionInternal(int version)
     {
-        VerifyTransaction(version);
+        using var scope = _refCount.EnterScope(this);
+        
+        VerifyTransaction(in scope, version);
         try
         {
-            ExecuteCommand("COMMIT");
+            ExecuteCommand(in scope, "COMMIT");
         }
         finally
         {
@@ -139,18 +143,32 @@ public sealed partial class DuckDbConnection
     /// </summary>
     internal void RollbackTransactionInternal(int version, bool isDisposing)
     {
-        if (!isDisposing)
-            VerifyTransaction(version);
-        else if (_transactionVersion == 0 || _transactionVersion != version)
-            return;
-        
         try
         {
-            ExecuteCommand("ROLLBACK");
+            using var scope = _refCount.EnterScope(this);
+
+            if (!isDisposing)
+                VerifyTransaction(in scope, version);
+            
+            // It is normal for DuckDbTransaction to be disposed after it has
+            // been committed or rolled back.  Then disposal should do nothing.  
+            else if (_transactionVersion == 0 || _transactionVersion != version)
+                return;
+
+            try
+            {
+                ExecuteCommand(in scope, "ROLLBACK");
+            }
+            finally
+            {
+                _transactionVersion = 0;
+            }
         }
-        finally
+        catch (ObjectDisposedException)
         {
-            _transactionVersion = 0;
+            // If the database connection was closed first, presumably roll-back has
+            // already occurred (because the changes were not already committed),
+            // so it should be safe to silently ignore the error.
         }
     }
 
@@ -172,13 +190,17 @@ public sealed partial class DuckDbConnection
     /// versions assigned to new instances of <see cref="DuckDbTransaction" />.
     /// Negative values are not used.
     /// </para>
+    /// <para>
+    /// This variable has "shared ownership" in the same manner as <see cref="_nativeConn" />
+    /// that is controlled by <see cref="_refCount" />.
+    /// </para>
     /// </remarks>
     private int _transactionVersion;
 
     /// <summary>
     /// Verify the version of a transaction matches the current state of this connection. 
     /// </summary>
-    private void VerifyTransaction(int version)
+    private void VerifyTransaction(ref readonly HandleRefCount.Scope _, int version)
     {
         if (version != _transactionVersion)
             throw new InvalidOperationException("Cannot commit or roll back a transaction that is no longer active. ");
@@ -189,6 +211,8 @@ public sealed partial class DuckDbConnection
     /// </summary>
     internal bool TryGetCurrentTransaction(out DuckDbTransaction transaction)
     {
+        using var scope = _refCount.EnterScope(this);
+        
         int version = _transactionVersion;
         if (version == 0)
         {
