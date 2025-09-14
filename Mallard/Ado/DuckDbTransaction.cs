@@ -237,4 +237,18 @@ public sealed partial class DuckDbConnection
         => new DuckDbTransaction(this, BeginTransactionInternal());
 
     #endregion
+    
+    #region Transactions: ADO.NET compatibility
+    
+    IDbTransaction IDbConnection.BeginTransaction() => BeginTransaction();
+
+    IDbTransaction IDbConnection.BeginTransaction(IsolationLevel il)
+    {
+        if (!(il == IsolationLevel.Snapshot || il == IsolationLevel.Unspecified))
+            throw new NotSupportedException("Specified isolation level is not supported by DuckDB. ");
+
+        return BeginTransaction();
+    }
+    
+    #endregion
 }

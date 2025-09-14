@@ -241,18 +241,8 @@ public sealed partial class DuckDbConnection : IDbConnection
     
     #endregion
 
-    #region Transactions and commands
-    
-    IDbTransaction IDbConnection.BeginTransaction() => BeginTransaction();
-
-    IDbTransaction IDbConnection.BeginTransaction(IsolationLevel il)
-    {
-        if (!(il == IsolationLevel.Snapshot || il == IsolationLevel.Unspecified))
-            throw new NotSupportedException("Specified isolation level is not supported by DuckDB. ");
-
-        return BeginTransaction();
-    }
-    
+    #region Commands
+   
     IDbCommand IDbConnection.CreateCommand() => new DuckDbCommand(this);
 
     #endregion
