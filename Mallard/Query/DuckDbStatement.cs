@@ -5,7 +5,7 @@ using System.Collections.Generic;
 namespace Mallard;
 
 /// <summary>
-/// Prepared statement from DuckDB.
+/// A prepared statement from a DuckDB database.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -173,9 +173,7 @@ public unsafe class DuckDbStatement : IDisposable
     /// <summary>
     /// Get the name of the parameter at the specified index.
     /// </summary>
-    /// <param name="index">
-    /// 1-based index of the parameter.
-    /// </param>
+    /// <param name="index">1-based index of the parameter. </param>
     /// <returns>The name of the parameter in the SQL statement.  If the parameter
     /// has no name, the empty string is returned. </returns>
     public string GetParameterName(int index)
@@ -210,12 +208,35 @@ public unsafe class DuckDbStatement : IDisposable
         return (int)index;
     }
 
+    #region Binding values to parameters
+    
+    /// <summary>
+    /// Bind a positional parameter of the prepared statement to the specified value.
+    /// </summary>
+    /// <param name="index">1-based index of the parameter. </param>
+    /// <param name="value">The value to set for the parameter. </param>
+    /// <typeparam name="T">The .NET type of the value.
+    /// It does not have to match the underlying DuckDB type; conversions
+    /// will be performed as necessary.
+    /// </typeparam>
     public void BindParameter<T>(int index, T value)
     {
         ThrowIfParamIndexOutOfRange(index);
         var nativeObject = DuckDbValue.CreateNativeObject(value);
         BindParameterInternal(index, ref nativeObject);
     }
+
+    /// <summary>
+    /// Bind a named parameter of the prepared statement to the specified value.
+    /// </summary>
+    /// <param name="name">The name of the parameter. </param>
+    /// <param name="value">The value to set for the parameter. </param>
+    /// <typeparam name="T">The .NET type of the value.
+    /// It does not have to match the underlying DuckDB type; conversions
+    /// will be performed as necessary.
+    /// </typeparam>
+    public void BindParameter<T>(string name, T value)
+        => BindParameter<T>(GetParameterIndexForName(name), value); 
 
     private void BindParameterInternal(int index, ref _duckdb_value* nativeValue)
     {
@@ -238,6 +259,8 @@ public unsafe class DuckDbStatement : IDisposable
             NativeMethods.duckdb_destroy_value(ref nativeValue);
         }
     }
+    
+    #endregion
 
     #region Resource management
 
