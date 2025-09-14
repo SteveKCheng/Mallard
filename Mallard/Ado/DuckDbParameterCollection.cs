@@ -8,12 +8,14 @@ using System.Runtime.InteropServices;
 
 namespace Mallard;
 
-public sealed class DuckDbParameterCollection : IDataParameterCollection
+public sealed class DuckDbParameterCollection : IDataParameterCollection, IEnumerable<DbParameter>
 {
     private List<DbParameter> _items = new List<DbParameter>();
     private Dictionary<string, int> _nameMap = new Dictionary<string, int>();
 
-    public IEnumerator GetEnumerator() => _items.GetEnumerator();
+    IEnumerator<DbParameter> IEnumerable<DbParameter>.GetEnumerator() => _items.GetEnumerator();
+
+    IEnumerator IEnumerable.GetEnumerator() => _items.GetEnumerator();
 
     public void CopyTo(Array array, int index)
     {
