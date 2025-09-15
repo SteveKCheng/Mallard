@@ -10,7 +10,7 @@ namespace Mallard.Tests;
 public class TestRowOriented(DatabaseFixture fixture)
 {
     private readonly DatabaseFixture _fixture = fixture;
-    private DuckDbConnection DbConnection => _fixture.DbConnection;
+    private DuckDbConnection DbConnection => _fixture.ConnectionWithTpchData;
 
     [Test]
     public void DataReader()

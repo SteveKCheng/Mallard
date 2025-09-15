@@ -77,7 +77,7 @@ public class UnitTest1(DatabaseFixture fixture)
     [Test]
     public void Test3()
     {
-        var dbConn = _fixture.DbConnection;
+        var dbConn = _fixture.ConnectionWithTpchData;
 
         using var dbResult = dbConn.Execute(@"
             SELECT DISTINCT c_mktsegment FROM customer ORDER BY c_mktsegment ASC");

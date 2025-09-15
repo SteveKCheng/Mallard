@@ -4,7 +4,7 @@ namespace Mallard.Tests;
 
 public sealed class DatabaseFixture : IDisposable
 {
-    private readonly Lazy<DuckDbConnection> _dbConnection =
+    private readonly Lazy<DuckDbConnection> _connectionWithTpchData =
         new(() =>
         {
             var c = new DuckDbConnection("");
@@ -37,7 +37,7 @@ public sealed class DatabaseFixture : IDisposable
     /// (as can happen when tests are run in parallel).
     /// </para>
     /// </remarks>
-    public DuckDbConnection DbConnection => _dbConnection.Value;
+    public DuckDbConnection ConnectionWithTpchData => _connectionWithTpchData.Value;
 
     public DatabaseFixture()
     {
@@ -45,7 +45,7 @@ public sealed class DatabaseFixture : IDisposable
 
     public void Dispose()
     {
-        if (_dbConnection.IsValueCreated)
-            _dbConnection.Value.Dispose();
+        if (_connectionWithTpchData.IsValueCreated)
+            _connectionWithTpchData.Value.Dispose();
     }
 }

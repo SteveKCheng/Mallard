@@ -9,7 +9,7 @@ namespace Mallard.Tests;
 public class TestAdo(DatabaseFixture fixture)
 {
     private readonly DatabaseFixture _fixture = fixture;
-    private DuckDbConnection DbConnection => _fixture.DbConnection;
+    private DuckDbConnection ConnectionWithTpchData => _fixture.ConnectionWithTpchData;
 
     #region Parameterized Query Tests
 
@@ -17,7 +17,7 @@ public class TestAdo(DatabaseFixture fixture)
     public void TestCreateCommand()
     {
         // Test creating command through IDbConnection interface
-        IDbConnection connection = DbConnection;
+        IDbConnection connection = ConnectionWithTpchData;
         using var command = connection.CreateCommand();
         
         Assert.NotNull(command);
@@ -28,7 +28,7 @@ public class TestAdo(DatabaseFixture fixture)
     [Test]
     public void TestParameterizedQueryWithStringParameter()
     {
-        IDbConnection connection = DbConnection;
+        IDbConnection connection = ConnectionWithTpchData;
         using var command = connection.CreateCommand();
         
         command.CommandText = "SELECT c_name FROM customer WHERE c_mktsegment = $1 LIMIT 5";
@@ -56,7 +56,7 @@ public class TestAdo(DatabaseFixture fixture)
     [Test]
     public void TestParameterizedQueryWithDecimalParameter()
     {
-        IDbConnection connection = DbConnection;
+        IDbConnection connection = ConnectionWithTpchData;
         using var command = connection.CreateCommand();
         
         command.CommandText = "SELECT c_name, c_acctbal FROM customer WHERE c_acctbal >= $1 LIMIT 10";
@@ -85,7 +85,7 @@ public class TestAdo(DatabaseFixture fixture)
     [Test]
     public void TestParameterizedQueryWithMultipleParameters()
     {
-        IDbConnection connection = DbConnection;
+        IDbConnection connection = ConnectionWithTpchData;
         using var command = connection.CreateCommand();
         
         command.CommandText = "SELECT c_name FROM customer WHERE c_mktsegment = $1 AND c_acctbal >= $2 LIMIT 3";
@@ -118,7 +118,7 @@ public class TestAdo(DatabaseFixture fixture)
     [Test]
     public void TestExecuteScalar()
     {
-        IDbConnection connection = DbConnection;
+        IDbConnection connection = ConnectionWithTpchData;
         using var command = connection.CreateCommand();
         
         command.CommandText = "SELECT COUNT(*) FROM customer WHERE c_mktsegment = $1";
@@ -377,7 +377,7 @@ public class TestAdo(DatabaseFixture fixture)
     [Test]
     public void TestInvalidParameterDirection()
     {
-        IDbConnection connection = DbConnection;
+        IDbConnection connection = ConnectionWithTpchData;
         using var command = connection.CreateCommand();
         
         var parameter = command.CreateParameter();
@@ -394,7 +394,7 @@ public class TestAdo(DatabaseFixture fixture)
     [Test]
     public void TestInvalidCommandType()
     {
-        IDbConnection connection = DbConnection;
+        IDbConnection connection = ConnectionWithTpchData;
         using var command = connection.CreateCommand();
         
         Assert.Equal(CommandType.Text, command.CommandType);
@@ -482,7 +482,7 @@ public class TestAdo(DatabaseFixture fixture)
     [Test]
     public void TestConnectionProperties()
     {
-        IDbConnection connection = DbConnection;
+        IDbConnection connection = ConnectionWithTpchData;
         
         Assert.Equal(0, connection.ConnectionTimeout);
         Assert.NotNull(connection.Database);
