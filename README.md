@@ -70,7 +70,7 @@ without intermediate copying or heavy conversions involving GC objects.  I think
 useful in applications involving machine learning or data science.  An ADO.NET-based interface would just 
 not be performant enough, and so I do not put high priority on it.
 
-## What works today (as of August 15, 2025)
+## What works today (as of September 15, 2025)
 
   - [X] Executing SQL queries and reading results incrementally
   - [X] Prepared statements with parameter binding
@@ -90,13 +90,17 @@ not be performant enough, and so I do not put high priority on it.
     - [X] timestamp (TIMESTAMP → ``System.DateTime``)
     - [X] time intervals
     - [X] UUIDs (UUID → ``System.Guid``)
-  - [X] ADO.NET-compatible data reader (``System.Data.Common.DbDataReader``)
+  - [X] ADO.NET-compatible interfaces
+    - [X] ``System.Data.IDbConnection``
+    - [X] ``System.Data.IDbCommand``
+    - [X] ``System.Data.IDataReader``
   - [X] Null values in database can be checked explicitly or flagged implicitly with ``System.Nullable<T>`` element types
   - [X] Thread-safe and memory-safe public API 
     - If you do not use unsafe code, then even improper use of the public API should not crash the .NET run-time
     - ``ref struct`` is used to carefully control lifetime so user sees no dangling pointers to DuckDB native objects
   - [X] Design minimizes unnecessary GC allocations
   - [X] Tested on Windows and Linux.  (The .NET library makes no Windows- or Linux-specific assumptions and should be portable to all the desktop platforms supported by .NET.)
+  - [X] NuGet packaging (not published yet, however)
 
 ## Major features missing
 
@@ -106,14 +110,10 @@ not be performant enough, and so I do not put high priority on it.
     - STRUCT
     - arrays (fixed-length)
   - Not all types whose values can be read (from DuckDB vectors) can be bound to parameters in prepared statements
-  - ``System.Data`` (ADO.NET) -compatible interfaces for:
-    - connections
-    - prepared statements
   - Caching of objects
     - Open DuckDB database objects
   - User-defined functions
   - Appenders (DuckDB's API to insert many values quickly into a table)
-  - Proper NuGet packaging
   - Adapters for ``Microsoft.Data.Analysis.DataFrame``
   - Error reporting (exceptions) needs to be regularized
   - Not all features that work have been thoroughly tested
