@@ -337,9 +337,11 @@ public class TestAdo(DatabaseFixture fixture)
         using var transaction = connection.BeginTransaction();
         command.Transaction = transaction;
         
-        // DuckDbTransaction is a struct, so we can't use Assert.Same
-        // Instead, check that the transaction property returns the correct transaction
-        Assert.Equal(transaction, (DuckDbTransaction)command.Transaction!);
+        // N.B. DuckDbTransaction is a struct, so transaction and command.Transaction
+        // are not necessarily the same object (by reference equality), but Assert.Equal
+        // still works because DuckDbTransaction does override object.Equals.
+        Assert.Equal(transaction, command.Transaction);
+        
         Assert.Equal(IsolationLevel.Snapshot, command.Transaction.IsolationLevel);
     }
 
