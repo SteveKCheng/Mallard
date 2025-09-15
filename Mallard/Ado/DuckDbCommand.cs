@@ -160,8 +160,11 @@ public sealed class DuckDbCommand : IDbCommand
         get
         {
             if (!Connection.TryGetCurrentTransaction(out var s))
+            {
+                _transaction = null;
                 return null;
-            
+            }
+                
             var transaction = _transaction;
             if (!s.Equals(transaction))
                 _transaction = transaction = (IDbTransaction)s;
