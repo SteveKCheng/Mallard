@@ -1,0 +1,32 @@
+using System;
+using System.Data;
+using System.Diagnostics.CodeAnalysis;
+
+namespace Mallard;
+
+internal sealed class DuckDbParameter : IDbDataParameter
+{
+    public DbType DbType { get; set; }
+
+    public ParameterDirection Direction
+    {
+        get => throw new System.NotImplementedException();
+        set
+        {
+            if (value != ParameterDirection.Input)
+                throw new NotSupportedException("DuckDB supports only parameters in the input direction. ");
+        }
+    }
+    
+    public bool IsNullable => true;
+    
+    [AllowNull] public string ParameterName { get; set; }
+    public object? Value { get; set; }
+    
+    [AllowNull] public string SourceColumn { get; set; }
+    public DataRowVersion SourceVersion { get; set; }
+    
+    public byte Precision { get; set; }
+    public byte Scale { get; set; }
+    public int Size { get; set; }
+}

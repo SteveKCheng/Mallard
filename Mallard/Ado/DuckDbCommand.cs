@@ -111,7 +111,7 @@ public sealed class DuckDbCommand : IDbCommand
     IDataParameterCollection IDbCommand.Parameters => Parameters;
     
     /// <inheritdoc cref="IDbCommand.CreateParameter" />
-    public IDbDataParameter CreateParameter() => throw new NotImplementedException();
+    public IDbDataParameter CreateParameter() => new DuckDbParameter();
 
     #endregion
 
