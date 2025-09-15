@@ -139,8 +139,6 @@ public sealed partial class DuckDbConnection : IDbConnection
     #endregion
     
     #region Re-opening connections
-    
-    private Lock? _mutexForIDbConnection;
 
     /// <summary>
     /// Lock object to implement properties/methods of <see cref="IDbConnection" />
@@ -151,16 +149,17 @@ public sealed partial class DuckDbConnection : IDbConnection
     /// it is only supported for compatibility with ADO.NET.  Thus this lock
     /// object is only allocated on first use.
     /// </remarks>
+    [field: AllowNull]
     private Lock MutexForIDbConnection
     {
         get
         {
-            var t = _mutexForIDbConnection;
+            var t = field;
             if (t != null)
                 return t;
 
             t = new Lock();
-            return Interlocked.CompareExchange(ref _mutexForIDbConnection, t, null) ?? t;
+            return Interlocked.CompareExchange(ref field, t, null) ?? t;
         }
     }
 
