@@ -246,7 +246,9 @@ public unsafe sealed partial class DuckDbConnection : IDisposable
 
         NativeMethods.duckdb_disconnect(ref _nativeConn);
         
+        // Invalidate any current transaction
         _transactionVersion = 0;
+        
         Volatile.Write(ref _isSafeToResurrect, true);
 
         database.Release();
