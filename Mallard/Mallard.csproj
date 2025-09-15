@@ -10,6 +10,10 @@
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <RootNamespace>Mallard</RootNamespace>
+    
+    <!-- Enable "field-backed properties" in C# 13 used in .NET 9 -->
+    <LangVersion Condition="'$(TargetFramework)' == 'net9.0'">14</LangVersion>
+    <LangVersion Condition="!$([MSBuild]::VersionGreaterThanOrEquals($(NETCoreAppMaximumVersion), '10.0'))">preview</LangVersion>
 
     <Description>.NET bindings for DuckDB embedded database library</Description>
   </PropertyGroup>
