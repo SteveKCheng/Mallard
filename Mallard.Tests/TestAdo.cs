@@ -138,10 +138,9 @@ public class TestAdo(DatabaseFixture fixture)
     [Test]
     public void TestExecuteNonQuery()
     {
-        using var connection = new DuckDbConnection("");  // In-memory database
-        IDbConnection iConnection = connection;
+        using IDbConnection connection = new DuckDbConnection("");  // In-memory database
         
-        using var command = iConnection.CreateCommand();
+        using var command = connection.CreateCommand();
         command.CommandText = "CREATE TABLE test_table (id INTEGER, name VARCHAR(50))";
         
         int result = command.ExecuteNonQuery();
@@ -177,16 +176,15 @@ public class TestAdo(DatabaseFixture fixture)
     [Test]
     public void TestPreparedStatement()
     {
-        using var connection = new DuckDbConnection("");  // In-memory database
-        IDbConnection iConnection = connection;
-        
+        using IDbConnection connection = new DuckDbConnection("");  // In-memory database
+                
         // Create test table
-        using var setupCommand = iConnection.CreateCommand();
+        using var setupCommand = connection.CreateCommand();
         setupCommand.CommandText = "CREATE TABLE prep_test (id INTEGER, value VARCHAR(50))";
         setupCommand.ExecuteNonQuery();
         
         // Test prepared statement
-        using var command = iConnection.CreateCommand();
+        using var command = connection.CreateCommand();
         command.CommandText = "INSERT INTO prep_test VALUES ($1, $2)";
         
         var idParam = command.CreateParameter();
@@ -211,7 +209,7 @@ public class TestAdo(DatabaseFixture fixture)
         }
         
         // Verify the data was inserted
-        using var selectCommand = iConnection.CreateCommand();
+        using var selectCommand = connection.CreateCommand();
         selectCommand.CommandText = "SELECT COUNT(*) FROM prep_test";
         var count = selectCommand.ExecuteScalar();
         Assert.Equal(3L, count);
@@ -224,18 +222,17 @@ public class TestAdo(DatabaseFixture fixture)
     [Test]
     public void TestBasicTransaction()
     {
-        using var connection = new DuckDbConnection("");  // In-memory database
-        IDbConnection iConnection = connection;
-        
+        using IDbConnection connection = new DuckDbConnection("");  // In-memory database
+                
         // Setup test table
-        using var setupCommand = iConnection.CreateCommand();
+        using var setupCommand = connection.CreateCommand();
         setupCommand.CommandText = "CREATE TABLE trans_test (id INTEGER, value VARCHAR(50))";
         setupCommand.ExecuteNonQuery();
         
         // Test successful transaction
-        using (var transaction = iConnection.BeginTransaction())
+        using (var transaction = connection.BeginTransaction())
         {
-            using var command = iConnection.CreateCommand();
+            using var command = connection.CreateCommand();
             command.Transaction = transaction;
             command.CommandText = "INSERT INTO trans_test VALUES (1, 'test1'), (2, 'test2')";
             
@@ -246,7 +243,7 @@ public class TestAdo(DatabaseFixture fixture)
         }
         
         // Verify data was committed
-        using var verifyCommand = iConnection.CreateCommand();
+        using var verifyCommand = connection.CreateCommand();
         verifyCommand.CommandText = "SELECT COUNT(*) FROM trans_test";
         var count = verifyCommand.ExecuteScalar();
         Assert.Equal(2L, count);
@@ -255,23 +252,22 @@ public class TestAdo(DatabaseFixture fixture)
     [Test]
     public void TestTransactionRollback()
     {
-        using var connection = new DuckDbConnection("");  // In-memory database
-        IDbConnection iConnection = connection;
-        
+        using IDbConnection connection = new DuckDbConnection("");  // In-memory database
+                
         // Setup test table
-        using var setupCommand = iConnection.CreateCommand();
+        using var setupCommand = connection.CreateCommand();
         setupCommand.CommandText = "CREATE TABLE rollback_test (id INTEGER, value VARCHAR(50))";
         setupCommand.ExecuteNonQuery();
         
         // Insert initial data
-        using var initialCommand = iConnection.CreateCommand();
+        using var initialCommand = connection.CreateCommand();
         initialCommand.CommandText = "INSERT INTO rollback_test VALUES (1, 'initial')";
         initialCommand.ExecuteNonQuery();
         
         // Test transaction rollback
-        using (var transaction = iConnection.BeginTransaction())
+        using (var transaction = connection.BeginTransaction())
         {
-            using var command = iConnection.CreateCommand();
+            using var command = connection.CreateCommand();
             command.Transaction = transaction;
             command.CommandText = "INSERT INTO rollback_test VALUES (2, 'rollback_me'), (3, 'rollback_me_too')";
             
@@ -282,7 +278,7 @@ public class TestAdo(DatabaseFixture fixture)
         }
         
         // Verify only initial data remains
-        using var verifyCommand = iConnection.CreateCommand();
+        using var verifyCommand = connection.CreateCommand();
         verifyCommand.CommandText = "SELECT COUNT(*) FROM rollback_test";
         var count = verifyCommand.ExecuteScalar();
         Assert.Equal(1L, count);
@@ -291,18 +287,17 @@ public class TestAdo(DatabaseFixture fixture)
     [Test]
     public void TestTransactionAutoRollback()
     {
-        using var connection = new DuckDbConnection("");  // In-memory database
-        IDbConnection iConnection = connection;
-        
+        using IDbConnection connection = new DuckDbConnection("");  // In-memory database
+                
         // Setup test table
-        using var setupCommand = iConnection.CreateCommand();
+        using var setupCommand = connection.CreateCommand();
         setupCommand.CommandText = "CREATE TABLE auto_rollback_test (id INTEGER, value VARCHAR(50))";
         setupCommand.ExecuteNonQuery();
         
         // Test automatic rollback when transaction is disposed without commit
-        using (var transaction = iConnection.BeginTransaction())
+        using (var transaction = connection.BeginTransaction())
         {
-            using var command = iConnection.CreateCommand();
+            using var command = connection.CreateCommand();
             command.Transaction = transaction;
             command.CommandText = "INSERT INTO auto_rollback_test VALUES (1, 'should_rollback')";
             
@@ -313,7 +308,7 @@ public class TestAdo(DatabaseFixture fixture)
         }
         
         // Verify data was rolled back
-        using var verifyCommand = iConnection.CreateCommand();
+        using var verifyCommand = connection.CreateCommand();
         verifyCommand.CommandText = "SELECT COUNT(*) FROM auto_rollback_test";
         var count = verifyCommand.ExecuteScalar();
         Assert.Equal(0L, count);
@@ -322,10 +317,9 @@ public class TestAdo(DatabaseFixture fixture)
     [Test]
     public void TestTransactionIsolationLevel()
     {
-        using var connection = new DuckDbConnection("");  // In-memory database
-        IDbConnection iConnection = connection;
-        
-        using var transaction = iConnection.BeginTransaction();
+        using IDbConnection connection = new DuckDbConnection("");  // In-memory database
+                
+        using var transaction = connection.BeginTransaction();
         
         Assert.Equal(IsolationLevel.Snapshot, transaction.IsolationLevel);
     }
@@ -333,15 +327,14 @@ public class TestAdo(DatabaseFixture fixture)
     [Test]
     public void TestCommandTransactionProperty()
     {
-        using var connection = new DuckDbConnection("");  // In-memory database
-        IDbConnection iConnection = connection;
-        
-        using var command = iConnection.CreateCommand();
+        using IDbConnection connection = new DuckDbConnection("");  // In-memory database
+                
+        using var command = connection.CreateCommand();
         
         // Initially no transaction
         Assert.Null(command.Transaction);
         
-        using var transaction = iConnection.BeginTransaction();
+        using var transaction = connection.BeginTransaction();
         command.Transaction = transaction;
         
         // DuckDbTransaction is a struct, so we can't use Assert.Same
@@ -357,23 +350,21 @@ public class TestAdo(DatabaseFixture fixture)
     [Test]
     public void TestMultipleTransactionsError()
     {
-        using var connection = new DuckDbConnection("");  // In-memory database
-        IDbConnection iConnection = connection;
-        
-        using var transaction1 = iConnection.BeginTransaction();
+        using IDbConnection connection = new DuckDbConnection("");  // In-memory database
+                
+        using var transaction1 = connection.BeginTransaction();
         
         // Attempting to begin a second transaction should throw
-        var exception = Assert.Throws<InvalidOperationException>(() => iConnection.BeginTransaction());
+        var exception = Assert.Throws<InvalidOperationException>(() => connection.BeginTransaction());
         Assert.Contains("already started", exception.Message);
     }
 
     [Test]
     public void TestInvalidTransactionOperations()
     {
-        using var connection = new DuckDbConnection("");  // In-memory database
-        IDbConnection iConnection = connection;
-        
-        var transaction = iConnection.BeginTransaction();
+        using IDbConnection connection = new DuckDbConnection("");  // In-memory database
+                
+        var transaction = connection.BeginTransaction();
         transaction.Commit();
         
         // Operations on committed transaction should throw
@@ -414,14 +405,11 @@ public class TestAdo(DatabaseFixture fixture)
     [Test]
     public void TestWrongTransactionType()
     {
-        using var connection1 = new DuckDbConnection("");
-        using var connection2 = new DuckDbConnection("");
+        using IDbConnection connection1 = new DuckDbConnection("");
+        using IDbConnection connection2 = new DuckDbConnection("");
         
-        IDbConnection iConnection1 = connection1;
-        IDbConnection iConnection2 = connection2;
-        
-        using var transaction1 = iConnection1.BeginTransaction();
-        using var command = iConnection2.CreateCommand();
+        using var transaction1 = connection1.BeginTransaction();
+        using var command = connection2.CreateCommand();
         
         // Setting a transaction from a different connection should throw
         Assert.Throws<InvalidOperationException>(() => command.Transaction = transaction1);
@@ -430,11 +418,10 @@ public class TestAdo(DatabaseFixture fixture)
     [Test]
     public void TestSqlInjectionProtection()
     {
-        using var connection = new DuckDbConnection("");  // In-memory database
-        IDbConnection iConnection = connection;
-        
+        using IDbConnection connection = new DuckDbConnection("");  // In-memory database
+                
         // Setup test table
-        using var setupCommand = iConnection.CreateCommand();
+        using var setupCommand = connection.CreateCommand();
         setupCommand.CommandText = "CREATE TABLE injection_test (id INTEGER, name VARCHAR(100))";
         setupCommand.ExecuteNonQuery();
         
@@ -442,7 +429,7 @@ public class TestAdo(DatabaseFixture fixture)
         setupCommand.ExecuteNonQuery();
         
         // Test that parameterized queries protect against injection
-        using var command = iConnection.CreateCommand();
+        using var command = connection.CreateCommand();
         command.CommandText = "SELECT * FROM injection_test WHERE name = $1";
         
         var parameter = command.CreateParameter();
@@ -457,7 +444,7 @@ public class TestAdo(DatabaseFixture fixture)
         
         // Verify table still exists by running another query
         reader.Close();
-        using var verifyCommand = iConnection.CreateCommand();
+        using var verifyCommand = connection.CreateCommand();
         verifyCommand.CommandText = "SELECT COUNT(*) FROM injection_test";
         var count = verifyCommand.ExecuteScalar();
         Assert.Equal(2L, count);  // Table should still have 2 rows
@@ -470,13 +457,12 @@ public class TestAdo(DatabaseFixture fixture)
     [Test]
     public void TestConnectionStateProperty()
     {
-        using var connection = new DuckDbConnection("");
-        IDbConnection iConnection = connection;
+        using IDbConnection connection = new DuckDbConnection("");
+                
+        Assert.Equal(ConnectionState.Open, connection.State);
         
-        Assert.Equal(ConnectionState.Open, iConnection.State);
-        
-        iConnection.Close();
-        Assert.Equal(ConnectionState.Closed, iConnection.State);
+        connection.Close();
+        Assert.Equal(ConnectionState.Closed, connection.State);
         
         // Skip reopening as it has implementation issues with ImmutableArray initialization
         // The core functionality of state tracking works correctly
