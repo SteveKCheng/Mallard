@@ -23,7 +23,7 @@ namespace Mallard;
 /// DuckDB may assign indices to parameters differently than your code.
 /// </para>
 /// </remarks>
-public sealed class DuckDbParameterCollection : IDataParameterCollection, IList<DbParameter>
+public sealed class DuckDbParameterCollection : IDataParameterCollection, IList<IDbDataParameter>
 {
     /// <summary>
     /// Parameters accessed by index.
@@ -41,21 +41,21 @@ public sealed class DuckDbParameterCollection : IDataParameterCollection, IList<
     /// look-up being O(1).
     /// </para>
     /// </remarks>
-    private readonly List<DbParameter> _items = new List<DbParameter>();
+    private readonly List<IDbDataParameter> _items = new List<IDbDataParameter>();
 
-    IEnumerator<DbParameter> IEnumerable<DbParameter>.GetEnumerator() => _items.GetEnumerator();
+    IEnumerator<IDbDataParameter> IEnumerable<IDbDataParameter>.GetEnumerator() => _items.GetEnumerator();
 
     IEnumerator IEnumerable.GetEnumerator() => _items.GetEnumerator();
 
     public void CopyTo(Array array, int index) => ((IList)_items).CopyTo(array, index);
 
-    public bool Remove(DbParameter item) => _items.Remove(item);
+    public bool Remove(IDbDataParameter item) => _items.Remove(item);
 
     public int Count => _items.Count;
     public bool IsSynchronized => false;
     public object SyncRoot => _items;
 
-    public void Add(DbParameter value) => _items.Add(ValidateParameter(value));
+    public void Add(IDbDataParameter value) => _items.Add(ValidateParameter(value));
 
     int IList.Add(object? value)
     {
@@ -66,23 +66,23 @@ public sealed class DuckDbParameterCollection : IDataParameterCollection, IList<
 
     public void Clear() => _items.Clear();
 
-    public bool Contains(DbParameter value) => _items.Contains(value);
+    public bool Contains(IDbDataParameter value) => _items.Contains(value);
     
-    public void CopyTo(DbParameter[] array, int arrayIndex) => _items.CopyTo(array, arrayIndex);
+    public void CopyTo(IDbDataParameter[] array, int arrayIndex) => _items.CopyTo(array, arrayIndex);
 
-    bool IList.Contains(object? value) => value is DbParameter p && Contains(p);
+    bool IList.Contains(object? value) => value is IDbDataParameter p && Contains(p);
 
-    public int IndexOf(DbParameter value) => _items.IndexOf(value);
+    public int IndexOf(IDbDataParameter value) => _items.IndexOf(value);
 
-    public void Insert(int index, DbParameter item) => _items.Insert(index, ValidateParameter(item));
+    public void Insert(int index, IDbDataParameter item) => _items.Insert(index, ValidateParameter(item));
 
-    int IList.IndexOf(object? value) => value is DbParameter p ? IndexOf(p) : -1; 
+    int IList.IndexOf(object? value) => value is IDbDataParameter p ? IndexOf(p) : -1; 
 
     void IList.Insert(int index, object? value) => _items.Insert(index, ValidateParameter(value));
 
     void IList.Remove(object? value)
     {
-        if (value is DbParameter p)
+        if (value is IDbDataParameter p)
             _items.Remove(p);
     }
 
@@ -91,23 +91,23 @@ public sealed class DuckDbParameterCollection : IDataParameterCollection, IList<
     public bool IsFixedSize => false;
     public bool IsReadOnly => false;
 
-    private DbParameter ValidateParameter(DbParameter item, [CallerArgumentExpression(nameof(item))] string? paramName = null)
+    private IDbDataParameter ValidateParameter(IDbDataParameter item, [CallerArgumentExpression(nameof(item))] string? paramName = null)
     {
         ArgumentNullException.ThrowIfNull(item, paramName);
         return item;
     }
 
-    private DbParameter ValidateParameter(object? item,
+    private IDbDataParameter ValidateParameter(object? item,
                                           [CallerArgumentExpression(nameof(item))] string? paramName = null)
     {
         ArgumentNullException.ThrowIfNull(item, paramName);
-        if (item is not DbParameter p)
-            throw new ArgumentException($"Cannot insert anything but a {nameof(DbParameter)} object into DuckDbParameterCollection. ");
+        if (item is not IDbDataParameter p)
+            throw new ArgumentException($"Cannot insert anything but a {nameof(IDbDataParameter)} object into DuckDbParameterCollection. ");
 
         return p;
     }
 
-    public DbParameter this[int index]
+    public IDbDataParameter this[int index]
     {
         get => _items[index];
         set => _items[index] = ValidateParameter(value);
@@ -168,7 +168,7 @@ public sealed class DuckDbParameterCollection : IDataParameterCollection, IList<
     /// set to <paramref name="parameterName" />.
     /// </para>
     /// </remarks>
-    public DbParameter this[string parameterName]
+    public IDbDataParameter this[string parameterName]
     {
         get => _items[GetIndexForParameterName(parameterName)];
         set
