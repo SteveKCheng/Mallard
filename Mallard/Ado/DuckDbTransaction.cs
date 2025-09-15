@@ -51,16 +51,16 @@ public readonly struct DuckDbTransaction : IDbTransaction, IEquatable<DuckDbTran
     }
 
     /// <inheritdoc cref="IDbTransaction.Commit" />
-    public void Commit() => Connection.CommitTransactionInternal(Version);
+    public void Commit() => Connection.CommitTransaction(Version);
 
     /// <inheritdoc cref="IDbTransaction.Rollback" />
-    public void Rollback() => Connection.RollbackTransactionInternal(Version, isDisposing: false);
+    public void Rollback() => Connection.RollbackTransaction(Version);
 
     /// <summary>
     /// Disposes of the transaction, equivalent to rolling it back if 
     /// it has not been committed or rolled back already.
     /// </summary>
-    public void Dispose() => Connection.RollbackTransactionInternal(Version, isDisposing: true);
+    public void Dispose() => Connection.DropTransaction(Version);
 
     /// <summary>
     /// Whether this instance and the other instance refers to the same transaction
@@ -83,9 +83,9 @@ public sealed partial class DuckDbConnection
     #region Transactions
 
     /// <summary>
-    /// Begin a transaction on the current connection.
+    /// Register and begin a transaction on the current connection.
     /// </summary>
-    private int BeginTransactionInternal()
+    private int RegisterTransaction()
     {
         using var scope = _refCount.EnterScope(this);
         
@@ -121,9 +121,9 @@ public sealed partial class DuckDbConnection
     }
 
     /// <summary>
-    /// Commit a transaction that was begun by <see cref="BeginTransaction" />.
+    /// Commit a transaction that was begun by <see cref="RegisterTransaction" />.
     /// </summary>
-    internal void CommitTransactionInternal(int version)
+    internal void CommitTransaction(int version)
     {
         using var scope = _refCount.EnterScope(this);
         
@@ -137,38 +137,56 @@ public sealed partial class DuckDbConnection
             _transactionVersion = 0;
         }
     }
-
+ 
     /// <summary>
-    /// Roll back a transaction that was begun by <see cref="BeginTransaction" />.
+    /// Roll back a transaction that was begun by <see cref="RegisterTransaction" />.
     /// </summary>
-    internal void RollbackTransactionInternal(int version, bool isDisposing)
+    internal void RollbackTransaction(int version)
     {
+        using var scope = _refCount.EnterScope(this);
+
+        VerifyTransaction(in scope, version);
         try
         {
-            using var scope = _refCount.EnterScope(this);
+            ExecuteCommand(in scope, "ROLLBACK");
+        }
+        finally
+        {
+            _transactionVersion = 0;
+        }
+    }
 
-            if (!isDisposing)
-                VerifyTransaction(in scope, version);
-            
-            // It is normal for DuckDbTransaction to be disposed after it has
-            // been committed or rolled back.  Then disposal should do nothing.  
-            else if (_transactionVersion == 0 || _transactionVersion != version)
-                return;
+    /// <summary>
+    /// Dispose of a transaction that was begun by <see cref="RegisterTransaction" />,
+    /// meaning that it should be rolled back if it was not committed or rolled back
+    /// already.
+    /// </summary>
+    internal void DropTransaction(int version)
+    {
+        // Okay to speculatively read without _refCount.EnterScope,
+        // thus avoiding an unnecessary interlocked operation.
+        //
+        // Should this object get disposed (possibly from another thread racing),
+        // the transaction cannot be valid anyway.
+        //
+        // Also, version == 0 should not happen except if the user attempts to
+        // dispose a default-initialized DuckDbTransaction struct, which we
+        // should ignore.
+        if (version == 0 || version != _transactionVersion)
+            return;
 
-            try
-            {
-                ExecuteCommand(in scope, "ROLLBACK");
-            }
-            finally
-            {
-                _transactionVersion = 0;
-            }
+        try
+        {
+            RollbackTransaction(version);
         }
         catch (ObjectDisposedException)
         {
             // If the database connection was closed first, presumably roll-back has
             // already occurred (because the changes were not already committed),
             // so it should be safe to silently ignore the error.
+            //
+            // We still report any other kind of error, including racing with
+            // transaction rollbacks from another thread.
         }
     }
 
@@ -194,6 +212,17 @@ public sealed partial class DuckDbConnection
     /// This variable has "shared ownership" in the same manner as <see cref="_nativeConn" />
     /// that is controlled by <see cref="_refCount" />.
     /// </para>
+    /// <para>
+    /// In theory, this variable should atomically flag when commit or rollback has started
+    /// but not yet completed, to detect when the same transaction is being committed/rolled
+    /// back at the same time from different threads.  However, this kind of error can pretty
+    /// much only occur on the user deliberately provoking it; transaction objects are normally
+    /// local to a function (and not shared between threads simultaneously).  Moreover,
+    /// when such a race occurs, DuckDB's own error checking will catch it and so there will
+    /// be no state/memory corruption even without the atomic flagging.  So we avoid
+    /// the atomic flagging for a little extra efficiency and to simplify the code.  The only 
+    /// minor drawback is that reported error may be attributed to the wrong transaction object.  
+    /// </para>
     /// </remarks>
     private int _transactionVersion;
 
@@ -202,7 +231,7 @@ public sealed partial class DuckDbConnection
     /// </summary>
     private void VerifyTransaction(ref readonly HandleRefCount.Scope _, int version)
     {
-        if (version != _transactionVersion)
+        if (version == 0 || version != _transactionVersion)
             throw new InvalidOperationException("Cannot commit or roll back a transaction that is no longer active. ");
     }
 
@@ -234,7 +263,7 @@ public sealed partial class DuckDbConnection
     /// tp roll it back.  Put it in a <c>using</c> block in C#.
     /// </returns>
     public DuckDbTransaction BeginTransaction()
-        => new DuckDbTransaction(this, BeginTransactionInternal());
+        => new DuckDbTransaction(this, RegisterTransaction());
 
     #endregion
     
