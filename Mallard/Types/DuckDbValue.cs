@@ -5,7 +5,7 @@ using System.Runtime.CompilerServices;
 
 namespace Mallard;
 
-public unsafe class DuckDbValue
+internal unsafe class DuckDbValue
 {
     [SkipLocalsInit]
     private static _duckdb_value* CreateNativeString(string input)
@@ -18,80 +18,74 @@ public unsafe class DuckDbValue
         return NativeMethods.duckdb_create_varchar_length(utf8Ptr, utf8Length);
     }
 
-    internal static _duckdb_value* CreateNativeObject<T>(T input)
+    private static _duckdb_value* CreateNativeObject(object? input)
     {
-        if (typeof(T) == typeof(bool))
-            return NativeMethods.duckdb_create_bool((bool)(object)input!);
+        if (input is null)
+            return NativeMethods.duckdb_create_null_value();
+        
+        if (input is bool b)
+            return NativeMethods.duckdb_create_bool(b);
 
-        if (typeof(T) == typeof(sbyte))
-            return NativeMethods.duckdb_create_int8((sbyte)(object)input!);
-        if (typeof(T) == typeof(byte))
-            return NativeMethods.duckdb_create_uint8((byte)(object)input!);
+        if (input is sbyte i8)
+            return NativeMethods.duckdb_create_int8(i8);
+        if (input is byte u8)
+            return NativeMethods.duckdb_create_uint8(u8);
 
-        if (typeof(T) == typeof(short))
-            return NativeMethods.duckdb_create_int16((short)(object)input!);
-        if (typeof(T) == typeof(ushort))
-            return NativeMethods.duckdb_create_uint16((ushort)(object)input!);
+        if (input is short i16)
+            return NativeMethods.duckdb_create_int16(i16);
+        if (input is ushort u16)
+            return NativeMethods.duckdb_create_uint16(u16);
 
-        if (typeof(T) == typeof(int))
-            return NativeMethods.duckdb_create_int32((int)(object)input!);
-        if (typeof(T) == typeof(uint))
-            return NativeMethods.duckdb_create_uint32((uint)(object)input!);
+        if (input is int i32)
+            return NativeMethods.duckdb_create_int32(i32);
+        if (input is uint u32)
+            return NativeMethods.duckdb_create_uint32(u32);
 
-        if (typeof(T) == typeof(long))
-            return NativeMethods.duckdb_create_int64((long)(object)input!);
-        if (typeof(T) == typeof(ulong))
-            return NativeMethods.duckdb_create_uint64((ulong)(object)input!);
+        if (input is long i64)
+            return NativeMethods.duckdb_create_int64(i64);
+        if (input is ulong u64)
+            return NativeMethods.duckdb_create_uint64(u64);
 
-        if (typeof(T) == typeof(Int128))
-            return NativeMethods.duckdb_create_hugeint((Int128)(object)input!);
-        if (typeof(T) == typeof(UInt128))
-            return NativeMethods.duckdb_create_uhugeint((UInt128)(object)input!);
+        if (input is Int128 i128)
+            return NativeMethods.duckdb_create_hugeint(i128);
+        if (input is UInt128 u128)
+            return NativeMethods.duckdb_create_uhugeint(u128);
 
-        if (typeof(T) == typeof(float))
-            return NativeMethods.duckdb_create_float((float)(object)input!);
-        if (typeof(T) == typeof(double))
-            return NativeMethods.duckdb_create_double((double)(object)input!);
+        if (input is float f32)
+            return NativeMethods.duckdb_create_float(f32);
+        if (input is double f64)
+            return NativeMethods.duckdb_create_double(f64);
 
-        if (typeof(T) == typeof(DuckDbDecimal))
-            return NativeMethods.duckdb_create_decimal((DuckDbDecimal)(object)input!);
-        if (typeof(T) == typeof(Decimal))
-            return NativeMethods.duckdb_create_decimal(DuckDbDecimal.FromDecimal((Decimal)(object)input!));
+        if (input is DuckDbDecimal dec2)
+            return NativeMethods.duckdb_create_decimal(dec2);
+        if (input is Decimal dec)
+            return NativeMethods.duckdb_create_decimal(DuckDbDecimal.FromDecimal(dec));
 
-        if (typeof(T) == typeof(DuckDbDate))
-            return NativeMethods.duckdb_create_date((DuckDbDate)(object)input!);
+        if (input is DuckDbDate date2)
+            return NativeMethods.duckdb_create_date(date2);
 
-        if (typeof(T) == typeof(DuckDbTimestamp))
-            return NativeMethods.duckdb_create_timestamp((DuckDbTimestamp)(object)input!);
+        if (input is DuckDbTimestamp timestamp)
+            return NativeMethods.duckdb_create_timestamp(timestamp);
 
-        if (typeof(T) == typeof(DateTime))
+        if (input is DateTime dateTime)
             return NativeMethods.duckdb_create_timestamp(
-                DuckDbTimestamp.FromDateTime((DateTime)(object)input!));
+                DuckDbTimestamp.FromDateTime(dateTime));
 
-        if (typeof(T) == typeof(DuckDbInterval))
-            return NativeMethods.duckdb_create_interval((DuckDbInterval)(object)input!);
+        if (input is DuckDbInterval interval)
+            return NativeMethods.duckdb_create_interval(interval);
 
         // N.B. uses a P/Invoke custom marshaller
-        if (typeof(T) == typeof(BigInteger))
-            return NativeMethods.duckdb_create_varint((BigInteger)(object)input!);
+        if (input is BigInteger big)
+            return NativeMethods.duckdb_create_varint(big);
 
-        if (typeof(T) == typeof(string))
-            return CreateNativeString((string)(object)input!);
+        if (input is string s)
+            return CreateNativeString(s);
 
-        throw new InvalidOperationException("Unsupported type. ");
-    }
-}
-
-internal static class FnPtrTest
-{
-    static object Generic<T>(string input) where T : INumber<T>
-    {
-        return (object)T.Parse(input, null);
+        throw new NotSupportedException(
+            $"Cannot convert the given type to a DuckDB value.  Type: {input.GetType().Name}");
     }
 
-    static unsafe void Use()
-    {
-        delegate*<string, object> f = &Generic<int>;
-       
-    }
+
+    internal static _duckdb_value* CreateNativeObject<T>(T input)
+        => CreateNativeObject((object?)input);
 }

@@ -425,7 +425,10 @@ internal unsafe static partial class NativeMethods
     [return: MarshalUsing(typeof(Utf8StringMarshallerWithFree))]
     internal static partial string duckdb_value_to_string(_duckdb_value* value);
 
-    #endregion 
+    [LibraryImport(LibraryName)]
+    internal static partial _duckdb_value* duckdb_create_null_value();
+
+    #endregion
 }
 
 #pragma warning restore IDE1006, CS0169
