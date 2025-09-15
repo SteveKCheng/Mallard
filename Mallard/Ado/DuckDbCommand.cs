@@ -9,76 +9,9 @@ namespace Mallard;
 /// </summary>
 public sealed class DuckDbCommand : IDbCommand
 {
-    private DuckDbStatement? _statement;
-  
-    /// <inheritdoc cref="IDisposable.Dispose" />
-    public void Dispose()
-    {
-        var statement = _statement;
-        _statement = null;
-        statement?.Dispose();
-    }
-
-    public void Cancel()
-    {
-        throw new System.NotImplementedException();
-    }
-
-    public IDbDataParameter CreateParameter()
-    {
-        throw new System.NotImplementedException();
-    }
-
-    private void BindParameters(DuckDbStatement statement)
-    {
-        foreach (var p in Parameters)
-            statement.BindParameter(p.ParameterName, p.Value);
-    }
-
-    /// <inheritdoc cref="IDbCommand.ExecuteNonQuery" />
-    public int ExecuteNonQuery()
-    {
-        var statement = GetPreparedStatement();
-        BindParameters(statement);
-        return (int)statement.ExecuteNonQuery();
-    }
-
-    public DuckDbDataReader ExecuteReader()
-    {
-        var statement = GetPreparedStatement();
-        BindParameters(statement);
-        return statement.ExecuteReader();
-    }
+    #region Command text
     
-    IDataReader IDbCommand.ExecuteReader() => ExecuteReader();
-
-    public IDataReader ExecuteReader(CommandBehavior behavior)
-    {
-        throw new System.NotImplementedException();
-    }
-
-    /// <inheritdoc cref="IDbCommand.ExecuteScalar" />
-    public object? ExecuteScalar()
-    {
-        var statement = GetPreparedStatement();
-        BindParameters(statement);
-        return statement.ExecuteScalar();
-    }
-
-    /// <inheritdoc cref="IDbCommand.Prepare" />
-    public void Prepare()
-    {
-        GetPreparedStatement();
-    }
-
-    private DuckDbStatement GetPreparedStatement()
-    {
-        var statement = _statement;
-        if (statement == null)
-            statement = _statement = Connection.CreatePreparedStatement(CommandText);
-        return statement;
-    }
-
+    /// <inheritdoc cref="IDbCommand.CommandText" />
     [AllowNull]
     public string CommandText
     {
@@ -92,9 +25,6 @@ public sealed class DuckDbCommand : IDbCommand
 
     private string _sql = string.Empty;
     
-    // Value is ignored
-    int IDbCommand.CommandTimeout { get; set; }
-
     CommandType IDbCommand.CommandType
     {
         get => CommandType.Text;
@@ -104,6 +34,93 @@ public sealed class DuckDbCommand : IDbCommand
                 throw new NotSupportedException("CommandType for DuckDbCommand may only be set to CommandType.Text. ");
         }
     }
+
+    #endregion
+
+    #region Command execution
+
+    public void Cancel()
+    {
+        throw new System.NotImplementedException();
+    }
+    
+    private DuckDbStatement GetBoundStatement()
+    {
+        var statement = GetPreparedStatement();
+        foreach (var p in Parameters)
+            statement.BindParameter(p.ParameterName, p.Value);
+        return statement;
+    }
+    
+    /// <inheritdoc cref="IDbCommand.ExecuteNonQuery" />
+    public int ExecuteNonQuery()
+    {
+        var statement = GetBoundStatement();
+        return (int)statement.ExecuteNonQuery();
+    }
+
+    public DuckDbDataReader ExecuteReader()
+    {
+        var statement = GetBoundStatement();
+        return statement.ExecuteReader();
+    }
+    
+    IDataReader IDbCommand.ExecuteReader() => ExecuteReader();
+
+    public IDataReader ExecuteReader(CommandBehavior behavior)
+    {
+        throw new System.NotImplementedException();
+    }
+
+    /// <inheritdoc cref="IDbCommand.ExecuteScalar" />
+    public object? ExecuteScalar()
+    {
+        var statement = GetBoundStatement();
+        return statement.ExecuteScalar();
+    }
+    
+    #endregion
+    
+    #region Preparing statements
+
+    private DuckDbStatement? _statement;
+  
+    /// <inheritdoc cref="IDbCommand.Prepare" />
+    public void Prepare()
+    {
+        GetPreparedStatement();
+    }
+
+    private DuckDbStatement GetPreparedStatement()
+    {
+        var statement = _statement;
+        if (statement == null)
+            statement = _statement = Connection.CreatePreparedStatement(CommandText);
+        return statement;
+    }
+    
+    #endregion
+    
+    #region Parameters
+
+    /// <summary>
+    /// The parameters that should be applied to a parameterized SQL query or statement.
+    /// </summary>
+    public DuckDbParameterCollection Parameters { get; } = new DuckDbParameterCollection();
+    
+    IDataParameterCollection IDbCommand.Parameters => Parameters;
+    
+    /// <inheritdoc cref="IDbCommand.CreateParameter" />
+    public IDbDataParameter CreateParameter() => throw new NotImplementedException();
+
+    #endregion
+
+    #region Connection management
+    
+    /// <summary>
+    /// The connection that this command works on.
+    /// </summary>
+    public DuckDbConnection Connection { get; private set; }
 
     IDbConnection? IDbCommand.Connection
     {
@@ -121,17 +138,8 @@ public sealed class DuckDbCommand : IDbCommand
         }
     }
     
-    /// <summary>
-    /// The connection that this command works on.
-    /// </summary>
-    public DuckDbConnection Connection { get; private set; }
-
-    /// <summary>
-    /// The parameters that should be applied to a parameterized SQL query or statement.
-    /// </summary>
-    public DuckDbParameterCollection Parameters { get; } = new DuckDbParameterCollection();
-    
-    IDataParameterCollection IDbCommand.Parameters => Parameters;
+    // Value is ignored
+    int IDbCommand.CommandTimeout { get; set; }
 
     /// <summary>
     /// Cached boxed instance of <see cref="DuckDbTransaction" />.
@@ -180,11 +188,29 @@ public sealed class DuckDbCommand : IDbCommand
         }
     }
     
+    #endregion
+    
+    #region DataSet-related
+    
     /// <inheritdoc cref="IDbCommand.UpdatedRowSource" />
     public UpdateRowSource UpdatedRowSource { get; set; }
+    
+    #endregion
 
+    #region Construction and destruction
+    
     internal DuckDbCommand(DuckDbConnection connection)
     {
         Connection = connection;
     }
+    
+    /// <inheritdoc cref="IDisposable.Dispose" />
+    public void Dispose()
+    {
+        var statement = _statement;
+        _statement = null;
+        statement?.Dispose();
+    }
+
+    #endregion
 }
