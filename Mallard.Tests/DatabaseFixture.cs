@@ -2,10 +2,25 @@
 
 namespace Mallard.Tests;
 
-public class DatabaseFixture : IDisposable
+public sealed class DatabaseFixture : IDisposable
 {
     private readonly Lazy<DuckDbConnection> _dbConnection =
-        new(Program.MakeDbConnectionWithGeneratedData);
+        new(() =>
+        {
+            var c = new DuckDbConnection("");
+            try
+            {
+                c.ExecuteNonQuery("INSTALL tpch");
+                c.ExecuteNonQuery("LOAD tpch");
+                c.ExecuteNonQuery("CALL dbgen(sf = 0.2)");
+                return c;
+            }
+            catch
+            {
+                c.Dispose();
+                throw;
+            }
+        });
 
     /// <summary>
     /// Singleton database connection populated with tables generated
