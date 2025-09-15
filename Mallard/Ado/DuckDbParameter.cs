@@ -19,11 +19,23 @@ internal sealed class DuckDbParameter : IDbDataParameter
     }
     
     public bool IsNullable => true;
-    
-    [AllowNull] public string ParameterName { get; set; }
+
+    [AllowNull]
+    public string ParameterName
+    {
+        get => field;
+        set => field = value ?? string.Empty;
+    } = string.Empty;
+
     public object? Value { get; set; }
+
+    [AllowNull]
+    public string SourceColumn
+    {
+        get => field;
+        set => field = value ?? string.Empty;
+    } = string.Empty;
     
-    [AllowNull] public string SourceColumn { get; set; }
     public DataRowVersion SourceVersion { get; set; }
     
     public byte Precision { get; set; }
