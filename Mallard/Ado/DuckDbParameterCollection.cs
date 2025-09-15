@@ -2,10 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.Common;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 
 namespace Mallard;
 
@@ -51,7 +48,11 @@ public sealed class DuckDbParameterCollection : IDataParameterCollection, IList<
 
     public bool Remove(IDbDataParameter item) => _items.Remove(item);
 
+    /// <summary>
+    /// The number of parameters in this collection.
+    /// </summary>
     public int Count => _items.Count;
+    
     public bool IsSynchronized => false;
     public object SyncRoot => _items;
 
@@ -98,7 +99,7 @@ public sealed class DuckDbParameterCollection : IDataParameterCollection, IList<
     }
 
     private IDbDataParameter ValidateParameter(object? item,
-                                          [CallerArgumentExpression(nameof(item))] string? paramName = null)
+                                               [CallerArgumentExpression(nameof(item))] string? paramName = null)
     {
         ArgumentNullException.ThrowIfNull(item, paramName);
         if (item is not IDbDataParameter p)
@@ -107,14 +108,30 @@ public sealed class DuckDbParameterCollection : IDataParameterCollection, IList<
         return p;
     }
 
+    /// <summary>
+    /// Set a parameter at a given index of this collection.
+    /// </summary>
+    /// <param name="index">
+    /// Index of the slot to set the parameter object into, from 0 (inclusive) to <see cref="Count" />
+    /// (exclusive).  This value is only for indexing into the parameter collection in .NET;
+    /// it is not necessarily connected to the index of positional parameters in a DuckDB
+    /// SQL statement.  Which formal parameter in the
+    /// SQL statement that the <see cref="IDbDataParameter" />
+    /// object is mapped to depends on <see cref="IDbDataParameter.ParameterName" />.
+    /// </param>
+    /// <remarks>
+    /// <para>
+    /// That being said, unnamed parameter objects (those with an empty string
+    /// for <see cref="IDbDataParameter.ParameterName" />)
+    /// will be assigned to increasing indices for positional parameters in the SQL statement
+    /// when it is executed.  
+    /// </para>
+    /// </remarks>
     public IDbDataParameter this[int index]
     {
         get => _items[index];
         set => _items[index] = ValidateParameter(value);
     }
-
-    private static bool IsNamedParameter(string parameterName)
-        => !string.IsNullOrEmpty(parameterName);
 
     object? IList.this[int index]
     {
@@ -157,15 +174,18 @@ public sealed class DuckDbParameterCollection : IDataParameterCollection, IList<
     /// </param>
     /// <remarks>
     /// <para>
-    /// A named parameter has an index no different than unnamed parameters.  Calling the
-    /// setter on this property will replace the parameter object at the index
-    /// where a parameter with the given name lives.  The replacement parameter object
-    /// may have a different name.  (This behavior is consistent with other implementations
+    /// Every parameter is stored with an index within this container, that has no
+    /// relation with its name (<see cref="IDbDataParameter.ParameterName" />).  Calling the
+    /// setter on this property will replace the parameter object, at the index
+    /// where a current parameter with the given name lives.  The new parameter object
+    /// may have a different name, replacing the old parameter's name (if different).
+    /// (This behavior is consistent with other implementations
     /// of <see cref="IDataParameterCollection" />.)
     /// </para>
     /// <para>
-    /// If the new parameter object being set is unnamed, its name will automatically be
-    /// set to <paramref name="parameterName" />.
+    /// If the new parameter object being set is unnamed,
+    /// meaning that <see cref="IDbDataParameter.ParameterName" /> is an empty string, 
+    /// its name will automatically be set to <paramref name="parameterName" />.
     /// </para>
     /// </remarks>
     public IDbDataParameter this[string parameterName]
