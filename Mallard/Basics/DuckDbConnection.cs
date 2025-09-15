@@ -1,6 +1,7 @@
 ﻿using Mallard.C_API;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 
 namespace Mallard;
@@ -269,14 +270,12 @@ public unsafe sealed partial class DuckDbConnection : IDisposable
 
     #region Global information
 
-    private static string? _nativeLibraryVersion;
-    private static string? _originalNativeLibraryVersion;
-
     /// <summary>
     /// The version of the native DuckDB library being used, as a string.
     /// </summary>
+    [field: AllowNull]
     public static string NativeLibraryVersion 
-        => (_nativeLibraryVersion ??= NativeMethods.duckdb_library_version());
+        => (field ??= NativeMethods.duckdb_library_version());
 
     /// <summary>
     /// The version of the native DuckDB library that Mallard has been built against.
@@ -289,8 +288,9 @@ public unsafe sealed partial class DuckDbConnection : IDisposable
     /// and to check when an actual version of the library is API/ABI-compatible
     /// with what this version of Mallard was built against.  
     /// </remarks>
+    [field: AllowNull]
     public static string OriginalNativeLibraryVersion
-        => (_originalNativeLibraryVersion ??= DuckDbVersionAttribute.Instance.Value);
+        => (field ??= DuckDbVersionAttribute.Instance.Value);
 
     #endregion
 
