@@ -100,7 +100,8 @@ internal unsafe class DuckDbDatabase
             }
 
             Path = path;
-            Options = options != null ? options.ToImmutableArray() : default;
+            Options = options != null ? options.ToImmutableArray() 
+                                      : ImmutableArray<KeyValuePair<string, string>>.Empty;
 
             status = NativeMethods.duckdb_open_ext(path, out _nativeDb, nativeConfig, out var errorString);
             DuckDbException.ThrowOnFailure(status, string.Empty);

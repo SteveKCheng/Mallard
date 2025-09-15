@@ -458,14 +458,23 @@ public class TestAdo(DatabaseFixture fixture)
     public void TestConnectionStateProperty()
     {
         using IDbConnection connection = new DuckDbConnection("");
-                
+        
         Assert.Equal(ConnectionState.Open, connection.State);
         
+        // Connection already open; cannot re-open without closing first
+        Assert.Throws<InvalidOperationException>(() => connection.Open());
+
         connection.Close();
         Assert.Equal(ConnectionState.Closed, connection.State);
-        
-        // Skip reopening as it has implementation issues with ImmutableArray initialization
-        // The core functionality of state tracking works correctly
+
+        // Closing again should do nothing (no exception thrown according Microsoft spec)
+        connection.Close();
+        Assert.Equal(ConnectionState.Closed, connection.State);
+
+        // Re-open connection
+        connection.Open();
+
+        Assert.Equal(ConnectionState.Open, connection.State);
     }
 
     [Test]
