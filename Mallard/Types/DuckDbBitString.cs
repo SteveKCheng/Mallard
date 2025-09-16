@@ -144,7 +144,7 @@ public readonly ref struct DuckDbBitString : IStatelesslyConvertible<DuckDbBitSt
     /// Buffer to extract the bits into.  The bits will be presented in the same little-endian encoding 
     /// read by <see cref="BitArray.BitArray(byte[])" />: the value of the bit at output position 
     /// <c>i</c> (corresponding to source position <c>i + offset</c>) is 
-    /// <c>(destination[i/8] &amp; (1 << (i%8))) != 0</c>.  Unused bits in the last byte
+    /// <c>(destination[i/8] &amp; (1 &lt;&lt; (i%8))) != 0</c>.  Unused bits in the last byte
     /// of the output are always set to zero.  The value of the bytes in the buffer 
     /// beyond the last byte needed for the output will be indeterminate. 
     /// </param>
