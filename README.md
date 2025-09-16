@@ -64,6 +64,11 @@ The test programs support AOT (ahead-of-time) compilation.  To run in AOT mode:
       - Output will be in ``out/package/release/Mallard.Runtime.«platform».«version».nupkg``.
       - ``«version»`` here refers to DuckDB's version.
 
+
+## API documentation
+
+  * [API documentation generated from “XML doc comments”](https://github.gold-saucer.org/Mallard/api/Mallard.html)
+
 ## Relation to other .NET bindings
 
 There is another, much more mature project, called [DuckDB.NET](https://duckdb.net/docs/introduction.html).
