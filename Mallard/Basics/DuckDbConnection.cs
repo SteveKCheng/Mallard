@@ -6,6 +6,44 @@ using System.Threading;
 
 namespace Mallard;
 
+/// <summary>
+/// A connection to a DuckDB database.
+/// </summary>
+/// <remarks>
+/// <para>
+/// Mallard provides a high-performance API to access DuckDB through
+/// this class and related types with the <c>DuckDb</c> prefix.
+/// Alternatively, the standard ADO.NET API may be used which this
+/// class also implements.
+/// </para>
+/// <para>
+/// This class represents a connection to some DuckDB database.
+/// Each connection is generally used only by at most one thread at once,
+/// although it may be passed between different threads without issue.
+/// </para>
+/// <para>
+/// This class is thread-safe in the sense that no memory or state
+/// corruption will occur if an instance is used from multiple threads.
+/// There are checks to prevent conflicting operations, such as disposing
+/// an instance while it is being used by another thread.  However,
+/// key operations such as making queries will be serialized (with locks
+/// internally in DuckDB) if made from multiple threads.  
+/// </para>
+/// <para>
+/// For true concurrent usage, make multiple connections to the same database.
+/// DuckDB will mediate between the connections by its
+/// optimistic multi-version concurrency control (MVCC).
+/// </para>
+/// <para>
+/// There is no asynchronous interface, because DuckDB does not natively
+/// offer one.  As an embedded database, most of wait time for SQL execution 
+/// is (or is assumed to be) CPU-bound for the local computer,
+/// not network-bound like traditional database servers.  This class does
+/// not attempt to emulate asynchonicity since both the design and
+/// implementation of the necessary API is non-trivial.  An asynchronous
+/// interface could be built on top of this class instead.
+/// </para>
+/// </remarks>
 public unsafe sealed partial class DuckDbConnection : IDisposable
 {
     /// <summary>
@@ -170,6 +208,9 @@ public unsafe sealed partial class DuckDbConnection : IDisposable
     /// <summary>
     /// Execute a SQL query, and return the first item in the results.
     /// </summary>
+    /// <typeparam name="T">
+    /// The .NET type to convert the result (first item) from the SQL query to.
+    /// </typeparam>
     /// <param name="sql">
     /// SQL statement(s) in the DuckDB dialect.  Multiple statements
     /// may be separated/terminated by semicolons; the result returned
