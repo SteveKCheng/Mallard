@@ -209,7 +209,27 @@ public unsafe sealed partial class DuckDbConnection : IDisposable
 
     #endregion 
 
-    public DuckDbConnection Reopen()
+    /// <summary>
+    /// Open a new connection to the same database.
+    /// </summary>
+    /// <remarks>
+    /// This method creates a new connection to the same database that this
+    /// instance is connected to.  The new connection allows queries and statements
+    /// to be submitted to the same database, in parallel, from a different thread.
+    /// (If multiple threads attempt to execute statements on the same connection,
+    /// execution will be serialized by locks inside DuckDB.)
+    /// </remarks>
+    /// <returns>
+    /// A new connection to the same database.  
+    /// </returns>
+    /// <exception cref="ObjectDisposedException">
+    /// This connection has been disposed.
+    /// </exception>
+    /// <exception cref="DuckDbException">
+    /// Failed to open or connect to the database due to an invalid path,
+    /// invalid configuration options, or other database-related error.
+    /// </exception>
+    public DuckDbConnection Duplicate()
     {
         using var _ = _refCount.EnterScope(this);
         return new DuckDbConnection(_database);
