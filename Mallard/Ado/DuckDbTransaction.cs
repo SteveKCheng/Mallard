@@ -19,6 +19,11 @@ namespace Mallard;
 /// (If that is done, exceptions will be thrown when attempting to commit
 /// or roll back the transaction.)
 /// </para>
+/// <para>
+/// This type is a value type only to avoid GC allocation.  All of the transaction
+/// state is actually lives inside <see cref="DuckDbConnection" />.  (A DuckDB connection
+/// can only accept at most one transaction at once.)
+/// </para>
 /// </remarks>
 public readonly struct DuckDbTransaction : IDbTransaction, IEquatable<DuckDbTransaction>
 {
@@ -50,10 +55,44 @@ public readonly struct DuckDbTransaction : IDbTransaction, IEquatable<DuckDbTran
         Version = version;
     }
 
-    /// <inheritdoc cref="IDbTransaction.Commit" />
+    /// <summary>
+    /// Commits this database transaction.
+    /// </summary>
+    /// <remarks>
+    /// This transaction becomes inactive (same as its disposed state)
+    /// once this method is called, whether it succeeds or fails.
+    /// </remarks> 
+    /// <exception cref="ObjectDisposedException">
+    /// The underlying connection has already been disposed (closed). 
+    /// </exception>
+    /// <exception cref="InvalidOperationException">
+    /// This transaction cannot be committed because it is no longer active
+    /// (e.g. it has already been committed or rolled back).
+    /// </exception>
+    /// <exception cref="DuckDbException">
+    /// There has been a database-level error in committing the transaction, e.g.
+    /// another connection made changes to the database which causes conflict
+    /// with the changes from this transaction.  
+    /// </exception>
     public void Commit() => Connection.CommitTransaction(Version);
 
-    /// <inheritdoc cref="IDbTransaction.Rollback" />
+    /// <summary>
+    /// Rolls back changes from this database transaction.
+    /// </summary>
+    /// <remarks>
+    /// This transaction becomes inactive (same as its disposed state)
+    /// once this method is called, whether it succeeds or fails.
+    /// </remarks> 
+    /// <exception cref="ObjectDisposedException">
+    /// The underlying connection has already been disposed (closed). 
+    /// </exception>
+    /// <exception cref="InvalidOperationException">
+    /// This transaction cannot be rolled back because it is no longer active
+    /// (e.g. it has already been committed or rolled back).
+    /// </exception>
+    /// <exception cref="DuckDbException">
+    /// There has been a database-level error in rolling back the transaction.
+    /// </exception>
     public void Rollback() => Connection.RollbackTransaction(Version);
 
     /// <summary>
@@ -262,6 +301,15 @@ public sealed partial class DuckDbConnection
     /// A "holder" object that is used to either commit the transaction or
     /// tp roll it back.  Put it in a <c>using</c> block in C#.
     /// </returns>
+    /// <exception cref="ObjectDisposedException">
+    /// This connection has been disposed.
+    /// </exception>
+    /// <exception cref="InvalidOperationException">
+    /// There is already an existing transaction for this connection.
+    /// </exception>
+    /// <exception cref="DuckDbException">
+    /// A database-level occurred in starting the transaction.
+    /// </exception>
     public DuckDbTransaction BeginTransaction()
         => new DuckDbTransaction(this, RegisterTransaction());
 
