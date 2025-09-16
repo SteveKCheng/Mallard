@@ -39,9 +39,34 @@ public sealed class DuckDbCommand : IDbCommand
 
     #region Command execution
 
+    /// <summary>
+    /// Attempt to cancel the executing query or statement (invoked by a different thread).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This method is supposed to implement <see cref="IDbCommand.Cancel" />,
+    /// although its semantics are subtly different from the specification.
+    /// <see cref="IDbCommand.Cancel" /> is supposed to cancel
+    /// the specific command represented by its receiver.  However, DuckDB's native API does not
+    /// allow cancelling specific commands, but only the currently executing command
+    /// on the database connection as a whole; see <see cref="DuckDbConnection.Interrupt" />.
+    /// This method can only be implemented in the same way.
+    /// That is, this method might cancel the wrong command, that is not the method's
+    /// receiver argument. 
+    /// </para> 
+    /// <para>
+    /// Since the same DuckDB connection cannot run multiple queries at the same time from
+    /// different threads (execution is always serialized), the divergence of what this
+    /// method does from the specification means little in practice: there should be only one
+    /// "active" command per connection anyway.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="ObjectDisposedException">
+    /// The connection has already been disposed (closed).
+    /// </exception>
     public void Cancel()
     {
-        throw new System.NotImplementedException();
+        Connection.Interrupt();
     }
     
     private DuckDbStatement GetBoundStatement()

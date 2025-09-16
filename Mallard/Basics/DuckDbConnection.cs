@@ -248,6 +248,19 @@ public unsafe sealed partial class DuckDbConnection : IDisposable
         return DuckDbResult.ExtractFirstCell<T>(status, ref nativeResult);
     }
 
+    /// <summary>
+    /// Interrupt a query or statement, running in another thread, if any.
+    /// </summary>
+    /// <remarks>
+    /// If multiple queries are queued up (by multiple threads calling methods like
+    /// <see cref="Execute" />),  only the first one is cancelled.
+    /// </remarks> 
+    public void Interrupt()
+    {
+        using var _ = _refCount.EnterScope(this);
+        NativeMethods.duckdb_interrupt(_nativeConn);
+    }
+
     #endregion 
 
     /// <summary>
