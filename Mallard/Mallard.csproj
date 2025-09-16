@@ -10,6 +10,8 @@
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <RootNamespace>Mallard</RootNamespace>
+
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
     
     <!-- Enable "field-backed properties" in C# 13 used in .NET 9 -->
     <LangVersion Condition="'$(TargetFramework)' == 'net9.0'">14</LangVersion>
