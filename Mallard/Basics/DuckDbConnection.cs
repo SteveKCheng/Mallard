@@ -74,6 +74,10 @@ public unsafe sealed partial class DuckDbConnection : IDisposable
     /// Options for opening the database, as a sequence of key-value pairs.
     /// (All options in DuckDB are in string format.)
     /// </param>
+    /// <exception cref="DuckDbException">
+    /// Failed to open or connect to the database due to an invalid path,
+    /// invalid configuration options, or other database-related error.
+    /// </exception>
     public DuckDbConnection(string path, IEnumerable<KeyValuePair<string, string>>? options = null)
     {
         _nativeConn = DuckDbDatabase.Connect(path, options, out _database);
@@ -94,6 +98,13 @@ public unsafe sealed partial class DuckDbConnection : IDisposable
     /// The result is -1 if the statement did not change any rows, or is otherwise
     /// a statement or query for which DuckDB does not report the number of rows changed.
     /// </returns>
+    /// <exception cref="ObjectDisposedException">
+    /// This connection has been disposed.
+    /// </exception>
+    /// <exception cref="DuckDbException">
+    /// The SQL statement failed to execute due to a syntax error,
+    /// constraint violation, or other database error.
+    /// </exception>
     public long ExecuteNonQuery(string sql)
     {
         using var _ = _refCount.EnterScope(this);
@@ -115,6 +126,13 @@ public unsafe sealed partial class DuckDbConnection : IDisposable
     /// <returns>
     /// The results of the query execution.
     /// </returns>
+    /// <exception cref="ObjectDisposedException">
+    /// This connection has been disposed.
+    /// </exception>
+    /// <exception cref="DuckDbException">
+    /// The SQL statement failed to execute due to a syntax error,
+    /// constraint violation, or other database error.
+    /// </exception>
     public DuckDbResult Execute(string sql)
     {
         using var _ = _refCount.EnterScope(this);
@@ -135,6 +153,13 @@ public unsafe sealed partial class DuckDbConnection : IDisposable
     /// Null is returned if the statement does not produce any results.
     /// This method is typically for SQL statements that produce a single value.
     /// </returns>
+    /// <exception cref="ObjectDisposedException">
+    /// This connection has been disposed.
+    /// </exception>
+    /// <exception cref="DuckDbException">
+    /// The SQL statement failed to execute due to a syntax error,
+    /// constraint violation, or other database error.
+    /// </exception>
     public object? ExecuteScalar(string sql)
     {
         using var _ = _refCount.EnterScope(this);
@@ -165,6 +190,16 @@ public unsafe sealed partial class DuckDbConnection : IDisposable
     /// or nullable value type, the default value means "null".
     /// </para>
     /// </returns>
+    /// <exception cref="ObjectDisposedException">
+    /// This connection has been disposed.
+    /// </exception>
+    /// <exception cref="DuckDbException">
+    /// The SQL statement failed to execute due to a syntax error,
+    /// constraint violation, or other database error.
+    /// </exception>
+    /// <exception cref="InvalidCastException">
+    /// The first cell value cannot be converted to the type <typeparamref name="T" />.
+    /// </exception>
     public T? ExecuteValue<T>(string sql)
     {
         using var _ = _refCount.EnterScope(this);
@@ -198,6 +233,12 @@ public unsafe sealed partial class DuckDbConnection : IDisposable
     /// <returns>
     /// Object that holds the prepared statement from DuckDB.
     /// </returns>
+    /// <exception cref="ObjectDisposedException">
+    /// This connection has been disposed.
+    /// </exception>
+    /// <exception cref="DuckDbException">
+    /// The SQL statement failed to prepare due to a syntax error or other database error.
+    /// </exception>
     public DuckDbStatement PrepareStatement(string sql)
     {
         using var _ = _refCount.EnterScope(this);

@@ -38,6 +38,13 @@ public unsafe class DuckDbStatement : IDisposable
     /// <returns>
     /// The results of the query execution.
     /// </returns>
+    /// <exception cref="ObjectDisposedException">
+    /// This statement has been disposed.
+    /// </exception>
+    /// <exception cref="DuckDbException">
+    /// The statement failed to execute due to unbound parameters, constraint violations,
+    /// or other database errors.
+    /// </exception>
     public DuckDbResult Execute()
         => Execute(DuckDbTypeMappingFlags.Default);
 
@@ -61,6 +68,16 @@ public unsafe class DuckDbStatement : IDisposable
     /// <summary>
     /// Execute the prepared statement and return the results via an ADO.NET data reader.
     /// </summary>
+    /// <returns>
+    /// An ADO.NET-compatible data reader for accessing the query results.
+    /// </returns>
+    /// <exception cref="ObjectDisposedException">
+    /// This statement has been disposed.
+    /// </exception>
+    /// <exception cref="DuckDbException">
+    /// The statement failed to execute due to unbound parameters, constraint violations,
+    /// or other database errors.
+    /// </exception>
     public DuckDbDataReader ExecuteReader()
         => new DuckDbDataReader(Execute(DuckDbTypeMappingFlags.DatesAsDateTime));
 
@@ -72,6 +89,13 @@ public unsafe class DuckDbStatement : IDisposable
     /// The result is -1 if the statement did not change any rows, or is otherwise
     /// a statement or query for which DuckDB does not report the number of rows changed.
     /// </returns>
+    /// <exception cref="ObjectDisposedException">
+    /// This statement has been disposed.
+    /// </exception>
+    /// <exception cref="DuckDbException">
+    /// The statement failed to execute due to unbound parameters, constraint violations,
+    /// or other database errors.
+    /// </exception>
     public long ExecuteNonQuery()
     {
         duckdb_result nativeResult;
@@ -93,6 +117,13 @@ public unsafe class DuckDbStatement : IDisposable
     /// Null is returned if the statement does not produce any results.
     /// This method is typically for SQL statements that produce a single value.
     /// </returns>
+    /// <exception cref="ObjectDisposedException">
+    /// This statement has been disposed.
+    /// </exception>
+    /// <exception cref="DuckDbException">
+    /// The statement failed to execute due to unbound parameters, constraint violations,
+    /// or other database errors.
+    /// </exception>
     public object? ExecuteScalar()
         => ExecuteValue<object>();
 
@@ -114,6 +145,16 @@ public unsafe class DuckDbStatement : IDisposable
     /// or nullable value type, the default value means "null".
     /// </para>
     /// </returns>
+    /// <exception cref="ObjectDisposedException">
+    /// This statement has been disposed.
+    /// </exception>
+    /// <exception cref="DuckDbException">
+    /// The statement failed to execute due to unbound parameters, constraint violations,
+    /// or other database errors.
+    /// </exception>
+    /// <exception cref="InvalidCastException">
+    /// The first cell value cannot be converted to the type <typeparamref name="T" />.
+    /// </exception>
     public T? ExecuteValue<T>()
     {
         duckdb_state status;
@@ -187,6 +228,12 @@ public unsafe class DuckDbStatement : IDisposable
     /// parameters, so for positional parameters the name coincides with
     /// <paramref name="index" /> converted to a string.)
     /// </returns>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="index" /> is less than 1 or greater than <see cref="ParameterCount" />.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">
+    /// This statement has been disposed.
+    /// </exception>
     public string GetParameterName(int index)
     {
         ThrowIfParamIndexOutOfRange(index);
@@ -195,6 +242,17 @@ public unsafe class DuckDbStatement : IDisposable
         return NativeMethods.duckdb_parameter_name(_nativeStatement, index);
     }
 
+    /// <summary>
+    /// Get the DuckDB type of the parameter at the specified index.
+    /// </summary>
+    /// <param name="index">1-based index of the parameter.</param>
+    /// <returns>The DuckDB type of the parameter.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="index" /> is less than 1 or greater than <see cref="ParameterCount" />.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">
+    /// This statement has been disposed.
+    /// </exception>
     public DuckDbValueKind GetParameterValueKind(int index)
     {
         ThrowIfParamIndexOutOfRange(index);
@@ -215,6 +273,9 @@ public unsafe class DuckDbStatement : IDisposable
     /// </returns>
     /// <exception cref="ArgumentException">
     /// There is no parameter with the given name from the SQL statement.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">
+    /// This statement has been disposed.
     /// </exception>
     public int GetParameterIndexForName(string name)
     {
@@ -255,6 +316,16 @@ public unsafe class DuckDbStatement : IDisposable
     /// It does not have to match the underlying DuckDB type; conversions
     /// will be performed as necessary.
     /// </typeparam>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="index" /> is less than 1 or greater than <see cref="ParameterCount" />.
+    /// </exception>
+    /// <exception cref="DuckDbException">
+    /// Failed to create a native value wrapper for <paramref name="value" />, or
+    /// failed to bind the value to the parameter due to type incompatibility or other database error.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">
+    /// This statement has been disposed.
+    /// </exception>
     public void BindParameter<T>(int index, T value)
     {
         ThrowIfParamIndexOutOfRange(index);
@@ -274,6 +345,16 @@ public unsafe class DuckDbStatement : IDisposable
     /// It does not have to match the underlying DuckDB type; conversions
     /// will be performed as necessary.
     /// </typeparam>
+    /// <exception cref="ArgumentException">
+    /// There is no parameter with the given name from the SQL statement.
+    /// </exception>
+    /// <exception cref="DuckDbException">
+    /// Failed to create a native value wrapper for <paramref name="value" />, or
+    /// failed to bind the value to the parameter due to type incompatibility or other database error.
+    /// </exception>
+    /// <exception cref="ObjectDisposedException">
+    /// This statement has been disposed.
+    /// </exception>
     public void BindParameter<T>(string name, T value)
         => BindParameter<T>(GetParameterIndexForName(name), value); 
 
