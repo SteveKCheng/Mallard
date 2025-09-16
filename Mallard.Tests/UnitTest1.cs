@@ -32,6 +32,18 @@ public class UnitTest1(DatabaseFixture fixture)
         // Conflict on adding entry with same primary key
         var e = Assert.Throws<DuckDbException>(() => txn2.Commit());
         Assert.Contains("Failed to commit", e.Message);
+
+        dbConn1.Dispose();
+        
+        // dbConn2 should still work at this point, and should see what dbConn1 had committed. 
+        Assert.Equal(1, dbConn2.ExecuteValue<int>("SELECT COUNT(*)::INTEGER FROM test_table"));
+        
+        // Cannot duplicate an already-closed connection.
+        Assert.Throws<ObjectDisposedException>(() => dbConn1.Duplicate());
+        
+        // Can duplicate again from an open connection though
+        using var dbConn3 = dbConn2.Duplicate();
+        dbConn2.Dispose();
     }
 
     [Test]
