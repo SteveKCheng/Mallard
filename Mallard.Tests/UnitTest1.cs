@@ -12,10 +12,26 @@ public class UnitTest1(DatabaseFixture fixture)
     private readonly DatabaseFixture _fixture = fixture;
 
     [Test]
-    public void Test1()
+    public void DuplicateConnection()
     {
-        using var dbConn = new DuckDbConnection(@"test.db");
-        return;
+        using var dbConn1 = new DuckDbConnection("");
+        using var dbConn2 = dbConn1.Duplicate();
+
+        dbConn1.ExecuteNonQuery("CREATE TABLE test_table (id INTEGER PRIMARY KEY, name VARCHAR)");
+        
+        using var txn1 = dbConn1.BeginTransaction();
+        dbConn1.ExecuteNonQuery("INSERT INTO test_table (id, name) VALUES (1, 'txn1')");
+
+        // Opening a transaction on a new connection should not fail
+        // (but it would if using the same connection)
+        using var txn2 = dbConn2.BeginTransaction();
+        dbConn2.ExecuteNonQuery("INSERT INTO test_table (id, name) VALUES (1, 'txn2')");
+
+        txn1.Commit();
+        
+        // Conflict on adding entry with same primary key
+        var e = Assert.Throws<DuckDbException>(() => txn2.Commit());
+        Assert.Contains("Failed to commit", e.Message);
     }
 
     [Test]
