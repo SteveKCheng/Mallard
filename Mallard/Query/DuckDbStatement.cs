@@ -174,8 +174,13 @@ public unsafe class DuckDbStatement : IDisposable
     /// Get the name of the parameter at the specified index.
     /// </summary>
     /// <param name="index">1-based index of the parameter. </param>
-    /// <returns>The name of the parameter in the SQL statement.  If the parameter
-    /// has no name, the empty string is returned. </returns>
+    /// <returns>The name of the parameter in the SQL statement.
+    /// For positional parameters, the name is the decimal representation
+    /// of the ordinal of the parameter (in ASCII digits, no leading zeros).
+    /// (Currently, DuckDB does not support mixed use of positional and named
+    /// parameters, so for positional parameters the name coincides with
+    /// <paramref name="index" /> converted to a string.)
+    /// </returns>
     public string GetParameterName(int index)
     {
         ThrowIfParamIndexOutOfRange(index);
@@ -191,7 +196,20 @@ public unsafe class DuckDbStatement : IDisposable
         using var _ = _barricade.EnterScope(this);
         return NativeMethods.duckdb_param_type(_nativeStatement, index);
     }
-
+    
+    /// <summary>
+    /// Get the index of a parameter corresponding to the given name.
+    /// </summary>
+    /// <param name="name">
+    /// The name of the parameter in the SQL statement.
+    /// </param>
+    /// <returns>
+    /// The 1-based index of the parameter, suitable for passing into
+    /// <see cref="BindParameter{T}(int index, T value)" />.
+    /// </returns>
+    /// <exception cref="KeyNotFoundException">
+    /// There is no parameter with the given name from the SQL statement.
+    /// </exception>
     public int GetParameterIndexForName(string name)
     {
         long index;
@@ -216,7 +234,7 @@ public unsafe class DuckDbStatement : IDisposable
     /// <param name="index">
     /// <para>
     /// 1-based index of the parameter.
-    /// Currently, DuckDB does not supporting mixing named and positional parameters,
+    /// Currently, DuckDB does not support mixing named and positional parameters,
     /// so if positional parameters are being used, this index
     /// should match up exactly with the ordinal of the parameter in the SQL statement.
     /// </para>
@@ -243,7 +261,7 @@ public unsafe class DuckDbStatement : IDisposable
     /// </summary>
     /// <param name="name">The name of the parameter.
     /// For positional parameters in the SQL statement, the name is the decimal
-    /// representation of the ordinal (in ASCII).
+    /// representation of the ordinal (in ASCII digits, no leading zeros).
     /// </param>
     /// <param name="value">The value to set for the parameter. </param>
     /// <typeparam name="T">The .NET type of the value.

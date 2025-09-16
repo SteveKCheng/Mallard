@@ -16,9 +16,18 @@ namespace Mallard;
 /// is executed, not when a parameter is added to this collection.
 /// </para>
 /// <para>
-/// It is not recommended to mix positional parameters with named parameters.
-/// DuckDB may assign indices to parameters differently than your code.
+/// Parameter objects that may be set into this collection can be named or unnamed, respectively
+/// meaning that they have <see cref="IDbDataParameter.ParameterName" /> being a non-empty
+/// string, or not.  Unnamed parameters are assumed to refer to positional parameters in
+/// the DuckDB SQL statement. Positional parameters may also be named with a string that
+/// is the decimal representation (in ASCII digits, no leading zeros) of the positional index.
 /// </para>
+/// <para>
+/// It is not recommended to mix named and unnamed parameter objects in the same collection.
+/// While that is not outright disallowed by this implementation (mainly because the validation
+/// is not trivial), there may be surprising behavior regarding how the parameter objects
+/// are actually mapped to the formal parameters in the SQL statement.
+/// </para> 
 /// </remarks>
 public sealed class DuckDbParameterCollection : IDataParameterCollection, IList<IDbDataParameter>
 {
@@ -150,6 +159,9 @@ public sealed class DuckDbParameterCollection : IDataParameterCollection, IList<
 
     private int GetIndexForParameterName(string parameterName, bool throwIfNotFound = true)
     {
+        if (string.IsNullOrEmpty(parameterName))
+            throw new ArgumentException("The parameter name cannot be null or empty. ");
+        
         for (int i = 0; i < _items.Count; ++i)
         {
             if (_items[i].ParameterName == parameterName)

@@ -47,8 +47,15 @@ public sealed class DuckDbCommand : IDbCommand
     private DuckDbStatement GetBoundStatement()
     {
         var statement = GetPreparedStatement();
-        foreach (var p in Parameters)
-            statement.BindParameter(p.ParameterName, p.Value);
+
+        for (int i = 0; i < Parameters.Count; ++i)
+        {
+            var p = Parameters[i];
+            var n = p.ParameterName;
+            var j = string.IsNullOrEmpty(n) ? i + 1 : statement.GetParameterIndexForName(n);
+            statement.BindParameter(j, p.Value);
+        }
+
         return statement;
     }
     
