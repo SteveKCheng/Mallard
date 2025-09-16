@@ -1,3 +1,5 @@
 .vs/
 out/
 native/
+docfx/api/
+docfx/_site/
