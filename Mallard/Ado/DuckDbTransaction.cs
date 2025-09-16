@@ -299,7 +299,7 @@ public sealed partial class DuckDbConnection
     /// </summary>
     /// <returns>
     /// A "holder" object that is used to either commit the transaction or
-    /// tp roll it back.  Put it in a <c>using</c> block in C#.
+    /// to roll it back.  In C#, wrap it in a <c>using</c> block or statement.
     /// </returns>
     /// <exception cref="ObjectDisposedException">
     /// This connection has been disposed.
@@ -308,7 +308,7 @@ public sealed partial class DuckDbConnection
     /// There is already an existing transaction for this connection.
     /// </exception>
     /// <exception cref="DuckDbException">
-    /// A database-level occurred in starting the transaction.
+    /// A database-level error occurred in starting the transaction.
     /// </exception>
     public DuckDbTransaction BeginTransaction()
         => new DuckDbTransaction(this, RegisterTransaction());
