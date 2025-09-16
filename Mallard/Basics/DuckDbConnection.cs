@@ -224,10 +224,11 @@ public unsafe sealed partial class DuckDbConnection : IDisposable
     /// <para>
     /// The default value for <typeparamref name="T" /> is produced 
     /// when the SQL execution does not produce any results, unless
-    /// the default value can be confused with a valid value, specifically
-    /// when <typeparamref name="T" /> is a non-nullable value type.
-    /// (This exception in behavior exists to avoid silently reading the
-    /// wrong values.)  If <typeparamref name="T" /> is a reference type
+    /// <typeparamref name="T" /> is a non-nullable value type.
+    /// (The special case in behavior exists because the default value
+    /// of a non-nullable value type, such as <see cref="int" />,
+    /// may be a valid value, which needs to be distinguished from a
+    /// missing value.) If <typeparamref name="T" /> is a reference type
     /// or nullable value type, the default value means "null".
     /// </para>
     /// </returns>
@@ -253,7 +254,7 @@ public unsafe sealed partial class DuckDbConnection : IDisposable
     /// </summary>
     /// <remarks>
     /// If multiple queries are queued up (by multiple threads calling methods like
-    /// <see cref="Execute" />),  only the first one is cancelled.
+    /// <see cref="Execute" />), only the first one is cancelled.
     /// </remarks> 
     public void Interrupt()
     {
@@ -376,6 +377,21 @@ public unsafe sealed partial class DuckDbConnection : IDisposable
         DisposeImpl(disposing: false);
     }
 
+    /// <summary>
+    /// Disposes (closes) this database connection.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Native resources for the DuckDB connection will be released.
+    /// </para>
+    /// <para>
+    /// This method does nothing if the connection is already disposed (closed).
+    /// </para>
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">
+    /// Another thread is using this connection, e.g. a query is still running
+    /// on this connection.  The connection may not be disposed concurrently.
+    /// </exception>
     public void Dispose()
     {
         DisposeImpl(disposing: true);
@@ -387,8 +403,12 @@ public unsafe sealed partial class DuckDbConnection : IDisposable
     #region Global information
 
     /// <summary>
-    /// The version of the native DuckDB library being used, as a string.
+    /// The version of the native DuckDB library being used.
     /// </summary>
+    /// <value>
+    /// The string representation of the DuckDB version.  For official releases, it will
+    /// be in <a href="https://semver.org/">SemVer</a> format: <c>Major.Minor.Patch</c>.
+    /// </value>
     [field: AllowNull]
     public static string NativeLibraryVersion 
         => (field ??= NativeMethods.duckdb_library_version());
@@ -404,10 +424,13 @@ public unsafe sealed partial class DuckDbConnection : IDisposable
     /// and to check when an actual version of the library is API/ABI-compatible
     /// with what this version of Mallard was built against.  
     /// </remarks>
+    /// <value>
+    /// The string representation of the DuckDB version.  For official releases, it will
+    /// be in <a href="https://semver.org/">SemVer</a> format: <c>Major.Minor.Patch</c>.
+    /// </value>
     [field: AllowNull]
     public static string OriginalNativeLibraryVersion
         => (field ??= DuckDbVersionAttribute.Instance.Value);
 
     #endregion
-
 }
