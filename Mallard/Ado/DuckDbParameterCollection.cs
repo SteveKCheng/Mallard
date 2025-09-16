@@ -170,7 +170,7 @@ public sealed class DuckDbParameterCollection : IDataParameterCollection, IList<
 
         if (throwIfNotFound)
         {
-            throw new KeyNotFoundException(
+            throw new ArgumentException(
                 $"There is no parameter with the given name in this collection. Key: {parameterName}");
         }
         
