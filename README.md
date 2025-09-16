@@ -25,6 +25,8 @@ to target that exclusively once a release version is widely available.
   - Simply open the solution file ``Mallard.slnx`` in your .NET IDE and tell it to build;
   - or, on the command line, run ``dotnet build`` from the top-level directory.
 
+## Getting DuckDB
+
 The build process will automatically download the native library files for DuckDB 
 (e.g. ``duckdb.dll`` for Windows), assuming the platform you are running
 .NET on is supported.  If you prefer, you can download the files yourself:
@@ -41,8 +43,15 @@ The build process will automatically download the native library files for DuckD
 
   - Use your IDE's “Test Explorer” on the project ``Mallard.Tests``.
     - On JetBrains rider, you have to select “Enable Testing Platform support” under the IDE's settings.  
+    - On Visual Studio Code: “Use Testing Platform Protocol” under C# Dev Kit's settings must be enabled.
     - The latest versions of Visual Studio should not require further configuration.
+    - See [TUnit: Getting Started » Running your tests](https://tunit.dev/docs/getting-started/running-your-tests) for more details.
   - Or, execute the command: ``dotnet run`` from the ``Mallard.Tests/`` directory.
+
+The test programs support AOT (ahead-of-time) compilation.  To run in AOT mode:
+
+  - Run ``dotnet publish`` in the ``Mallard.Tests/`` directory.
+  - Then run the executable ``out/publish/Mallard.Tests/release/Mallard.Tests``.
 
 ### To create NuGet packages
 
