@@ -215,6 +215,51 @@ public class TestAdo(DatabaseFixture fixture)
         Assert.Equal(3L, count);
     }
 
+    [Test]
+    public void ParameterOrdering()
+    {
+        using IDbConnection connection = new DuckDbConnection("");  // In-memory database
+        
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT $a // ($b // $c)";
+        
+        var paramA = command.CreateParameter();
+        paramA.ParameterName = "a";
+        paramA.Value = 800;
+        var paramB = command.CreateParameter();
+        paramB.ParameterName = "b";
+        paramB.Value = 50;
+        var paramC = command.CreateParameter();
+        paramC.ParameterName = "c";
+        paramC.Value = 10;
+
+        const int expectedValue = 800 / (50 / 10);
+        
+        // Should get correct result even if parameters are added in the "wrong" order
+        command.Parameters.Add(paramB);
+        command.Parameters.Add(paramC);
+        command.Parameters.Add(paramA);
+        Assert.Equal(expectedValue, command.ExecuteScalar());
+
+        // Use positional parameters now.  Note that from the point of view
+        // of command.Parameters, the parameters are in the wrong order this time too.
+        command.CommandText = "SELECT $1 // ($2 // $3)";
+        paramA.ParameterName = "1";
+        paramB.ParameterName = "2";
+        paramC.ParameterName = "3";
+        Assert.Equal(expectedValue, command.ExecuteScalar());
+        
+        // Now erase the names and check that parameters are mapped to correct positions
+        command.Parameters.Clear();
+        paramA.ParameterName = null;
+        paramB.ParameterName = null;
+        paramC.ParameterName = null;
+        command.Parameters.Add(paramA);
+        command.Parameters.Add(paramB);
+        command.Parameters.Add(paramC);
+        Assert.Equal(expectedValue, command.ExecuteScalar());
+    }
+
     #endregion
 
     #region Transaction Tests
