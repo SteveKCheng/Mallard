@@ -1,6 +1,6 @@
 ﻿using Mallard.C_API;
 using System;
-using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 
 namespace Mallard;
 
@@ -160,10 +160,10 @@ public unsafe class DuckDbStatement : IDisposable
         _nativeStatement = nativeStatement;
     }
 
-    private void ThrowIfParamIndexOutOfRange(int index)
+    private void ThrowIfParamIndexOutOfRange(int index, [CallerArgumentExpression(nameof(index))] string? paramName = null)
     {
-        if (unchecked((uint)index - 1u >= (uint)_numParams))
-            throw new IndexOutOfRangeException("Index of parameter is out of range. ");
+        if (unchecked((uint)index - 1u) >= (uint)_numParams)
+            throw new ArgumentOutOfRangeException(paramName, "The index of the SQL parameter is out of range. ");
     }
 
     /// <summary>
@@ -213,7 +213,7 @@ public unsafe class DuckDbStatement : IDisposable
     /// The 1-based index of the parameter, suitable for passing into
     /// <see cref="BindParameter{T}(int index, T value)" />.
     /// </returns>
-    /// <exception cref="KeyNotFoundException">
+    /// <exception cref="ArgumentException">
     /// There is no parameter with the given name from the SQL statement.
     /// </exception>
     public int GetParameterIndexForName(string name)
@@ -227,7 +227,7 @@ public unsafe class DuckDbStatement : IDisposable
         }
 
         if (status != duckdb_state.DuckDBSuccess)
-            throw new KeyNotFoundException($"Parameter with the given name was not found. Name: {name}");
+            throw new ArgumentException($"Parameter with the given name was not found. Name: {name}");
 
         return (int)index;
     }
