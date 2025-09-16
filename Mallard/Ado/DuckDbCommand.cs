@@ -7,11 +7,28 @@ namespace Mallard;
 /// <summary>
 /// ADO.NET-compatible command object to execute a query/statement against a DuckDB database.
 /// </summary>
+/// <remarks>
+/// An instance of this class should only be used from one thread at a time.
+/// While multi-thread access will not cause memory/.NET runtime corruption,
+/// the object may misbehave or throw exceptions due to inconsistent internal state. 
+/// </remarks>
 public sealed class DuckDbCommand : IDbCommand
 {
     #region Command text
-    
-    /// <inheritdoc cref="IDbCommand.CommandText" />
+
+    /// <summary>
+    /// The SQL query or statement(s) to execute.
+    /// </summary>
+    /// <value>
+    /// The query or statement(s) in DuckDB's SQL dialect.
+    /// Multiple statements may be separated/terminated by semicolons; the results returned
+    /// are always from the last statement.
+    /// </value>
+    /// <remarks>
+    /// The default value is the empty string.  This property must be changed
+    /// to get a valid command.  Setting this property will invalidate any preparation
+    /// for the previously-set statement(s).
+    /// </remarks>
     [AllowNull]
     public string CommandText
     {
@@ -117,7 +134,27 @@ public sealed class DuckDbCommand : IDbCommand
 
     private DuckDbStatement? _statement;
   
-    /// <inheritdoc cref="IDbCommand.Prepare" />
+    /// <summary>
+    /// Prepare the SQL statement for execution.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// In DuckDB, in a sense, all statements must be prepared whether they use parameters or not.
+    /// The statement set in <see cref="CommandText" /> will be implicitly prepared even without
+    /// this calling this method.
+    /// </para>
+    /// <para>
+    /// Thus calling this method does not save any computational work.  However,
+    /// it may still be useful to call it to check for errors in the SQL statement
+    /// before proceeding to set values for the parameters.
+    /// </para> 
+    /// </remarks>
+    /// <exception cref="ObjectDisposedException">
+    /// The connection has already been disposed (closed).
+    /// </exception>
+    /// <exception cref="DuckDbException">
+    /// There is an error in preparing the statement, e.g. from a syntax error.
+    /// </exception> 
     public void Prepare()
     {
         GetPreparedStatement();
