@@ -17,10 +17,10 @@ namespace Mallard;
 /// lifetime of the vector (<see cref="DuckDbVectorReader{T}" />).
 /// </para>
 /// <para>Semantically, this structure
-/// is nothing more than <see cref="ReadOnlySpan{byte}" /> on the blob data,
+/// is nothing more than <c>ReadOnlySpan&lt;byte&gt;</c> on the blob data,
 /// which can be accessed through the property <see cref="Span" />.
 /// DuckDB's representation of blobs
-/// is obviously different from <see cref="ReadOnlySpan{byte}" /> so that type cannot be used
+/// is obviously different from <see cref="ReadOnlySpan{T}" /> so that type cannot be used
 /// directly in <see cref="DuckDbVectorReader{T}" /> to read vector elements.  
 /// </para>
 /// <para>
@@ -57,7 +57,7 @@ public unsafe ref struct DuckDbBlob : IStatelesslyConvertible<DuckDbBlob, byte[]
     /// Pointer to the blob if it exceeds the inlined size.
     /// </summary>
     /// <remarks>
-    /// This member shares space with <see cref="_inline" />.  It is valid
+    /// This member shares space with <see cref="_inlined" />.  It is valid
     /// when <see cref="_length" /> is greater than <see cref="InlinedSize" />.
     /// </remarks>
     [FieldOffset(8)]

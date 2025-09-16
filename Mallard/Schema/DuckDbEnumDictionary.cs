@@ -143,7 +143,7 @@ public unsafe sealed class DuckDbEnumDictionary : IReadOnlyDictionary<uint, stri
         return true;
     }
 
-    /// <inheritdoc cref="IEnumerable{KeyValuePair{TKey, TValue}}.GetEnumerator" />
+    /// <inheritdoc cref="IEnumerable{T}.GetEnumerator" />
     public IEnumerator<KeyValuePair<uint, string>> GetEnumerator()
     {
         for(uint i = 0; i < _totalEnumMembers; ++i)

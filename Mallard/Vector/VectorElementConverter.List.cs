@@ -93,8 +93,7 @@ internal sealed class ListConverter
     /// Get the element converter for a .NET array of the specified type.
     /// </summary>
     /// <param name="childType">
-    /// The element type of the array.  If null, it will be implied from <paramref name="vector" />
-    /// via the default rules.
+    /// The element type of the array.  If null, it will be implied by the default rules in this library.
     /// </param>
     /// <param name="context">
     /// Refers to the list-valued DuckDB column to convert to a .NET array.

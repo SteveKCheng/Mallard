@@ -255,7 +255,7 @@ public class DuckDbVectorDelegateReader : IDuckDbVector
     /// </para>
     /// <para>
     /// This method is primarily intended for implementing 
-    /// <see cref="System.Data.IDataRecord.GetBytes(int, long, byte[]?, int, int)" />.
+    /// <see cref="System.Data.IDataRecord.GetBytes(int, long, byte[], int, int)" />.
     /// </para>
     /// </remarks>
     public int GetBytes(int rowIndex, Span<byte> destination, out int totalBytes, int offset = 0)
@@ -307,7 +307,7 @@ public class DuckDbVectorDelegateReader : IDuckDbVector
     /// <param name="destination">
     /// Buffer where the bytes will be copied to.
     /// </param>
-    /// <param name="offset">
+    /// <param name="charOffset">
     /// The offset, measured in UTF-16 code units from the beginning of the string 
     /// to start copying from.
     /// </param>
@@ -319,7 +319,7 @@ public class DuckDbVectorDelegateReader : IDuckDbVector
     /// </exception>
     /// <remarks>
     /// This method is primarily intended for implementing 
-    /// <see cref="System.Data.IDataRecord.GetChars(int, long, char[]?, int, int)" />.
+    /// <see cref="System.Data.IDataRecord.GetChars(int, long, char[], int, int)" />.
     /// </remarks>
     public int GetChars(int rowIndex, Span<char> destination, int charOffset = 0)
     {

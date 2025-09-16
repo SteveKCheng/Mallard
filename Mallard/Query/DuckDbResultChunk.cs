@@ -67,7 +67,7 @@ public unsafe sealed class DuckDbResultChunk : IResultColumns, IDisposable
     /// Handle to the chunk from the DuckDB native library.  The new instance
     /// takes ownership of the handle.
     /// </param>
-    /// <param name="columnInfo">
+    /// <param name="resultColumns">
     /// Pre-tabulated information on the columns of the query result.
     /// </param>
     internal DuckDbResultChunk(ref _duckdb_data_chunk* nativeChunk,
@@ -154,13 +154,13 @@ public unsafe sealed class DuckDbResultChunk : IResultColumns, IDisposable
     /// <typeparam name="TState">
     /// Type of arbitrary state to pass into the caller-specified function.
     /// </typeparam>
-    /// <typeparam name="TReturn">
+    /// <typeparam name="TResult">
     /// The type of value returned by the caller-specified function.
     /// </typeparam>
     /// <param name="state">
     /// The state object or structure to pass into <paramref name="function" />.
     /// </param>
-    /// <param name="function">
+    /// <param name="func">
     /// The caller-specified function that receives the results from the next chunk
     /// and may do any processing on it.
     /// </param>

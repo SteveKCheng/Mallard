@@ -17,7 +17,7 @@ namespace Mallard;
 /// lifetime of the vector (<see cref="DuckDbVectorReader{T}" />).
 /// </para>
 /// <para>Semantically, this structure
-/// is nothing more than <see cref="ReadOnlySpan{byte}" /> on the UTF-8 data
+/// is nothing more than <c>ReadOnlySpan&lt;byte&gt;</c> on the UTF-8 data
 /// which can be accessed through the property <see cref="Utf8" />.
 /// </para>
 /// <para>

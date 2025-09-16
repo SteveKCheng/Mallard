@@ -69,11 +69,11 @@ public readonly struct DuckDbTransaction : IDbTransaction, IEquatable<DuckDbTran
     public bool Equals(DuckDbTransaction other) 
         => Connection == other.Connection && Version == other.Version;
 
-    /// <inheritdoc cref="object.Equals" />
+    /// <inheritdoc />
     public override bool Equals(object? obj)
         => obj is DuckDbTransaction other && Equals(other);
     
-    /// <inheritdoc cref="object.GetHashCode" />
+    /// <inheritdoc />
     public override int GetHashCode()
         => HashCode.Combine(Connection.GetHashCode(), Version);
 }

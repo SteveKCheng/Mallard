@@ -91,7 +91,6 @@ public readonly ref struct DuckDbVectorRawReader<T> : IDuckDbVector<T>
     /// Validate that the .NET type is correct for interpreting the raw
     /// data array obtained from DuckDB.
     /// </summary>
-    /// <typeparam name="T">The .NET type to check. </typeparam>
     /// <param name="valueKind">The basic type of the DuckDB data array
     /// desired to be accessed. </param>
     /// <returns>

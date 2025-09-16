@@ -211,7 +211,7 @@ public unsafe class DuckDbStatement : IDisposable
     /// </param>
     /// <returns>
     /// The 1-based index of the parameter, suitable for passing into
-    /// <see cref="BindParameter{T}(int index, T value)" />.
+    /// <see cref="BindParameter{T}(int, T)" />.
     /// </returns>
     /// <exception cref="ArgumentException">
     /// There is no parameter with the given name from the SQL statement.

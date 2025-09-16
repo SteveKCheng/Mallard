@@ -42,7 +42,7 @@ public delegate TReturn DuckDbChunkReadingFunc<in TState, out TReturn>(in DuckDb
 /// Access must be intermediated through this "ref struct" to ensure that pointers to memory
 /// allocated by the DuckDB native library can only be read from within a restricted scope.
 /// This "ref struct" is passed to the body of 
-/// <see cref="DuckDbResultChunkFunc{TState}" /> and cannot be accessed outside of that
+/// <see cref="DuckDbChunkReadingFunc{TState, TReturn}" /> and cannot be accessed outside of that
 /// body.
 /// </para>
 /// <para>

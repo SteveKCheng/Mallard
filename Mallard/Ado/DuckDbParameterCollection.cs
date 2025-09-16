@@ -17,7 +17,7 @@ namespace Mallard;
 /// </para>
 /// <para>
 /// Parameter objects that may be set into this collection can be named or unnamed, respectively
-/// meaning that they have <see cref="IDbDataParameter.ParameterName" /> being a non-empty
+/// meaning that they have <see cref="IDataParameter.ParameterName" /> being a non-empty
 /// string, or not.  Unnamed parameters are assumed to refer to positional parameters in
 /// the DuckDB SQL statement. Positional parameters may also be named with a string that
 /// is the decimal representation (in ASCII digits, no leading zeros) of the positional index.
@@ -36,7 +36,7 @@ public sealed class DuckDbParameterCollection : IDataParameterCollection, IList<
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Because <see cref="IDbDataParameter.ParameterName" /> is a mutable property that
+    /// Because <see cref="IDataParameter.ParameterName" /> is a mutable property that
     /// can be changed at any time by the user (a bad design from the "enterprisey" code
     /// patterns from the beginning of the millenium)
     /// it is hard to cache the parameters keyed by name.  In
@@ -126,12 +126,12 @@ public sealed class DuckDbParameterCollection : IDataParameterCollection, IList<
     /// it is not necessarily connected to the index of positional parameters in a DuckDB
     /// SQL statement.  Which formal parameter in the
     /// SQL statement that the <see cref="IDbDataParameter" />
-    /// object is mapped to depends on <see cref="IDbDataParameter.ParameterName" />.
+    /// object is mapped to depends on <see cref="IDataParameter.ParameterName" />.
     /// </param>
     /// <remarks>
     /// <para>
     /// That being said, unnamed parameter objects (those with an empty string
-    /// for <see cref="IDbDataParameter.ParameterName" />)
+    /// for <see cref="IDataParameter.ParameterName" />)
     /// will be assigned to increasing indices for positional parameters in the SQL statement
     /// when it is executed.  
     /// </para>
@@ -187,7 +187,7 @@ public sealed class DuckDbParameterCollection : IDataParameterCollection, IList<
     /// <remarks>
     /// <para>
     /// Every parameter is stored with an index within this container, that has no
-    /// relation with its name (<see cref="IDbDataParameter.ParameterName" />).  Calling the
+    /// relation with its name (<see cref="IDataParameter.ParameterName" />).  Calling the
     /// setter on this property will replace the parameter object, at the index
     /// where a current parameter with the given name lives.  The new parameter object
     /// may have a different name, replacing the old parameter's name (if different).
@@ -196,7 +196,7 @@ public sealed class DuckDbParameterCollection : IDataParameterCollection, IList<
     /// </para>
     /// <para>
     /// If the new parameter object being set is unnamed,
-    /// meaning that <see cref="IDbDataParameter.ParameterName" /> is an empty string, 
+    /// meaning that <see cref="IDataParameter.ParameterName" /> is an empty string, 
     /// its name will automatically be set to <paramref name="parameterName" />.
     /// </para>
     /// </remarks>
