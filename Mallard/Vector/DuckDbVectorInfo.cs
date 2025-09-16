@@ -96,18 +96,49 @@ internal unsafe readonly struct DuckDbVectorInfo
         Length = length;
     }
 
+    /// <summary>
+    /// Construct descriptor for the column vector of a DuckDB data chunk.
+    /// </summary>
+    /// <param name="nativeChunk">
+    /// The DuckDB data/result chunk.
+    /// </param>
+    /// <param name="resultColumns">
+    /// Information on the columns of the data chunk.  This information is common 
+    /// to all the chunks of a larger result set and should have been obtained already
+    /// by the caller.
+    /// </param>
+    /// <param name="length">
+    /// The length (number of rows) in the vector.  This information is generally
+    /// cached at the level of the chunk containing all vectors (one for each column).
+    /// </param>
+    /// <param name="columnIndex">
+    /// The index of the column to select from <paramref name="resultColumns" />.
+    /// </param>
     internal static DuckDbVectorInfo FromNativeChunk(_duckdb_data_chunk* nativeChunk, 
                                                      IResultColumns resultColumns,
                                                      int length,
                                                      int columnIndex)
     {
-        // In case the user calls this method on a default-initialized instance,
-        // the native library will not crash on this call because it does
-        // check _nativeChunk for null first, returning null in that case.
+        // In case this method gets called (indirectly by the user) on some default-initialized
+        // instance, the native library will not crash on this call because it does
+        // check _nativeChunk for null first, returning null in that case.  The native library
+        // also checks the column index, so we do not need to check it except to distinguish
+        // between different errors (below).
         var nativeVector = NativeMethods.duckdb_data_chunk_get_vector(nativeChunk,
                                                                       columnIndex);
         if (nativeVector == null)
-            throw new IndexOutOfRangeException("Column index is not in range. ");
+        {
+            if (columnIndex < 0 || columnIndex >= resultColumns.ColumnCount)
+            {
+                throw new ArgumentOutOfRangeException(
+                    nameof(columnIndex), 
+                    "The specified column index does not refer to an existent column. ");
+            }
+            else
+            {
+                throw new InvalidOperationException("Cannot operate on a default-initialized DuckDB vector. ");
+            }
+        }
 
         return new DuckDbVectorInfo(nativeVector, length, resultColumns.GetColumnInfo(columnIndex));
     }
