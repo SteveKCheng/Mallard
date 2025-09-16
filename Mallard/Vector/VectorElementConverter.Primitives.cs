@@ -76,7 +76,7 @@ internal readonly partial struct VectorElementConverter
     /// </typeparam>
     /// <typeparam name="TTarget">
     /// The integer type to convert to.
-    /// </param>
+    /// </typeparam>
     private unsafe static VectorElementConverter CreateForCastedInteger<TSource, TTarget>() 
         where TSource : unmanaged, IBinaryInteger<TSource>
         where TTarget : IBinaryInteger<TTarget>

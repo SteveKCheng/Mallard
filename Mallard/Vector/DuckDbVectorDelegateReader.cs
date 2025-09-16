@@ -102,7 +102,7 @@ public class DuckDbVectorDelegateReader : IDuckDbVector
     /// has no way to control the lifetime of the span were the original array to be returned.
     /// </para>
     /// <para>
-    /// Clients that use <see "DuckDbVectorDelegateReader" /> instead of <see cref="DuckDbVectorReader{T}" />
+    /// Clients that use <see cref="DuckDbVectorDelegateReader" /> instead of <see cref="DuckDbVectorReader{T}" />
     /// generally are not using performant span-based APIs anyway, so this fallback exists
     /// only to complete the implementation of the interface method (<see cref="IDuckDbVector.ValidityMask" />).
     /// </para>

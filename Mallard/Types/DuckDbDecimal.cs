@@ -143,7 +143,7 @@ public readonly struct DuckDbDecimal
     /// <remarks>
     /// <para>
     /// It is not clear to this author why DuckDB needs the decimal width to be provided 
-    /// when specifying actual <i>values</i> to its API.  If the smallest possible width
+    /// when specifying actual <em>values</em> to its API.  If the smallest possible width
     /// is required, that can obviously be calculated from the significand.  
     /// </para>
     /// <para>
@@ -153,6 +153,7 @@ public readonly struct DuckDbDecimal
     /// INT16, INT32, INT64, and INT128.  Therefore we only bucket the significand into one
     /// of those 4 classes, and not try to find the exact number of decimal digits in the 
     /// significand.
+    /// </para>
     /// </remarks>
     /// <param name="value">Absolute value of the significand. </param>
     /// <returns>
