@@ -116,7 +116,7 @@ public class UnitTest1(DatabaseFixture fixture)
     public void BitStringRaw()
     {
         using var dbConn = new DuckDbConnection("");
-        using var ps = dbConn.CreatePreparedStatement("SELECT $1::BITSTRING");
+        using var ps = dbConn.PrepareStatement("SELECT $1::BITSTRING");
 
         // Same code as in TestExecutionScalar.BitString to generate a random BitArray
         Span<byte> buffer = stackalloc byte[512];

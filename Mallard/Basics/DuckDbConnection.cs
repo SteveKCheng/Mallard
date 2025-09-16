@@ -188,16 +188,17 @@ public unsafe sealed partial class DuckDbConnection : IDisposable
 
     #region Prepared statements
 
-    // FIXME
-    // The standard interface method System.Data.IDbConnection.CreateCommand() does not
-    // take the SQL string as a parameter.  Instead it creates a mutable command object
-    // where the SQL string can be set later.  This is not compatible with the way DuckDB
-    // works, so eventually we have to implement a new DbCommand class that delays the
-    // actual preparation of the command until execution happens.  Then, the current
-    // DuckDbCommand class will probably be renamed to DuckDbPreparedStatement; and
-    // we will offer a new (non-interface) method to create a prepared statement in
-    // the DuckDB "native way", for efficiency.
-    public DuckDbStatement CreatePreparedStatement(string sql)
+    /// <summary>
+    /// Create a prepared statement for (parameterized) execution.
+    /// </summary>
+    /// <param name="sql">
+    /// SQL statement(s) in the DuckDB dialect that may have formal parameters.
+    /// Multiple statements may be separated/terminated by semicolons.
+    /// </param>
+    /// <returns>
+    /// Object that holds the prepared statement from DuckDB.
+    /// </returns>
+    public DuckDbStatement PrepareStatement(string sql)
     {
         using var _ = _refCount.EnterScope(this);
         return new DuckDbStatement(_nativeConn, sql);

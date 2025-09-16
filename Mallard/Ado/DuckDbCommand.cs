@@ -102,7 +102,7 @@ public sealed class DuckDbCommand : IDbCommand
     {
         var statement = _statement;
         if (statement == null)
-            statement = _statement = Connection.CreatePreparedStatement(CommandText);
+            statement = _statement = Connection.PrepareStatement(CommandText);
         return statement;
     }
     

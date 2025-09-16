@@ -16,7 +16,7 @@ public class TestRowOriented(DatabaseFixture fixture)
     public void DataReader()
     {
         const int limitRows = 200;
-        using var ps = DbConnection.CreatePreparedStatement($"SELECT * FROM orders LIMIT {limitRows}");
+        using var ps = DbConnection.PrepareStatement($"SELECT * FROM orders LIMIT {limitRows}");
         using var adoReader = ps.ExecuteReader();
 
         var columnNames = new string[]
@@ -86,7 +86,7 @@ public class TestRowOriented(DatabaseFixture fixture)
     public void GetChars()
     {
         using var dbConn = new DuckDbConnection("");
-        using var ps = DbConnection.CreatePreparedStatement($"SELECT $1::STRING");
+        using var ps = DbConnection.PrepareStatement($"SELECT $1::STRING");
 
         // Use Unicode characters with various lengths in UTF-8 and UTF-16.
         // Note the emoji and "𝑖𝜋" consist of UTF-16 surrogate pairs, and we even test

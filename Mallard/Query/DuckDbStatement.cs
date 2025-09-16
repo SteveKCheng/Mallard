@@ -17,6 +17,12 @@ namespace Mallard;
 /// To execute the same prepared statement (possibly with different parameters) from
 /// multiple threads, each thread must work with its own instance of this class.
 /// </para>
+/// <para>
+/// The SQL statement(s) that have been prepared behind this object are immutable.
+/// Unlike the ADO.NET interface <see cref="System.Data.IDbCommand" />, you must
+/// obtain new instances of class to represent different SQL statement(s).  Instances
+/// are obtained via <see cref="DuckDbConnection.PrepareStatement" />.
+/// </para>
 /// </remarks>
 public unsafe class DuckDbStatement : IDisposable
 {

@@ -17,7 +17,7 @@ public class TestExecuteScalar
         // This number cannot be represented exactly in floating-point
         decimal v = 0.1M;
 
-        var ps = dbConn.CreatePreparedStatement("SELECT $1");
+        var ps = dbConn.PrepareStatement("SELECT $1");
         ps.BindParameter(1, v);
         object? v_out = ps.ExecuteScalar();
 
@@ -30,7 +30,7 @@ public class TestExecuteScalar
     {
         using var dbConn = new DuckDbConnection("");
 
-        using var ps = dbConn.CreatePreparedStatement("SELECT $1");
+        using var ps = dbConn.PrepareStatement("SELECT $1");
         Span<byte> buffer = stackalloc byte[1024];
 
         void Check(Span<byte> bytes, bool isNegative)
@@ -82,7 +82,7 @@ public class TestExecuteScalar
     public void BitString()
     {
         using var dbConn = new DuckDbConnection("");
-        using var ps = dbConn.CreatePreparedStatement("SELECT $1::BITSTRING");
+        using var ps = dbConn.PrepareStatement("SELECT $1::BITSTRING");
 
         Span<byte> buffer = stackalloc byte[512];
         var random = new Random(Seed: 37);
@@ -124,7 +124,7 @@ public class TestExecuteScalar
     {
         using var dbConn = new DuckDbConnection("");
 
-        using var ps = dbConn.CreatePreparedStatement("SELECT $1::TINYINT");
+        using var ps = dbConn.PrepareStatement("SELECT $1::TINYINT");
         sbyte value = 9;
         ps.BindParameter(1, value);
 
@@ -147,7 +147,7 @@ public class TestExecuteScalar
     {
         using var dbConn = new DuckDbConnection("");
 
-        using var ps = dbConn.CreatePreparedStatement("SELECT $1::ENUM ('すごい', '楽しい', '面白くない', 'まずい')");
+        using var ps = dbConn.PrepareStatement("SELECT $1::ENUM ('すごい', '楽しい', '面白くない', 'まずい')");
         byte value = 1;
         ps.BindParameter(1, "楽しい");
 
