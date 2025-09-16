@@ -47,9 +47,9 @@ public readonly record struct DuckDbColumnInfo
     /// The number of digits after the decimal point, when the logical type is
     /// <see cref="DuckDbValueKind.Decimal" />.
     /// </summary>
-    /// <remarks>
-    /// Set to zero if inapplicable. 
-    /// </remarks>
+    /// <value>
+    /// The number of digits, or zero if inapplicable. 
+    /// </value>
     public byte DecimalScale { get; }
 
     /// <summary>
@@ -63,9 +63,10 @@ public readonly record struct DuckDbColumnInfo
     /// when the logical type is
     /// <see cref="DuckDbValueKind.Enum" /> or <see cref="DuckDbValueKind.Decimal" />.
     /// </summary>
-    /// <remarks>
-    /// Set to zero (<see cref="DuckDbValueKind.Invalid" /> if inapplicable. 
-    /// </remarks>
+    /// <value>
+    /// The storage kind of element in the vector, or <see cref="DuckDbValueKind.Invalid" />
+    /// if inapplicable.
+    /// </value> 
     public DuckDbValueKind StorageKind => (DuckDbValueKind)_storageKind;
 
     /// <summary>

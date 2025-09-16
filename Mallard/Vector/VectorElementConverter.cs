@@ -17,7 +17,7 @@ namespace Mallard;
 /// While for built-in types an indirect call is not necessary (and in fact 
 /// <see cref="DuckDbVectorRawReader{T}" /> uses direct calls), 
 /// it is necessary when dealing with nested
-/// types (necessarily with non-null <see cref="_converterState" />).
+/// types (necessarily with non-null <see cref="_state" />).
 /// Of course, the flexibility of indirect call allows us to add user-customizable
 /// conversions later on.
 /// </para>
