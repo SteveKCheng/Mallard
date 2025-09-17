@@ -348,11 +348,12 @@ public sealed class DuckDbDataReader : DbDataReader
     /// <returns>
     /// A <see cref="DataTable" /> with the columns:
     /// <list type="number">
-    /// <item><term><see crf="SchemaTableColumn.ColumnOrdinal" /></term></item>
     /// <item><term><see crf="SchemaTableColumn.ColumnName" /></term></item>
-    /// <item><term><see crf="SchemaTableColumn.DataType" /></term></item>
+    /// <item><term><see crf="SchemaTableColumn.ColumnOrdinal" /></term></item>
+    /// <item><term><see crf="SchemaTableColumn.ColumnSize" /></term></item>
     /// <item><term><see crf="SchemaTableColumn.NumericPrecision" /></term></item>
     /// <item><term><see crf="SchemaTableColumn.NumericScale" /></term></item>
+    /// <item><term><see crf="SchemaTableColumn.DataType" /></term></item>
     /// </list>
     /// </returns>
     public override DataTable GetSchemaTable()
@@ -361,11 +362,15 @@ public sealed class DuckDbDataReader : DbDataReader
         {
             Columns =
             {
-                { SchemaTableColumn.ColumnOrdinal, typeof(int) },
+                // The related method DataTableReader.GetSchemaTable says the columns
+                // are in a specific order, so just follow that.  See:
+                // https://learn.microsoft.com/en-us/dotnet/api/system.data.datatablereader.getschematable
                 { SchemaTableColumn.ColumnName, typeof(string) },
-                { SchemaTableColumn.DataType, typeof(Type) },
+                { SchemaTableColumn.ColumnOrdinal, typeof(int) },
+                { SchemaTableColumn.ColumnSize, typeof(int) },
                 { SchemaTableColumn.NumericPrecision, typeof(byte) },
                 { SchemaTableColumn.NumericScale, typeof(byte) },
+                { SchemaTableColumn.DataType, typeof(Type) },
             }
         };
 
@@ -374,15 +379,17 @@ public sealed class DuckDbDataReader : DbDataReader
         for (int columnIndex = 0; columnIndex < FieldCount; ++columnIndex)
         {
             int j = 0; 
-            rowValues[j++] = columnIndex;
             rowValues[j++] = GetName(columnIndex);
-            rowValues[j++] = GetFieldType(columnIndex);
+            rowValues[j++] = columnIndex;
+            rowValues[j++] = -1;    // required from specification above 
 
             var columnInfo = _queryResults.GetColumnInfo(columnIndex);
 
             bool isDecimal = (columnInfo.ValueKind == DuckDbValueKind.Decimal); 
             rowValues[j++] = isDecimal ? columnInfo.ElementSize : DBNull.Value;
             rowValues[j++] = isDecimal ? columnInfo.DecimalScale : DBNull.Value;
+
+            rowValues[j++] = GetFieldType(columnIndex);
 
             dataTable.Rows.Add(rowValues);
         }
