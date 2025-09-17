@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Immutable;
 using System.Data;
 using System.Data.Common;
+using System.IO;
 
 namespace Mallard;
 
@@ -109,6 +110,22 @@ public sealed class DuckDbDataReader : DbDataReader
         ArgumentOutOfRangeException.ThrowIfGreaterThan(length, buffer.Length - bufferOffset);
         var span = new Span<char>(buffer, bufferOffset, length);
         return GetDelegateReader(ordinal).GetChars(_currentChunkRow, span, (int)dataOffset);
+    }
+
+    /// <inheritdoc />
+    public override Stream GetStream(int ordinal)
+        => GetDelegateReader(ordinal).GetByteStream(_currentChunkRow);
+
+    /// <inheritdoc />
+    public override TextReader GetTextReader(int ordinal)
+    {
+        var r = GetDelegateReader(ordinal);
+        
+        // Don't bother creating streams for short strings
+        if (r.GetByteLength(_currentChunkRow) < 1024)
+            return new StringReader(r.GetValue<string>(_currentChunkRow));
+        else
+            return new StreamReader(r.GetByteStream(_currentChunkRow));
     }
 
     #endregion

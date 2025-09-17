@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Buffers;
+using System.Collections;
 using System.Diagnostics;
+using System.IO;
 using System.Text.Unicode;
 
 namespace Mallard;
@@ -220,6 +222,63 @@ public class DuckDbVectorDelegateReader : IDuckDbVector
         GC.KeepAlive(this);
         return v;
     }
+    
+    #region Specialized methods to read blobs and strings
+
+    /// <summary>
+    /// Get a read-only stream over the bytes of a blob, string, or bit string.
+    /// </summary>
+    /// <param name="rowIndex">
+    /// The (row) index of the element that is a blob, string or bit string.
+    /// </param>
+    public unsafe Stream GetByteStream(int rowIndex)
+    {
+        var valueKind = ColumnInfo.ValueKind;
+        if (valueKind == DuckDbValueKind.Blob ||
+            valueKind == DuckDbValueKind.VarChar ||
+            valueKind == DuckDbValueKind.Bit)
+        {
+            var reader = new DuckDbVectorRawReader<DuckDbBlob>(_vector);
+            var blob = reader.GetItem(rowIndex);
+
+            fixed (byte* p = blob.Span)
+            {
+                // NativeReadOnlyMemoryStream captures the pointer which 
+                // is legal only because blob.Span is guaranteed to be from
+                // native memory owned by _owner.
+                return new NativeReadOnlyMemoryStream(p, blob.Span.Length, _owner);
+            }
+        }
+        else
+        {
+            throw new InvalidOperationException(
+                "Cannot use GetByteStream on this element type in a DuckDB vector. ");
+        }
+    }
+
+    /// <summary>
+    /// Get the length in bytes of a blob, string or bit string.
+    /// </summary>
+    /// <param name="rowIndex">
+    /// The (row) index of the element that is a blob, string or bit string.
+    /// </param>
+    public int GetByteLength(int rowIndex)
+    {
+        var valueKind = ColumnInfo.ValueKind;
+        if (valueKind == DuckDbValueKind.Blob ||
+            valueKind == DuckDbValueKind.VarChar ||
+            valueKind == DuckDbValueKind.Bit)
+        {
+            var reader = new DuckDbVectorRawReader<DuckDbBlob>(_vector);
+            var blob = reader.GetItem(rowIndex);
+            return blob.Span.Length;
+        }
+        else
+        {
+            throw new InvalidOperationException(
+                "Cannot use GetByteLength on this element type in a DuckDB vector. ");
+        }
+    }
 
     /// <summary>
     /// Copy out a sub-span of bytes from a blob, string, or bit string.
@@ -250,7 +309,7 @@ public class DuckDbVectorDelegateReader : IDuckDbVector
     /// </para>
     /// <para>
     /// For a vector element that is a bit string, the byte content is the little-endian encoding
-    /// as accepted by <see cref="System.Collections.BitArray.BitArray(byte[])" />.
+    /// as accepted by <see cref="BitArray" />.
     /// (See also <see cref="DuckDbBitString.GetSegment" />.
     /// </para>
     /// <para>
@@ -492,4 +551,6 @@ public class DuckDbVectorDelegateReader : IDuckDbVector
     /// </para>
     /// </remarks>
     private Antitear<(int RowIndex, int CharOffset, int ByteOffset)> _cachedStringOffsetInfo;
+    
+    #endregion
 }
