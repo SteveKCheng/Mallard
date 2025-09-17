@@ -148,7 +148,7 @@ public sealed partial class DuckDbConnection
 
         try
         {
-            ExecuteCommand(in scope, "BEGIN TRANSACTION");
+            ExecuteCommand(in scope, "BEGIN TRANSACTION"u8);
         }
         catch
         {
@@ -169,7 +169,7 @@ public sealed partial class DuckDbConnection
         VerifyTransaction(in scope, version);
         try
         {
-            ExecuteCommand(in scope, "COMMIT");
+            ExecuteCommand(in scope, "COMMIT"u8);
         }
         finally
         {
@@ -187,7 +187,7 @@ public sealed partial class DuckDbConnection
         VerifyTransaction(in scope, version);
         try
         {
-            ExecuteCommand(in scope, "ROLLBACK");
+            ExecuteCommand(in scope, "ROLLBACK"u8);
         }
         finally
         {

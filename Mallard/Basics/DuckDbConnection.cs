@@ -325,15 +325,30 @@ public unsafe sealed partial class DuckDbConnection : IDisposable
     /// <summary>
     /// Execute a command (SQL statement) in DuckDB and only check for errors.
     /// </summary>
-    /// <remarks>
-    /// <para>
+    /// <param name="_">
     /// The caller must have acquired shared ownership of the native DuckDB resource.
-    /// This method takes a dummy parameter to make that requirement clear. 
+    /// This dummy parameter must be passed in to make that requirement clear. 
+    /// </param>
+    /// <param name="sql">
+    /// <para>
+    /// SQL query or statement(s) in UTF-8 encoding, which is DuckDB's native encoding
+    /// and therefore this method can avoid re-encoding. The UTF-8 must be null-terminated.
     /// </para>
-    /// </remarks>
-    private void ExecuteCommand(ref readonly HandleRefCount.Scope _, string sql)
+    /// <para>
+    /// Unfortunately that the string is really null-terminated cannot be checked
+    /// (as an assertion) since the check would have to read beyond the end of
+    /// the string's allocated memory if there turns out to be no null byte.
+    /// The caller will simply have to be careful.  Note that UTF-8 string literals
+    /// in C# are specified to result in null termination.
+    /// </para> 
+    /// </param>
+    private void ExecuteCommand(ref readonly HandleRefCount.Scope _, ReadOnlySpan<byte> sql)
     {
-        var status = NativeMethods.duckdb_query(_nativeConn, sql, out var nativeResult);
+        duckdb_state status;
+        duckdb_result nativeResult;
+
+        fixed (byte* p = sql)
+            status = NativeMethods.duckdb_query(_nativeConn, p, out nativeResult);    
 
         try
         {

@@ -140,6 +140,12 @@ internal unsafe static partial class NativeMethods
     [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
     internal static partial duckdb_state duckdb_query(_duckdb_connection* connection, string query, out duckdb_result result);
 
+    // Same as above but allows passing constant queries embedded in this library,
+    // in UTF-8 encoding, without re-encoding it.
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_query(_duckdb_connection* connection, byte* query,
+                                                      out duckdb_result result);
+
     [LibraryImport(LibraryName)]
     internal static partial duckdb_state duckdb_execute_prepared(_duckdb_prepared_statement* prepared_statement,
                                                                  out duckdb_result result);
