@@ -208,4 +208,48 @@ public readonly record struct DuckDbColumnInfo
                     DecimalScale: 0);
         }
     }
+
+    internal static string? GetSqlNameForValueKind(DuckDbValueKind kind)
+        => kind switch
+        {
+            // DuckDbValueKind.Invalid => null,
+            DuckDbValueKind.Boolean => "BOOLEAN",
+            DuckDbValueKind.TinyInt => "TINYINT",
+            DuckDbValueKind.SmallInt => "SMALLINT",
+            DuckDbValueKind.Integer => "INTEGER",
+            DuckDbValueKind.BigInt => "BIGINT",
+            DuckDbValueKind.UTinyInt => "UTINYINT",
+            DuckDbValueKind.USmallInt => "USMALLINT",
+            DuckDbValueKind.UInteger => "UINTEGER",
+            DuckDbValueKind.UBigInt => "UBIGINT",
+            DuckDbValueKind.Float => "FLOAT",
+            DuckDbValueKind.Double => "DOUBLE",
+            DuckDbValueKind.Date => "DATE",
+            DuckDbValueKind.Time => "TIME",
+            DuckDbValueKind.Interval => "INTERVAL",
+            DuckDbValueKind.HugeInt => "HUGEINT",
+            DuckDbValueKind.UHugeInt => "UHUGEINT",
+            DuckDbValueKind.VarChar => "VARCHAR",
+            DuckDbValueKind.Blob => "BLOB",
+            DuckDbValueKind.Decimal => "DECIMAL",
+            DuckDbValueKind.TimestampSeconds => "TIMESTAMP",
+            DuckDbValueKind.TimestampMilliseconds => "TIMESTAMP",
+            DuckDbValueKind.TimestampNanoseconds => "TIMESTAMP",
+            DuckDbValueKind.Enum => "ENUM",
+            DuckDbValueKind.List => "LIST",
+            DuckDbValueKind.Struct => "STRUCT",
+            DuckDbValueKind.Map => "MAP",
+            DuckDbValueKind.Array => "ARRAY",
+            DuckDbValueKind.Uuid => "UUID",
+            DuckDbValueKind.Union => "UNION",
+            DuckDbValueKind.Bit => "BIT",
+            DuckDbValueKind.TimeTz => "TIME WITH TIME ZONE",
+            DuckDbValueKind.TimestampTz => "TIMESTAMP WITH TIME ZONE",
+            // DuckDbValueKind.Any => null,
+            DuckDbValueKind.VarInt => "VARINT",
+            DuckDbValueKind.SqlNull => "NULL",
+            // DuckDbValueKind.StringLiteral => null,
+            // DuckDbValueKind.IntegerLiteral => null,
+            _ => null
+        };
 }

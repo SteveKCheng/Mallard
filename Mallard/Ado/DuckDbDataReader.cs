@@ -237,10 +237,8 @@ public sealed class DuckDbDataReader : DbDataReader
 
     /// <inheritdoc />
     public override string GetDataTypeName(int ordinal)
-    {
-        throw new NotImplementedException();
-    }
-
+        => DuckDbColumnInfo.GetSqlNameForValueKind(GetDelegateReader(ordinal).ColumnInfo.ValueKind) ?? string.Empty; 
+    
     /// <inheritdoc />
     public override Type GetFieldType(int ordinal)
     {
