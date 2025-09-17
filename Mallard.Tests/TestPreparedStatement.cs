@@ -11,21 +11,43 @@ public class TestPreparedStatement(DatabaseFixture fixture)
     private DuckDbConnection DbConnection => _fixture.ConnectionWithTpchData;
 
     [Test]
-    public void TestPreparedStatementCreation()
+    public void PrepareStatement()
     {
         const int limitRows = 10;
         var paramName = "mktSegment";
-        using var ps = DbConnection.PrepareStatement($"SELECT * FROM customer WHERE c_mktsegment = ${paramName} LIMIT {limitRows}");
+        using var ps = DbConnection.PrepareStatement($"SELECT c_custkey, c_mktsegment FROM customer WHERE c_mktsegment = ${paramName} LIMIT {limitRows}");
 
         Assert.Equal(paramName, ps.GetParameterName(1));
         Assert.Equal(DuckDbValueKind.VarChar, ps.GetParameterValueKind(1));
         Assert.Equal(1, ps.ParameterCount);
         Assert.Equal(1, ps.GetParameterIndexForName(paramName));
 
-        ps.BindParameter(1, "AUTOMOBILE");
+        // Use same statement object to query for 2 parameter values
+        foreach (var mktsegment in new[] { "AUTOMOBILE", "HOUSEHOLD" })
+        {
+            ps.BindParameter(1, mktsegment);
 
-        using var dbResult = ps.Execute();
-        Assert.Equal(limitRows, dbResult.DestructiveGetNumberOfResults());
+            using var dbResult = ps.Execute();
+            
+            Assert.Equal(limitRows, dbResult.DestructiveGetNumberOfResults());
+
+            // Check all values for constrained column are as expected 
+            dbResult.ProcessAllChunks(false, (in DuckDbChunkReader reader, bool _) =>
+            {
+                var mktSegmentCol = reader.GetColumn<string>(1);
+                for (int i = 0; i < reader.Length; ++i)
+                    Assert.Equal(mktsegment, mktSegmentCol.GetItem(i));
+                return true; // unused
+            });
+        }
+        
+        // Ensure there is no error in executing again without changing any parameters
+        using var _ = ps.Execute();
+        
+        // Not setting a parameter's value should be an error
+        ps.ClearBindings();
+        var e = Assert.Throws<DuckDbException>(() => ps.Execute());
+        Assert.Equal(DuckDbErrorKind.InvalidInput, e.ErrorKind);
     }
 
     [Test]
