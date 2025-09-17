@@ -103,7 +103,7 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
         try
         {
             if (status != duckdb_state.DuckDBSuccess)
-                throw new DuckDbException(NativeMethods.duckdb_result_error(ref nativeResult));
+                DuckDbException.ThrowForResultFailure(ref nativeResult);
 
             // Passes ownership of nativeResult
             return new DuckDbResult(ref nativeResult, typeMappingFlags);
@@ -148,7 +148,8 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
             switch (resultType)
             {
                 case duckdb_result_type.DUCKDB_RESULT_TYPE_INVALID:
-                    throw new DuckDbException(NativeMethods.duckdb_result_error(ref nativeResult));
+                    DuckDbException.ThrowForResultFailure(ref nativeResult);
+                    break;  // above line should always throw
 
                 case duckdb_result_type.DUCKDB_RESULT_TYPE_CHANGED_ROWS:
                     return NativeMethods.duckdb_rows_changed(ref nativeResult);
@@ -190,7 +191,8 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
         try
         {
             if (status != duckdb_state.DuckDBSuccess)
-                throw new DuckDbException(NativeMethods.duckdb_result_error(ref nativeResult));
+                DuckDbException.ThrowForResultFailure(ref nativeResult);
+
             var resultType = NativeMethods.duckdb_result_return_type(nativeResult);
             if (resultType != duckdb_result_type.DUCKDB_RESULT_TYPE_QUERY_RESULT)
                 return default;

@@ -338,7 +338,7 @@ public unsafe sealed partial class DuckDbConnection : IDisposable
         try
         {
             if (status != duckdb_state.DuckDBSuccess)
-                throw new DuckDbException(NativeMethods.duckdb_result_error(ref nativeResult));
+                DuckDbException.ThrowForResultFailure(ref nativeResult);
         }
         finally
         {

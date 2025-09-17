@@ -26,54 +26,6 @@ internal enum duckdb_result_type : int
     DUCKDB_RESULT_TYPE_QUERY_RESULT = 3,
 }
 
-//! An enum over DuckDB's different error types.
-internal enum duckdb_error_type
-{
-    DUCKDB_ERROR_INVALID = 0,
-    DUCKDB_ERROR_OUT_OF_RANGE = 1,
-    DUCKDB_ERROR_CONVERSION = 2,
-    DUCKDB_ERROR_UNKNOWN_TYPE = 3,
-    DUCKDB_ERROR_DECIMAL = 4,
-    DUCKDB_ERROR_MISMATCH_TYPE = 5,
-    DUCKDB_ERROR_DIVIDE_BY_ZERO = 6,
-    DUCKDB_ERROR_OBJECT_SIZE = 7,
-    DUCKDB_ERROR_INVALID_TYPE = 8,
-    DUCKDB_ERROR_SERIALIZATION = 9,
-    DUCKDB_ERROR_TRANSACTION = 10,
-    DUCKDB_ERROR_NOT_IMPLEMENTED = 11,
-    DUCKDB_ERROR_EXPRESSION = 12,
-    DUCKDB_ERROR_CATALOG = 13,
-    DUCKDB_ERROR_PARSER = 14,
-    DUCKDB_ERROR_PLANNER = 15,
-    DUCKDB_ERROR_SCHEDULER = 16,
-    DUCKDB_ERROR_EXECUTOR = 17,
-    DUCKDB_ERROR_CONSTRAINT = 18,
-    DUCKDB_ERROR_INDEX = 19,
-    DUCKDB_ERROR_STAT = 20,
-    DUCKDB_ERROR_CONNECTION = 21,
-    DUCKDB_ERROR_SYNTAX = 22,
-    DUCKDB_ERROR_SETTINGS = 23,
-    DUCKDB_ERROR_BINDER = 24,
-    DUCKDB_ERROR_NETWORK = 25,
-    DUCKDB_ERROR_OPTIMIZER = 26,
-    DUCKDB_ERROR_NULL_POINTER = 27,
-    DUCKDB_ERROR_IO = 28,
-    DUCKDB_ERROR_INTERRUPT = 29,
-    DUCKDB_ERROR_FATAL = 30,
-    DUCKDB_ERROR_INTERNAL = 31,
-    DUCKDB_ERROR_INVALID_INPUT = 32,
-    DUCKDB_ERROR_OUT_OF_MEMORY = 33,
-    DUCKDB_ERROR_PERMISSION = 34,
-    DUCKDB_ERROR_PARAMETER_NOT_RESOLVED = 35,
-    DUCKDB_ERROR_PARAMETER_NOT_ALLOWED = 36,
-    DUCKDB_ERROR_DEPENDENCY = 37,
-    DUCKDB_ERROR_HTTP = 38,
-    DUCKDB_ERROR_MISSING_EXTENSION = 39,
-    DUCKDB_ERROR_AUTOLOAD = 40,
-    DUCKDB_ERROR_SEQUENCE = 41,
-    DUCKDB_INVALID_CONFIGURATION = 42
-}
-
 [StructLayout(LayoutKind.Sequential)]
 internal unsafe struct _duckdb_connection { private void* internal_ptr; }
 
@@ -200,6 +152,9 @@ internal unsafe static partial class NativeMethods
     internal static partial string duckdb_result_error(ref duckdb_result result);
 
     [LibraryImport(LibraryName)]
+    internal static partial DuckDbErrorKind duckdb_result_error_type(ref duckdb_result result);
+
+    [LibraryImport(LibraryName)]
     internal static partial idx_t duckdb_column_count(ref duckdb_result result);
 
     [LibraryImport(LibraryName)]
@@ -220,7 +175,7 @@ internal unsafe static partial class NativeMethods
 
     [LibraryImport(LibraryName)]
     internal static partial _duckdb_data_chunk* duckdb_fetch_chunk(duckdb_result result);
-
+    
     #endregion
 
     #region Data chunks
