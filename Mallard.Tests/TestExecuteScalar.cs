@@ -155,4 +155,19 @@ public class TestExecuteScalar
         Assert.Equal(value, ps.ExecuteValue<ushort>());
         Assert.Equal(value, ps.ExecuteValue<uint>());
     }
+
+    [Test]
+    public void BlobParameter()
+    {
+        using var dbConn = new DuckDbConnection("");
+        using var ps = dbConn.PrepareStatement("SELECT $1::BLOB");
+
+        var sourceBuffer = new byte[512];
+        new Random(Seed: 37).NextBytes(sourceBuffer);
+        
+        ps.BindParameter(1, sourceBuffer);
+        var destBuffer = ps.ExecuteValue<byte[]>();
+        
+        Assert2.Equal(sourceBuffer, destBuffer);
+    }
 }

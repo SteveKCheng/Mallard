@@ -327,6 +327,9 @@ internal unsafe static partial class NativeMethods
 
     [LibraryImport(LibraryName)]
     internal static partial _duckdb_value* duckdb_create_varchar_length(byte* text, idx_t length);
+    
+    [LibraryImport(LibraryName)]
+    internal static partial _duckdb_value* duckdb_create_blob(byte *data, idx_t length);
 
     [LibraryImport(LibraryName)]
     internal static partial _duckdb_value* duckdb_create_bool([MarshalAs(UnmanagedType.I1)] bool input);

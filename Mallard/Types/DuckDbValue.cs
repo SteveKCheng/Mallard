@@ -18,6 +18,13 @@ internal unsafe class DuckDbValue
         return NativeMethods.duckdb_create_varchar_length(utf8Ptr, utf8Length);
     }
 
+    private static _duckdb_value* CreateBlob(ReadOnlySpan<byte> input)
+    {
+        fixed (byte* p = input)
+            return NativeMethods.duckdb_create_blob(p, input.Length);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static _duckdb_value* CreateNativeObject(object? input)
     {
         if (input is null)
@@ -80,6 +87,9 @@ internal unsafe class DuckDbValue
 
         if (input is string s)
             return CreateNativeString(s);
+
+        if (input is byte[] blob)
+            return CreateBlob(blob);
 
         throw new NotSupportedException(
             $"Cannot convert the given type to a DuckDB value.  Type: {input.GetType().Name}");
