@@ -31,7 +31,7 @@ public class UnitTest1(DatabaseFixture fixture)
         
         // Conflict on adding entry with same primary key
         var e = Assert.Throws<DuckDbException>(() => txn2.Commit());
-        Assert.Contains("Failed to commit", e.Message);
+        Assert.Equal(DuckDbErrorKind.Transaction, e.ErrorKind);
 
         dbConn1.Dispose();
         
