@@ -249,6 +249,9 @@ internal unsafe static partial class NativeMethods
     internal static partial duckdb_state duckdb_bind_value(_duckdb_prepared_statement* prepared_statement,
                                                            idx_t param_idx,
                                                            _duckdb_value* val);
+    
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_clear_bindings(_duckdb_prepared_statement* prepared_statement);
 
     #endregion
 

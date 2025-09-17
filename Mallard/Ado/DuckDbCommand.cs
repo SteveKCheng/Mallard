@@ -163,8 +163,12 @@ public sealed class DuckDbCommand : IDbCommand
     private DuckDbStatement GetPreparedStatement()
     {
         var statement = _statement;
+    
         if (statement == null)
             statement = _statement = Connection.PrepareStatement(CommandText);
+        else
+            statement.ClearBindings();
+        
         return statement;
     }
     

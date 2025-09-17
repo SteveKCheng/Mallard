@@ -294,6 +294,18 @@ public unsafe class DuckDbStatement : IDisposable
     }
 
     #region Binding values to parameters
+
+    /// <summary>
+    /// Clear all bindings of values to parameters in the prepared statement.
+    /// </summary>
+    public void ClearBindings()
+    {
+        using var _ = _barricade.EnterScope(this);
+        var status = NativeMethods.duckdb_clear_bindings(_nativeStatement);
+        DuckDbException.ThrowOnFailure(
+            status, 
+            "Failed to clear bindings of values to parameters in the prepared statement. ");
+    }
     
     /// <summary>
     /// Bind a positional parameter of the prepared statement to the specified value.
