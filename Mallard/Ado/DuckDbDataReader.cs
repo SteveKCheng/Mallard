@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Immutable;
+using System.Data;
 using System.Data.Common;
 
 namespace Mallard;
@@ -310,4 +311,68 @@ public sealed class DuckDbDataReader : DbDataReader
     }
 
     #endregion
+    
+    #region Schema
+
+    /// <summary>
+    /// Returns a <see cref="DataTable" /> that describes the result columns.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Implementations of this method in other ADO.NET providers re-query the database
+    /// to obtain detailed information on the columns such as key constraints.
+    /// Doing the same is difficult in DuckDB's C API, so this implementation
+    /// provides basic information only.
+    /// </para>
+    /// <para>
+    /// The returned instance is created anew by this method and is not cached.
+    /// </para>
+    /// </remarks>
+    /// <returns>
+    /// A <see cref="DataTable" /> with the columns:
+    /// <list type="number">
+    /// <item><term><see crf="SchemaTableColumn.ColumnOrdinal" /></term></item>
+    /// <item><term><see crf="SchemaTableColumn.ColumnName" /></term></item>
+    /// <item><term><see crf="SchemaTableColumn.DataType" /></term></item>
+    /// <item><term><see crf="SchemaTableColumn.NumericPrecision" /></term></item>
+    /// <item><term><see crf="SchemaTableColumn.NumericScale" /></term></item>
+    /// </list>
+    /// </returns>
+    public override DataTable GetSchemaTable()
+    {
+        var dataTable = new DataTable()
+        {
+            Columns =
+            {
+                { SchemaTableColumn.ColumnOrdinal, typeof(int) },
+                { SchemaTableColumn.ColumnName, typeof(string) },
+                { SchemaTableColumn.DataType, typeof(Type) },
+                { SchemaTableColumn.NumericPrecision, typeof(byte) },
+                { SchemaTableColumn.NumericScale, typeof(byte) },
+            }
+        };
+
+        var rowValues = new object[dataTable.Columns.Count];
+        
+        for (int columnIndex = 0; columnIndex < FieldCount; ++columnIndex)
+        {
+            int j = 0; 
+            rowValues[j++] = columnIndex;
+            rowValues[j++] = GetName(columnIndex);
+            rowValues[j++] = GetFieldType(columnIndex);
+
+            var columnInfo = _queryResults.GetColumnInfo(columnIndex);
+
+            bool isDecimal = (columnInfo.ValueKind == DuckDbValueKind.Decimal); 
+            rowValues[j++] = isDecimal ? columnInfo.ElementSize : DBNull.Value;
+            rowValues[j++] = isDecimal ? columnInfo.DecimalScale : DBNull.Value;
+
+            dataTable.Rows.Add(rowValues);
+        }
+
+        return dataTable;
+    }
+    
+    #endregion
 }
+                                
