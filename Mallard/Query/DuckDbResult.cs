@@ -34,11 +34,29 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
         NativeMethods.duckdb_destroy_result(ref _nativeResult);
     }
 
+    /// <summary>
+    /// Destructor which will dispose if it has not yet been already.
+    /// </summary>
     ~DuckDbResult()
     {
         DisposeImpl(disposing: false);
     }
 
+    /// <summary>
+    /// Disposes (closes) this result object.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Native resources for holding the results in DuckDB will be released.
+    /// </para>
+    /// <para>
+    /// This method does nothing if the object has already been disposed.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">
+    /// Another thread is using this object, and the object
+    /// not be disposed concurrently.
+    /// </exception>
     public void Dispose()
     {
         DisposeImpl(disposing: true);

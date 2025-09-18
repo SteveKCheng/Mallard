@@ -387,6 +387,9 @@ public unsafe sealed partial class DuckDbConnection : IDisposable
         database.Release();
     }
 
+    /// <summary>
+    /// Destructor which will dispose this connection if it has yet been already.
+    /// </summary>
     ~DuckDbConnection()
     {
         DisposeImpl(disposing: false);

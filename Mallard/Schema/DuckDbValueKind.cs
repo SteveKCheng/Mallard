@@ -1,5 +1,7 @@
 ﻿namespace Mallard;
 
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
+
 /// <summary>
 /// The kinds of values that can be read from or stored into DuckDB.
 /// </summary>
@@ -164,3 +166,5 @@ public enum DuckDbValueKind : int
     // enum type, only useful as logical type
     IntegerLiteral = 38,
 }
+
+#pragma warning restore CS1591 // Missing XML comment for publicly visible type or member

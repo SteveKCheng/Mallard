@@ -1,5 +1,7 @@
 namespace Mallard;
 
+#pragma warning disable CS1591 // Missing XML comment for publicly visible type or member
+
 /// <summary>
 /// Category of error from an operation by DuckDB. 
 /// </summary>
@@ -59,3 +61,5 @@ public enum DuckDbErrorKind
     Sequence = 41,
     DuckdbInvalidConfiguration = 42
 }
+
+#pragma warning restore

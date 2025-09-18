@@ -108,6 +108,7 @@ public sealed class DuckDbCommand : IDbCommand
         return (int)statement.ExecuteNonQuery();
     }
 
+    /// <inheritdoc />
     public DuckDbDataReader ExecuteReader()
     {
         var statement = GetBoundStatement();
@@ -116,6 +117,7 @@ public sealed class DuckDbCommand : IDbCommand
     
     IDataReader IDbCommand.ExecuteReader() => ExecuteReader();
 
+    /// <inheritdoc />
     public IDataReader ExecuteReader(CommandBehavior behavior)
     {
         throw new System.NotImplementedException();

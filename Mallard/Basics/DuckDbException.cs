@@ -4,14 +4,30 @@ using System.Diagnostics.CodeAnalysis;
 
 namespace Mallard;
 
-public class DuckDbException : Exception
+/// <summary>
+/// Reprsents a database-level error from DuckDB.
+/// </summary>
+/// <remarks>
+/// <para>
+/// This type of exception is thrown from Mallard for run-time errors reported by the native DuckDB library.
+/// These errors can include failure to open or operate on a database (file),
+/// syntax problems in SQL statements and constraint violations.
+/// </para>
+/// <para>
+/// Note that run-time errors originating from misuse of or incorrect arguments to Mallard's API,
+/// are generally reported by familiar .NET exceptions such as <see cref="ArgumentException" /> or
+/// <see cref="InvalidOperationException" />.  Such errors get detected by .NET code in Mallard
+/// before the relevant requests even reach the DuckDB native library.  
+/// </para>
+/// </remarks>
+public sealed class DuckDbException : Exception
 {
     /// <summary>
     /// The category of error (error code) reported by DuckDB.
     /// </summary>
     public DuckDbErrorKind ErrorKind { get; private set; }
     
-    public DuckDbException(string? message) : base(message)
+    internal DuckDbException(string? message) : base(message)
     {
     }
     
