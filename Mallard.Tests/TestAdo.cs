@@ -1,5 +1,7 @@
 using System;
 using System.Data;
+using System.Linq;
+using System.Text;
 using Xunit;
 using TUnit.Core;
 
@@ -532,6 +534,244 @@ public class TestAdo(DatabaseFixture fixture)
         Assert.Equal(0, connection.ConnectionTimeout);
         Assert.NotNull(connection.Database);
         Assert.NotEmpty(connection.Database);
+    }
+
+    #endregion
+
+    #region DataReader Additional Method Tests
+
+    [Test]
+    public void TestGetStream()
+    {
+        using IDbConnection connection = new DuckDbConnection("");
+        
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT $1 as blob_data, CAST($1 AS VARCHAR) as text_data";
+        
+        const string textData = "Binary content";
+        
+        var parameter = command.CreateParameter();
+        parameter.ParameterName = "1";
+        parameter.Value = Encoding.UTF8.GetBytes(textData);
+        command.Parameters.Add(parameter);
+        
+        using var dbReader = (DuckDbDataReader)command.ExecuteReader();
+        dbReader.Read();
+        
+        // Test GetStream on text column
+        using var stream1 = dbReader.GetStream(1);
+        Assert.NotNull(stream1);
+        Assert.True(stream1.CanRead);
+        
+        // Read UTF-8 bytes of text column into buffer
+        var buffer1 = new byte[256];
+        int bytesRead1 = stream1.Read(buffer1, 0, buffer1.Length);
+        Assert.True(bytesRead1 > 0);
+        
+        // Check UTF-8 bytes, when converted back to a string, match the original textData 
+        var content1 = Encoding.UTF8.GetString(buffer1, 0, bytesRead1);
+        Assert.Equal(textData, content1);
+        
+        // Test GetStream on blob column
+        using var stream2 = dbReader.GetStream(0);
+        Assert.NotNull(stream2);
+        Assert.True(stream2.CanRead);
+        
+        // Read UTF-8 bytes of blob column into buffer
+        var buffer2 = new byte[256];
+        int bytesRead2 = stream2.Read(buffer2, 0, buffer2.Length);
+
+        // Check the two buffers' contents are the same
+        Assert.True(buffer1[..bytesRead1].SequenceEqual(buffer2[..bytesRead2]));
+    }
+
+    [Test]
+    public void TestGetTextReader()
+    {
+        using IDbConnection connection = new DuckDbConnection("");
+        
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT 'Short text' as short_text, $1 as long_text";
+        
+        // Create a long string (over 1024 chars to test stream vs string reader logic)
+        var longText = new string('A', 2000) + " End of long text";
+        var parameter = command.CreateParameter();
+        parameter.ParameterName = "1";
+        parameter.Value = longText;
+        command.Parameters.Add(parameter);
+        
+        using var dbReader = (DuckDbDataReader)command.ExecuteReader();
+        dbReader.Read();
+        
+        // Test GetTextReader on short text (should use StringReader)
+        using var textReader1 = dbReader.GetTextReader(0);
+        Assert.NotNull(textReader1);
+        var content1 = textReader1.ReadToEnd();
+        Assert.Equal("Short text", content1);
+        
+        // Test GetTextReader on long text (should use StreamReader)
+        using var textReader2 = dbReader.GetTextReader(1);
+        Assert.NotNull(textReader2);
+        var content2 = textReader2.ReadToEnd();
+        Assert.Equal(longText, content2);
+    }
+
+    [Test]
+    public void TestGetSchemaTable()
+    {
+        using IDbConnection connection = new DuckDbConnection("");
+        
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT 1 as int_col, 'text' as string_col, 3.14::DECIMAL(5,2) as decimal_col, TRUE as bool_col";
+        
+        using var dbReader = (DuckDbDataReader)command.ExecuteReader();
+        
+        var schemaTable = dbReader.GetSchemaTable();
+        Assert.NotNull(schemaTable);
+        
+        // Check that we have the expected number of columns
+        Assert.Equal(4, schemaTable.Rows.Count);
+        
+        // Check that schema table has the expected columns
+        Assert.True(schemaTable.Columns.Contains("ColumnName"));
+        Assert.True(schemaTable.Columns.Contains("ColumnOrdinal"));
+        Assert.True(schemaTable.Columns.Contains("ColumnSize"));
+        Assert.True(schemaTable.Columns.Contains("NumericPrecision"));
+        Assert.True(schemaTable.Columns.Contains("NumericScale"));
+        Assert.True(schemaTable.Columns.Contains("DataType"));
+        
+        // Verify first column details
+        var row0 = schemaTable.Rows[0];
+        Assert.Equal("int_col", row0["ColumnName"]);
+        Assert.Equal(0, row0["ColumnOrdinal"]);
+        Assert.Equal(-1, row0["ColumnSize"]);  // Required by spec
+        Assert.Equal(DBNull.Value, row0["NumericPrecision"]);  // Not a decimal
+        Assert.Equal(DBNull.Value, row0["NumericScale"]);  // Not a decimal
+        Assert.True(row0["DataType"] is Type);
+        
+        // Verify decimal column has precision/scale info
+        var decimalRow = schemaTable.Rows.Cast<DataRow>().First(r => r["ColumnName"].ToString() == "decimal_col");
+        Assert.NotEqual(DBNull.Value, decimalRow["NumericPrecision"]);
+        Assert.NotEqual(DBNull.Value, decimalRow["NumericScale"]);
+        Assert.Equal(2, Convert.ToByte(decimalRow["NumericScale"]));
+    }
+
+    [Test]
+    public void TestGetDataTypeName()
+    {
+        using IDbConnection connection = new DuckDbConnection("");
+        
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            SELECT 
+                1 as int_col,
+                'text' as varchar_col,
+                3.14::DOUBLE as double_col,
+                TRUE as bool_col,
+                '2023-01-01'::DATE as date_col,
+                '12:30:45'::TIME as time_col,
+                UUID() as uuid_col
+        """;
+        
+        using var dbReader = (DuckDbDataReader)command.ExecuteReader();
+        dbReader.Read();
+
+        void Check(int ordinal, string expected)
+        {
+            var typeName = dbReader.GetDataTypeName(ordinal);
+            Assert.Equal(expected, typeName);
+        }
+
+        // Verify some expected SQL type names (case-insensitive check)
+        Check(0, "INTEGER");
+        Check(1, "VARCHAR");
+        Check(2, "DOUBLE");
+        Check(3, "BOOLEAN");
+        Check(4, "DATE");
+        Check(5, "TIME");
+        Check(6, "UUID");
+    }
+
+    [Test]
+    public void TestGetDataTypeNameWithNullable()
+    {
+        using IDbConnection connection = new DuckDbConnection("");
+        
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT NULL::INTEGER as nullable_int, NULL::VARCHAR as nullable_varchar";
+        
+        using var dbReader = (DuckDbDataReader)command.ExecuteReader();
+        dbReader.Read();
+        
+        // Even with NULL values, GetDataTypeName should return the column type
+        var intTypeName = dbReader.GetDataTypeName(0);
+        Assert.NotNull(intTypeName);
+        Assert.NotEmpty(intTypeName);
+        Assert.Contains("INT", intTypeName.ToUpperInvariant());
+        
+        var varcharTypeName = dbReader.GetDataTypeName(1);
+        Assert.NotNull(varcharTypeName);
+        Assert.NotEmpty(varcharTypeName);
+        Assert.Contains("VARCHAR", varcharTypeName.ToUpperInvariant());
+    }
+
+    [Test]
+    public void TestStreamAndReaderDisposal()
+    {
+        using IDbConnection connection = new DuckDbConnection("");
+        
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT 'test content' as text_col";
+        
+        using var dbReader = (DuckDbDataReader)command.ExecuteReader();
+        dbReader.Read();
+        
+        // Test that streams and text readers can be properly disposed
+        var stream = dbReader.GetStream(0);
+        var textReader = dbReader.GetTextReader(0);
+        
+        // Should be able to read from both initially
+        var buffer = new byte[100];
+        int bytesRead = stream.Read(buffer, 0, buffer.Length);
+        Assert.True(bytesRead > 0);
+        
+        var textContent = textReader.ReadToEnd();
+        Assert.NotNull(textContent);
+        Assert.NotEmpty(textContent);
+        
+        // Dispose both
+        stream.Dispose();
+        textReader.Dispose();
+        
+        // Should not throw when disposed again
+        stream.Dispose();
+        textReader.Dispose();
+    }
+
+    [Test] 
+    public void TestGetStreamAndTextReaderWithEmptyValues()
+    {
+        using IDbConnection connection = new DuckDbConnection("");
+        
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT '' as empty_string, NULL as null_value";
+        
+        using var dbReader = (DuckDbDataReader)command.ExecuteReader();
+        dbReader.Read();
+        
+        // Test GetStream with empty string
+        using var emptyStream = dbReader.GetStream(0);
+        Assert.NotNull(emptyStream);
+        var buffer = new byte[10];
+        int bytesRead = emptyStream.Read(buffer, 0, buffer.Length);
+        // Empty string should read as 0 bytes or minimal content
+        Assert.True(bytesRead >= 0);
+        
+        // Test GetTextReader with empty string
+        using var emptyTextReader = dbReader.GetTextReader(0);
+        Assert.NotNull(emptyTextReader);
+        var content = emptyTextReader.ReadToEnd();
+        Assert.Equal("", content);
     }
 
     #endregion
