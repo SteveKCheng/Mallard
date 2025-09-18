@@ -244,6 +244,7 @@ internal unsafe readonly struct DuckDbVectorInfo
             DuckDbValueKind.Double => typeof(T) == typeof(double),
 
             DuckDbValueKind.Date => typeof(T) == typeof(DuckDbDate),
+            DuckDbValueKind.Time => typeof(T) == typeof(DuckDbTime),
             DuckDbValueKind.Timestamp => typeof(T) == typeof(DuckDbTimestamp),
 
             DuckDbValueKind.Interval => typeof(T) == typeof(DuckDbInterval),

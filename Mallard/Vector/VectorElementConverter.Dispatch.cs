@@ -195,6 +195,8 @@ internal readonly partial struct VectorElementConverter
             DuckDbValueKind.Date when type == typeof(DateTime) || (type == null &&  context.ConvertDatesAsDateTime) => CreateFor<DuckDbDate, DateTime>(),
             DuckDbValueKind.Date when type == typeof(DuckDbDate) => CreateForPrimitive<DuckDbDate>(),
             DuckDbValueKind.Timestamp when Match(type, typeof(DuckDbTimestamp)) => CreateForPrimitive<DuckDbTimestamp>(),
+            DuckDbValueKind.Time when type == typeof(DuckDbTime) => CreateForPrimitive<DuckDbTime>(),
+            DuckDbValueKind.Time when Match(type, typeof(TimeOnly)) => CreateFor<DuckDbTime, TimeOnly>(),
 
             DuckDbValueKind.Interval when Match(type, typeof(DuckDbInterval)) => CreateForPrimitive<DuckDbInterval>(),
 
