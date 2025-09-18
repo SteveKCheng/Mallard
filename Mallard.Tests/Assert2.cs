@@ -6,14 +6,19 @@ namespace Mallard.Tests;
 
 internal static class Assert2
 {
-    public static void Equal<T>(IEnumerable<T>? expected, IEnumerable<T> actual) where T : IEquatable<T>
+    public static void Equal<T>(IEnumerable<T>? expected, IEnumerable<T>? actual) where T : IEquatable<T>
         => Equal(expected, actual, EqualityComparer<T>.Default); 
 
     // Replacement for Assert.Equal with the same argument types because
     // the implementation of that uses reflection that is incompatible with AOT
-    public static void Equal<T>(IEnumerable<T>? expected, IEnumerable<T> actual, IEqualityComparer<T> comparer)
+    public static void Equal<T>(IEnumerable<T>? expected, IEnumerable<T>? actual, IEqualityComparer<T> comparer)
     {
-        Assert.NotNull(expected);
+        if (expected is null)
+        {
+            Assert.Null(actual);
+            return;
+        }
+
         Assert.NotNull(actual);
 
         using IEnumerator<T> enumeratorExpected = expected.GetEnumerator();
