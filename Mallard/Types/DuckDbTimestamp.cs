@@ -12,7 +12,8 @@ namespace Mallard;
 /// This type exists mainly to enable date/time values reported by DuckDB to be read
 /// directly from the memory of a DuckDB vector.  The fields are not wrapped in properties
 /// to allow vectorized processing (i.e. SIMD), and DuckDB already essentially guarantees a stable
-/// layout of this structure. </remarks>
+/// layout of this structure.
+/// </remarks>
 [StructLayout(LayoutKind.Sequential)]
 public struct DuckDbTimestamp(long microseconds)
 {
