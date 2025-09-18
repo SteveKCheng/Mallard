@@ -165,6 +165,8 @@ public enum DuckDbValueKind : int
     StringLiteral = 37,
     // enum type, only useful as logical type
     IntegerLiteral = 38,
+    
+    TimeNanoseconds = 39,
 }
 
 #pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
