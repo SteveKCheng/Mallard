@@ -31,10 +31,10 @@ internal unsafe sealed class NativeReadOnlyMemoryStream : Stream
         if (length != 0)
         {
             ArgumentNullException.ThrowIfNull(source);
+            _source = source;
             _owner = owner;
         }
         
-        _source = source;
         _length = length;
         _position = 0;
     }
