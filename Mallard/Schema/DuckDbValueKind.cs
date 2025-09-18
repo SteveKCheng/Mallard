@@ -29,33 +29,53 @@ public enum DuckDbValueKind : int
     Boolean = 1,
 
     /// <summary>
-    /// 8-bit signed integer: TINYINT in DuckDB SQL.
+    /// 8-bit signed integer: TINYINT (INT1) in DuckDB SQL.
     /// </summary>
     TinyInt = 2,
 
     /// <summary>
-    /// 16-bit signed integer: SMALLINT in DuckDB SQL.
+    /// 16-bit signed integer: SMALLINT (INT2, INT16, SHORT) in DuckDB SQL.
     /// </summary>
     SmallInt = 3,
 
     /// <summary>
-    /// 32-bit signed integer: INTEGER in DuckDB SQL.
+    /// 32-bit signed integer: INTEGER (INT4, INT32, INT, SIGNED) in DuckDB SQL.
     /// </summary>
     Integer = 4,
 
     /// <summary>
-    /// 64-bit signed integer: BIGINT in DuckDB SQL.
+    /// 64-bit signed integer: BIGINT (INT8, INT64, LONG) in DuckDB SQL.
     /// </summary>
     BigInt = 5,
 
-    UTinyInt = 6,  // uint8_t
-    USmallInt = 7,    // uint16_t
-    UInteger = 8,    // uint32_t
+    /// <summary>
+    /// 8-bit unsigned integer: UTINYINT (UINT8) in DuckDB SQL.
+    /// </summary>
+    UTinyInt = 6,
+    
+    /// <summary>
+    /// 16-bit unsigned integer: USMALLINT (UINT16) in DuckDB SQL.
+    /// </summary>
+    USmallInt = 7,
+    
+    /// <summary>
+    /// 32-bit unsigned integer: UINTEGER (UINT32) in DuckDB SQL.
+    /// </summary>
+    UInteger = 8,
+    
+    /// <summary>
+    /// 64-bit unsigned integer: UBIGINT (UINT64) in DuckDB SQL.
+    /// </summary>
     UBigInt = 9,    // uint64_t
 
-    // float
+    /// <summary>
+    /// Single-precision (32-bit) floating-point number: FLOAT (FLOAT4, REAL) in DuckDB SQL. 
+    /// </summary>
     Float = 10,
-    // double
+    
+    /// <summary>
+    /// Double-precision (64-bit) floating-point number: FLOAT (FLOAT8) in DuckDB SQL.
+    /// </summary>
     Double = 11,
 
     // duckdb_timestamp (microseconds)
@@ -67,17 +87,29 @@ public enum DuckDbValueKind : int
     // duckdb_interval
     Interval = 15,
 
-    // duckdb_hugeint
+    /// <summary>
+    /// 128-bit signed integer: HUGEINT (INT128) in DuckDB SQL.
+    /// </summary>
     HugeInt = 16,
-    // duckdb_uhugeint
+
+    /// <summary>
+    /// 128-bit unsigned integer: UHUGEINT (UINT128) in DuckDB SQL.
+    /// </summary>
     UHugeInt = 32,
 
-    // const char*
+    /// <summary>
+    /// Text string: VARCHAR (CHAR, BPCHAR, STRING, TEXT) in DuckDB SQL.
+    /// </summary>
     VarChar = 17,
-    // duckdb_blob
+    
+    /// <summary>
+    /// Blob (Binary Large Object): BLOB (BYTEA, BINARY, VARBINARY) in DuckDB SQL.
+    /// </summary>
     Blob = 18,
 
-    // duckdb_decimal
+    /// <summary>
+    /// Fixed-point decimal numbers: DECIMAL (NUMERIC) in DuckDB SQL.
+    /// </summary>
     Decimal = 19,
 
     // duckdb_timestamp_s (seconds)
@@ -99,14 +131,19 @@ public enum DuckDbValueKind : int
     // duckdb_array, only useful as logical type
     Array = 33,
     
-    // duckdb_hugeint
+    /// <summary>
+    /// 128-bit UUID (Universally Unique Identifiers): UUID in DuckDB SQL.
+    /// </summary>
     Uuid = 27,
     
     // union type, only useful as logical type
     Union = 28,
-    
-    // duckdb_bit
+
+    /// <summary>
+    /// Bit-strings: BITSTRING (BIT) in DuckDB SQL.
+    /// </summary>
     Bit = 29,
+    
     // duckdb_time_tz
     TimeTz = 30,
     // duckdb_timestamp (microseconds)
@@ -114,8 +151,10 @@ public enum DuckDbValueKind : int
 
     // enum type, only useful as logical type
     Any = 34,
-    // duckdb_varint
     
+    /// <summary>
+    /// Variable-length integers: BIGNUM in DuckDB SQL.
+    /// </summary>
     VarInt = 35,
     
     // enum type, only useful as logical type
