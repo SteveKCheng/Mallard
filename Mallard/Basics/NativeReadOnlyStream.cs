@@ -17,21 +17,26 @@ internal unsafe sealed class NativeReadOnlyMemoryStream : Stream
     /// <summary>
     /// Initializes a new instance to read from the given native memory block.
     /// </summary>
-    /// <param name="source">Pointer to the native memory buffer</param>
-    /// <param name="length">Size of the buffer in bytes</param>
+    /// <param name="source">Pointer to the native memory buffer.
+    /// Must not be null unless <paramref name="length" /> is zero.
+    /// </param>
+    /// <param name="length">Size of the buffer in bytes. Must not be negative. </param>
     /// <param name="owner">
     /// Object reference that, if kept alive, ensures that the native memory block
     /// remains valid (at the same location). 
     /// </param>
     public NativeReadOnlyMemoryStream(byte* source, long length, object? owner)
     {
-        ArgumentNullException.ThrowIfNull(source);
         ArgumentOutOfRangeException.ThrowIfNegative(length);
+        if (length != 0)
+        {
+            ArgumentNullException.ThrowIfNull(source);
+            _owner = owner;
+        }
         
         _source = source;
         _length = length;
         _position = 0;
-        _owner = owner;
     }
 
     public override bool CanRead => !_disposed;
