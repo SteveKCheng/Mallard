@@ -64,7 +64,7 @@ namespace Mallard;
 public readonly struct DuckDbUuid(UInt128 value) 
     : ISpanFormattable, IUtf8SpanFormattable, IStatelesslyConvertible<DuckDbUuid, Guid>
 {
-    private readonly DuckDbHugeUInt _data = new(value);
+    private readonly DuckDbUInt128 _data = new(value);
 
     public Guid ToGuid()
     {
@@ -109,7 +109,7 @@ public readonly struct DuckDbUuid(UInt128 value)
     }
     */
 
-    private static (uint, ushort, ushort, ulong) SplitInto4Groups(DuckDbHugeUInt data)
+    private static (uint, ushort, ushort, ulong) SplitInto4Groups(DuckDbUInt128 data)
     {
         unchecked
         {

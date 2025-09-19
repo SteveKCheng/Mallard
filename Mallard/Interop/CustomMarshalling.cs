@@ -169,13 +169,13 @@ internal static unsafe class BigIntegerMarshaller
 [CustomMarshaller(managedType: typeof(Int128), marshalMode: MarshalMode.Default, marshallerType: typeof(Int128Marshaller))]
 internal static class Int128Marshaller
 {
-    public static Int128 ConvertToManaged(DuckDbHugeUInt v) => v.ToInt128();
-    public static DuckDbHugeUInt ConvertToUnmanaged(Int128 v) => new(v);
+    public static Int128 ConvertToManaged(DuckDbUInt128 v) => v.ToInt128();
+    public static DuckDbUInt128 ConvertToUnmanaged(Int128 v) => new(v);
 }
 
 [CustomMarshaller(managedType: typeof(UInt128), marshalMode: MarshalMode.Default, marshallerType: typeof(UInt128Marshaller))]
 internal static class UInt128Marshaller
 {
-    public static UInt128 ConvertToManaged(DuckDbHugeUInt v) => v.ToUInt128();
-    public static DuckDbHugeUInt ConvertToUnmanaged(UInt128 v) => new(v);
+    public static UInt128 ConvertToManaged(DuckDbUInt128 v) => v.ToUInt128();
+    public static DuckDbUInt128 ConvertToUnmanaged(UInt128 v) => new(v);
 }

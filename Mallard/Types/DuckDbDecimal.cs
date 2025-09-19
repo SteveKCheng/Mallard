@@ -31,7 +31,7 @@ public readonly struct DuckDbDecimal
 
     private readonly byte _width;
     private readonly byte _scale;
-    private readonly DuckDbHugeUInt _value;
+    private readonly DuckDbUInt128 _value;
         
     /// <summary>
     /// The maximum significand that can be represented by .NET's <see cref="Decimal" /> type: 2^96 - 1.

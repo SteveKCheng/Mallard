@@ -32,12 +32,12 @@ namespace Mallard;
 /// </para>
 /// </remarks>
 [StructLayout(LayoutKind.Sequential)]
-internal struct DuckDbHugeUInt
+internal struct DuckDbUInt128
 {
     public ulong lower;
     public ulong upper;
 
-    public unsafe DuckDbHugeUInt(Int128 value)
+    public unsafe DuckDbUInt128(Int128 value)
     {
         // FIXME: Assumes little-endian
         var p = (ulong*)&value;
@@ -45,7 +45,7 @@ internal struct DuckDbHugeUInt
         upper = p[1];
     }
 
-    public unsafe DuckDbHugeUInt(UInt128 value)
+    public unsafe DuckDbUInt128(UInt128 value)
     {
         // FIXME: Assumes little-endian
         var p = (ulong*)&value;
