@@ -220,6 +220,7 @@ public sealed class DuckDbCommand : IDbCommand
     /// Cached boxed instance of <see cref="DuckDbTransaction" />.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// This member exists solely to implement the rather useless interface property
     /// <see cref="IDbCommand.Transaction" />.  There is no interaction with
     /// <see cref="DuckDbTransaction" /> otherwise within this class.
@@ -227,6 +228,22 @@ public sealed class DuckDbCommand : IDbCommand
     /// an object reference is cached so that the same .NET object (after boxing
     /// the <see cref="DuckDbTransaction" /> structure) can be
     /// consistently returned from the <see cref="IDbCommand.Transaction" /> property.
+    /// </para>
+    /// <para>
+    /// Even in full-fledged databases like Microsoft SQL Server, the transaction
+    /// is associated to the connection and not specific commands.  Still, for some
+    /// reason, <see cref="IDbCommand" /> had been designed to allow
+    /// the user to set the transaction object from <see cref="IDbConnection.BeginTransaction" />
+    /// into the <see cref="IDbCommand.Transaction" /> property before the command
+    /// is considered valid.  (In fact, the Microsoft SQL client requires it:
+    /// otherwise it throws the error: "(Exceute method) requires the command to have a transaction
+    /// when the connection assigned to the command is in a pending local transaction.")
+    /// </para>
+    /// <para>
+    /// For this implementation, we allow the user to set
+    /// the property for compatibility with other implementations.  We validate the
+    /// value that is set, but otherwise do not use the value.
+    /// </para>
     /// </remarks>
     private IDbTransaction? _transaction;
 
