@@ -44,4 +44,39 @@ internal interface IResultColumns
     /// conversion can be invoked).
     /// </returns>
     internal VectorElementConverter GetColumnConverter(int columnIndex, Type? targetType);
+
+    /// <summary>
+    /// Get the index for a column given its name.
+    /// </summary>
+    /// <param name="columnName">
+    /// The name of the column as reported by DuckDB.  Identifiers in DuckDB are case-insensitive
+    /// and this method follows the same convention.  Case insensitivity is for ASCII letters only.
+    /// </param>
+    /// <remarks>
+    /// Most implementations of this method do linear search for the name, on each call.
+    /// </remarks>
+    /// <returns>
+    /// The index of the column, or -1 if there is no column with the given name.
+    /// </returns>
+    int GetColumnIndex(string columnName)
+    {
+        for (int i = 0; i < ColumnCount; ++i)
+        {
+            if (string.Equals(GetColumnName(i), columnName, StringComparison.OrdinalIgnoreCase))
+                return i;
+        }
+
+        return -1;
+    }
+
+    /// <summary>
+    /// Get the name of a column given its index.
+    /// </summary>
+    /// <param name="columnIndex">
+    /// The index of the column, from 0 (inclusive) to <see cref="ColumnCount" /> (exclusive).
+    /// </param>
+    /// <returns>
+    /// The name of the column, or the empty string if the column has no name.
+    /// </returns>
+    string GetColumnName(int columnIndex);
 }

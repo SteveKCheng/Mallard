@@ -64,6 +64,14 @@ public unsafe sealed class DuckDbStructColumns : IResultColumns, IDisposable
         return new DuckDbColumnInfo(holder.NativeHandle);
     }
 
+    /// <inheritdoc cref="IResultColumns.GetColumnName" />
+    public string GetColumnName(int columnIndex)
+    {
+        CheckColumnIndex(columnIndex);
+        using var _ = _refCount.EnterScope(this);
+        return NativeMethods.duckdb_struct_type_child_name(_nativeType, columnIndex);
+    }
+
     /// <summary>
     /// Get the name of the structure type in the DuckDB database.
     /// </summary>

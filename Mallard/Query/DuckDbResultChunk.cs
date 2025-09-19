@@ -142,6 +142,12 @@ public unsafe sealed class DuckDbResultChunk : IResultColumns, IDisposable
 
     /// <see cref="DuckDbResult.GetColumnInfo" />.
     public DuckDbColumnInfo GetColumnInfo(int columnIndex) => _resultColumns.GetColumnInfo(columnIndex);
+    
+    /// <see cref="DuckDbResult.GetColumnName" />.
+    public string GetColumnName(int columnIndex) => _resultColumns.GetColumnName(columnIndex);
+    
+    /// <see cref="DuckDbResult.GetColumnIndex" />
+    public int GetColumnIndex(string columnName) => _resultColumns.GetColumnIndex(columnName);
 
     /// <summary>
     /// The number of rows present in this chunk.
