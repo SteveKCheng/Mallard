@@ -201,7 +201,7 @@ internal readonly partial struct VectorElementConverter
             DuckDbValueKind.Interval when Match(type, typeof(DuckDbInterval)) => CreateForPrimitive<DuckDbInterval>(),
 
             // Other numbers
-            DuckDbValueKind.VarInt when Match(type, typeof(BigInteger)) => CreateFor<DuckDbVarInt, BigInteger>(),
+            DuckDbValueKind.VarInt when Match(type, typeof(BigInteger)) => CreateFor<DuckDbBigInteger, BigInteger>(),
             DuckDbValueKind.Decimal when Match(type, typeof(Decimal)) => DuckDbDecimal.GetConverterForDecimal(context.ColumnInfo),
             DuckDbValueKind.Decimal when type == typeof(DuckDbDecimal) => DuckDbDecimal.GetConverterForDuckDbDecimal(context.ColumnInfo),
 

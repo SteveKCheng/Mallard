@@ -5,16 +5,16 @@ using System.Runtime.InteropServices;
 namespace Mallard;
 
 /// <summary>
-/// The representation of a variable-length integer (VARINT) in a DuckDB vector.
+/// The representation of a variable-length integer (BIGNUM) in a DuckDB vector.
 /// </summary>
 /// <remarks>
 /// This structure is only used for reading, not for writing/sending values to DuckDB.
 /// </remarks>
 [StructLayout(LayoutKind.Sequential)]
-public readonly ref struct DuckDbVarInt : IStatelesslyConvertible<DuckDbVarInt, BigInteger>
+public readonly ref struct DuckDbBigInteger : IStatelesslyConvertible<DuckDbBigInteger, BigInteger>
 {
     /// <summary>
-    /// The blob that stores the VARINT.
+    /// The blob that stores the BIGNUM.
     /// </summary>
     private readonly DuckDbBlob _blob;
 
@@ -112,6 +112,6 @@ public readonly ref struct DuckDbVarInt : IStatelesslyConvertible<DuckDbVarInt, 
         }
     }
 
-    static BigInteger IStatelesslyConvertible<DuckDbVarInt, BigInteger>.Convert(ref readonly DuckDbVarInt item)
+    static BigInteger IStatelesslyConvertible<DuckDbBigInteger, BigInteger>.Convert(ref readonly DuckDbBigInteger item)
         => item.ToBigInteger();
 }
