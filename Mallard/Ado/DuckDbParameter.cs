@@ -1,14 +1,23 @@
 using System;
 using System.Data;
+using System.Data.Common;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Mallard.Ado;
 
-internal sealed class DuckDbParameter : IDbDataParameter
+internal sealed class DuckDbParameter : DbParameter
 {
-    public DbType DbType { get; set; }
+    public override void ResetDbType() => DbType = DbType.Object;
 
-    public ParameterDirection Direction
+    public override DbType DbType { get; set; } = DbType.Object;
+
+    public override bool IsNullable { get; set; }
+
+    public override int Size { get; set; }
+
+    public override object? Value { get; set; }
+
+    public override ParameterDirection Direction
     {
         get => throw new System.NotImplementedException();
         set
@@ -18,27 +27,21 @@ internal sealed class DuckDbParameter : IDbDataParameter
         }
     }
     
-    public bool IsNullable => true;
-
     [AllowNull]
-    public string ParameterName
+    public override string ParameterName
     {
         get => field;
         set => field = value ?? string.Empty;
     } = string.Empty;
 
-    public object? Value { get; set; }
-
     [AllowNull]
-    public string SourceColumn
+    public override string SourceColumn
     {
         get => field;
         set => field = value ?? string.Empty;
     } = string.Empty;
-    
-    public DataRowVersion SourceVersion { get; set; }
-    
-    public byte Precision { get; set; }
-    public byte Scale { get; set; }
-    public int Size { get; set; }
+
+    public override bool SourceColumnNullMapping { get; set; }
+
+    public override DataRowVersion SourceVersion { get; set; }
 }
