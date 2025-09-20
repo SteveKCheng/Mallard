@@ -113,15 +113,10 @@ public readonly struct DuckDbUuid(UInt128 value)
         return new DuckDbUuid(new UInt128(upper, lower));
     }
 
-    /*
-    public string ToString(string? format, IFormatProvider? formatProvider)
-    {
-        Span<char> buffer = stackalloc char[36];
-        TryFormat(buffer, out _, format, formatProvider);
-        return buffer.ToString();
-    }
-    */
-
+    /// <summary>
+    /// Break a 128-bit value, representing a UUID, into the four groups in Microsoft's
+    /// interpretation as a GUID.
+    /// </summary>
     private static (uint, ushort, ushort, ulong) SplitInto4Groups(DuckDbUInt128 data)
     {
         unchecked
@@ -152,40 +147,7 @@ public readonly struct DuckDbUuid(UInt128 value)
     /// should retry with a larger buffer. 
     /// </returns>
     public bool TryFormat(Span<char> destination, out int charsWritten, ReadOnlySpan<char> format)
-    {
-        /*
-        // FIXME "format" argument ignored for now
-        // Uses hyphens to separate groups, but no spaces or braces
-
-        if (destination.Length < 36)
-        {
-            charsWritten = 0;
-            return false;
-        }
-
-        var (group1, group2, group3, lower) = SplitInto4Groups(_data);
-
-        // Split "lower" word into 2 groups
-        var group4 = (ushort)(lower >> 48);
-        var group5 = lower & 0xFFFF_FFFF_FFFFul;
-
-        group1.TryFormat(destination[0..8], out _, "X8");
-        group2.TryFormat(destination[9..13], out _, "X4");
-        group3.TryFormat(destination[14..18], out _, "X4");
-        group4.TryFormat(destination[19..23], out _, "X4");
-        group5.TryFormat(destination[24..36], out _, "X12");
-
-        destination[8] = '-';
-        destination[13] = '-';
-        destination[18] = '-';
-        destination[23] = '-';
-
-        charsWritten = 36;
-        return true;
-        */
-
-        return ToGuid().TryFormat(destination, out charsWritten, format);
-    }
+        => ToGuid().TryFormat(destination, out charsWritten, format);
 
     /// <inheritdoc />
     public override string ToString() => ToString(null);
