@@ -6,7 +6,7 @@ using System.Data;
 using System.Data.Common;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading;
-using Mallard.C_API;
+using Mallard.Interop;
 using Mallard.Ado;
 
 namespace Mallard;

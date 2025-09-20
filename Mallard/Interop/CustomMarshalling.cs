@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Marshalling;
 using System.Text;
 
-namespace Mallard.C_API;
+namespace Mallard.Interop;
 using Mallard.Types;
 
 [CustomMarshaller(managedType: typeof(string), 

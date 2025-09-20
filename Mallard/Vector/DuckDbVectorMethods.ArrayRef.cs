@@ -1,5 +1,5 @@
 using System;
-using Mallard.C_API;
+using Mallard.Interop;
 
 namespace Mallard;
 using Mallard.Types;

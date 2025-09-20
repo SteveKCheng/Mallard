@@ -1,4 +1,4 @@
-﻿using Mallard.C_API;
+﻿using Mallard.Interop;
 using System;
 using System.Numerics;
 using System.Runtime.CompilerServices;

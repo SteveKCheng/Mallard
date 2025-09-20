@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
-using Mallard.C_API;
+using Mallard.Interop;
 using Mallard.Ado;
 
 namespace Mallard;

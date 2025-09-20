@@ -1,5 +1,5 @@
 ﻿using System;
-using Mallard.C_API;
+using Mallard.Interop;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading;
