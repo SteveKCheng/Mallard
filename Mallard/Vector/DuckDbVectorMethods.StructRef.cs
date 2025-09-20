@@ -1,9 +1,9 @@
-using Mallard.Interop;
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
-using Mallard;
+namespace Mallard;
+using Mallard.Interop;
 using Mallard.Types;
 
 public static partial class DuckDbVectorMethods
