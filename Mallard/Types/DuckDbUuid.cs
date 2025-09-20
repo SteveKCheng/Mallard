@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Buffers.Binary;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using Mallard.Interop;
 
@@ -62,6 +63,12 @@ public readonly struct DuckDbUuid(UInt128 value)
 {
     private readonly DuckDbUInt128 _data = new(value);
 
+    /// <summary>
+    /// Convert to a standard .NET GUID instance.
+    /// </summary>
+    /// <returns>
+    /// An instance of <see cref="Guid" /> that represents the same value (as a UUID) as this instance. 
+    /// </returns>
     public Guid ToGuid()
     {
         var (group1, group2, group3, lower) = SplitInto4Groups(_data);
@@ -79,6 +86,16 @@ public readonly struct DuckDbUuid(UInt128 value)
         }
     }
 
+    /// <summary>
+    /// Convert from a standard .NET GUID instance.
+    /// </summary>
+    /// <param name="guid">
+    /// The source value to convert from.
+    /// </param>
+    /// <returns>
+    /// An instance of <see cref="DuckDbUuid" /> that represents the same value (as a UUID)
+    /// as <paramref name="guid" />.
+    /// </returns>
     public static DuckDbUuid FromGuid(in Guid guid)
     {
         // Writes the first 3 groups as little-endian, then the rest in big-endian.
@@ -118,6 +135,22 @@ public readonly struct DuckDbUuid(UInt128 value)
         }
     }
 
+    /// <summary>
+    /// Format this UUID into a character buffer.
+    /// </summary>
+    /// <param name="destination">
+    /// The buffer to format into.
+    /// </param>
+    /// <param name="charsWritten">
+    /// The number of characters written into the buffer.
+    /// </param>
+    /// <param name="format">
+    /// Format string.  All of the options for formatting a <see cref="Guid" /> may be used.
+    /// </param>
+    /// <returns>
+    /// True if formatting is successful.  False if the buffer is too small; the caller
+    /// should retry with a larger buffer. 
+    /// </returns>
     public bool TryFormat(Span<char> destination, out int charsWritten, ReadOnlySpan<char> format)
     {
         /*
@@ -154,20 +187,55 @@ public readonly struct DuckDbUuid(UInt128 value)
         return ToGuid().TryFormat(destination, out charsWritten, format);
     }
 
-    public override string ToString() => ToString(null, null);
+    /// <inheritdoc />
+    public override string ToString() => ToString(null);
 
+    /// <inheritdoc />
     public override int GetHashCode() => _data.GetHashCode();
 
-    bool ISpanFormattable.TryFormat(Span<char> destination, out int charsWritten, ReadOnlySpan<char> format, IFormatProvider? provider)
+    bool ISpanFormattable.TryFormat(Span<char> destination,
+                                    out int charsWritten, 
+                                    ReadOnlySpan<char> format, 
+                                    IFormatProvider? provider)
         => TryFormat(destination, out charsWritten, format);
 
-    bool IUtf8SpanFormattable.TryFormat(Span<byte> utf8Destination, out int bytesWritten, ReadOnlySpan<char> format, IFormatProvider? provider)
+    bool IUtf8SpanFormattable.TryFormat(Span<byte> utf8Destination, 
+                                        out int bytesWritten, 
+                                        ReadOnlySpan<char> format, 
+                                        IFormatProvider? provider)
         => TryFormat(utf8Destination, out bytesWritten, format);
 
-    public string ToString(string? format, IFormatProvider? formatProvider)
-        => ToGuid().ToString(format, formatProvider);
+    string IFormattable.ToString(string? format, IFormatProvider? provider)
+        => ToString(format);
+    
+    /// <summary>
+    /// Format this UUID as a string.
+    /// </summary>
+    /// <param name="format">
+    /// Format string.  All of the options for formatting a <see cref="Guid" /> may be used.
+    /// </param>
+    public string ToString([StringSyntax(StringSyntaxAttribute.GuidFormat)] string? format)
+        => ToGuid().ToString(format);
 
-    public bool TryFormat(Span<byte> utf8Destination, out int bytesWritten, ReadOnlySpan<char> format)
+    /// <summary>
+    /// Format this UUID as a UTF-8 string.
+    /// </summary>
+    /// <param name="utf8Destination">
+    /// The buffer to put the UTF-8 bytes into.
+    /// </param>
+    /// <param name="bytesWritten">
+    /// The number of bytes written into the buffer.
+    /// </param>
+    /// <param name="format">
+    /// Format string.  All of the options for formatting a <see cref="Guid" /> may be used.
+    /// </param>
+    /// <returns>
+    /// True if formatting is successful.  False if the buffer is too small; the caller
+    /// should retry with a larger buffer. 
+    /// </returns>
+    public bool TryFormat(Span<byte> utf8Destination, 
+                          out int bytesWritten, 
+                          [StringSyntax(StringSyntaxAttribute.GuidFormat)] ReadOnlySpan<char> format)
         => ToGuid().TryFormat(utf8Destination, out bytesWritten, format);
 
     #region Type conversions for vector reader
@@ -175,5 +243,4 @@ public readonly struct DuckDbUuid(UInt128 value)
     static Guid IStatelesslyConvertible<DuckDbUuid, Guid>.Convert(ref readonly DuckDbUuid item) => item.ToGuid();
 
     #endregion
-
 }
