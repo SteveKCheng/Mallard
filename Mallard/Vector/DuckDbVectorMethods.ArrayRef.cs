@@ -6,6 +6,18 @@ using Mallard.Types;
 
 public static partial class DuckDbVectorMethods
 {
+    /// <summary>
+    /// Get the raw vector for the children of a vector of lists.
+    /// </summary>
+    /// <param name="parent">
+    /// The raw vector of lists.
+    /// </param>
+    /// <typeparam name="T">
+    /// The element type of the lists.  It must be compatible with <see cref="DuckDbVectorRawReader{T}" />.
+    /// </typeparam>
+    /// <returns>
+    /// The raw vector for reading the children (items) of the lists inside <paramref name="parent" />. 
+    /// </returns>
     public static DuckDbVectorRawReader<T> GetChildrenRawVector<T>(in this DuckDbVectorRawReader<DuckDbArrayRef> parent)
         where T : unmanaged, allows ref struct
         => new(parent._info.GetArrayChildrenVectorInfo());
