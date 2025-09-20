@@ -5,7 +5,7 @@ using System.Data;
 using System.Data.Common;
 using System.IO;
 
-namespace Mallard;
+namespace Mallard.Ado;
 
 /// <summary>
 /// ADO.NET-compatible reader for the results of a query in DuckDB.

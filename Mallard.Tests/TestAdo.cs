@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using Xunit;
 using TUnit.Core;
+using Mallard.Ado;
 
 namespace Mallard.Tests;
 

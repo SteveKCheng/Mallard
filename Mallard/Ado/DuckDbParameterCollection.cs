@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Runtime.CompilerServices;
 
-namespace Mallard;
+namespace Mallard.Ado;
 
 /// <summary>
 /// ADO.NET-compatible collection of parameters for <see cref="DuckDbCommand" />. 

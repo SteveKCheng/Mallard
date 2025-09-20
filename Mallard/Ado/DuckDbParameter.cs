@@ -2,7 +2,7 @@ using System;
 using System.Data;
 using System.Diagnostics.CodeAnalysis;
 
-namespace Mallard;
+namespace Mallard.Ado;
 
 internal sealed class DuckDbParameter : IDbDataParameter
 {
