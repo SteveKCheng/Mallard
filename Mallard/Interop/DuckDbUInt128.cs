@@ -1,7 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
 
-namespace Mallard.Types;
+namespace Mallard.Interop;
 
 /// <summary>
 /// DuckDB's "huge integers": 128-bit integers.
