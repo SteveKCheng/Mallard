@@ -1,3 +1,4 @@
+using System.IO;
 using Mallard;
 
 namespace Mallard.Tests;
@@ -14,5 +15,11 @@ internal static class DatabaseExtensions
             totalRows += length;
         } while (hasChunk);
         return totalRows;
+    }
+
+    public static void ExecuteSqlScript(this DuckDbConnection connection, string scriptFilePath)
+    {
+        var script = File.ReadAllText(Path.Combine(Program.TestDataDirectory, scriptFilePath));
+        connection.Execute(script);
     }
 }

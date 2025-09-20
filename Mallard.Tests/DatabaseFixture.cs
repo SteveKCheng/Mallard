@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 
 namespace Mallard.Tests;
 
@@ -39,13 +40,42 @@ public sealed class DatabaseFixture : IDisposable
     /// </remarks>
     public DuckDbConnection ConnectionWithTpchData => _connectionWithTpchData.Value;
 
+    private readonly Lazy<DuckDbConnection> _connectionWithNorthwind =
+        new(() =>
+        {
+            var c = new DuckDbConnection("");
+            try
+            {
+                c.ExecuteSqlScript("Northwind-Schema.sql");
+                c.ExecuteSqlScript("Northwind-Data.sql");
+                return c;
+            }
+            catch
+            {
+                c.Dispose();
+                throw;
+            }
+        });
+    
+    /// <summary>
+    /// Singleton database connection populated with tables and views
+    /// from well-known Northwind example database from Microsoft.
+    /// </summary>
+    public DuckDbConnection ConnectionWithNorthwind => _connectionWithNorthwind.Value; 
+
     public DatabaseFixture()
     {
     }
 
     public void Dispose()
     {
-        if (_connectionWithTpchData.IsValueCreated)
-            _connectionWithTpchData.Value.Dispose();
+        static void DisposeLazy<T>(Lazy<T> lazy) where T : IDisposable
+        {
+            if (lazy.IsValueCreated)
+                lazy.Value.Dispose();
+        }
+        
+        DisposeLazy(_connectionWithTpchData);
+        DisposeLazy(_connectionWithNorthwind);
     }
 }
