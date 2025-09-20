@@ -1,0 +1,43 @@
+﻿<Project Sdk="Microsoft.NET.Sdk" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="../Mallard.Runtime/DuckDbVersion.props" />
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <OutputType>exe</OutputType>
+    <RollForward>LatestMajor</RollForward>
+
+    <RootNamespace>Mallard.Tests.Orm</RootNamespace>
+
+    <ImplicitUsings>disable</ImplicitUsings>
+    <TUnitImplicitUsings>false</TUnitImplicitUsings>
+    <TUnitAssertionsImplicitUsings>false</TUnitAssertionsImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <IsPackable>false</IsPackable>
+    <PublishAot>false</PublishAot>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Dapper" Version="2.1.66" />
+    <PackageReference Include="Microsoft.Testing.Extensions.CodeCoverage" Version="17.14.2" />
+    <PackageReference Include="TUnit.Engine" Version="0.57.65" />
+    <PackageReference Include="xunit.v3.assert" Version="3.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Mallard/Mallard.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="../Mallard.Tests/Program.cs" />
+    <Compile Include="../Mallard.Tests/DatabaseExtensions.cs" />
+    <Compile Include="../Mallard.Tests/DatabaseFixture.cs" />
+  </ItemGroup>
+
+  <Import Project="../Mallard.Runtime/DuckDbDownload.targets" />
+
+  <Target Name="CustomAfterBuild" AfterTargets="Build" DependsOnTargets="EnsureDuckDbDownloaded" />
+
+</Project>
+
