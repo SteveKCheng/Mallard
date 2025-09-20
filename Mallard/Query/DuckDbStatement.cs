@@ -405,12 +405,18 @@ public unsafe class DuckDbStatement : IDisposable
         NativeMethods.duckdb_destroy_prepare(ref _nativeStatement);
     }
 
+    /// <summary>
+    /// Destructor which will dispose this object if it has yet been already.
+    /// </summary>
     ~DuckDbStatement()
     {
         // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
         DisposeImpl(disposing: false);
     }
 
+    /// <summary>
+    /// Disposes this object along with resources allocated in the native DuckDB library for it. 
+    /// </summary>
     public void Dispose()
     {
         DisposeImpl(disposing: true);

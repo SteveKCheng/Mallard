@@ -126,11 +126,17 @@ public unsafe sealed class DuckDbResultChunk : IResultColumns, IDisposable
             NativeMethods.duckdb_destroy_data_chunk(ref _nativeChunk);
     }
 
+    /// <summary>
+    /// Destructor which will dispose this object if it has yet been already.
+    /// </summary>
     ~DuckDbResultChunk()
     {
         DisposeImpl(disposing: false);
     }
 
+    /// <summary>
+    /// Disposes this object along with resources allocated in the native DuckDB library for it. 
+    /// </summary>
     public void Dispose()
     {
         DisposeImpl(disposing: true);
