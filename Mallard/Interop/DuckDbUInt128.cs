@@ -38,19 +38,24 @@ internal struct DuckDbUInt128
     public ulong upper;
 
     public unsafe DuckDbUInt128(Int128 value)
+        : this(unchecked((UInt128)value))
     {
-        // FIXME: Assumes little-endian
-        var p = (ulong*)&value;
-        lower = p[0];
-        upper = p[1];
     }
 
     public unsafe DuckDbUInt128(UInt128 value)
     {
-        // FIXME: Assumes little-endian
         var p = (ulong*)&value;
-        lower = p[0];
-        upper = p[1];
+
+        if (BitConverter.IsLittleEndian)
+        {
+            lower = p[0];
+            upper = p[1];
+        }
+        else
+        {
+            lower = p[1];
+            upper = p[0];
+        }
     }
 
     public readonly Int128 ToInt128() => new(upper, lower);
