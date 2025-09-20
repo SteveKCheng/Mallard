@@ -93,6 +93,9 @@ public unsafe sealed class DuckDbStructColumns : IResultColumns, IDisposable
     /// for a STRUCT type.  Ownership is transferred from the caller when an instance
     /// is successfully constructed.
     /// </param>
+    /// <param name="typeMapping">
+    /// Type mapping used in deriving converters for the DuckDB types of the struct's members.
+    /// </param>
     internal DuckDbStructColumns(ref _duckdb_logical_type* nativeType, DuckDbTypeMapping typeMapping)
     {
         TypeMapping = typeMapping;

@@ -85,6 +85,12 @@ internal struct Barricade
         /// <param name="targetObject">
         /// The managed object, used only for reporting errors when the dynamic scope cannot be entered.
         /// </param>
+        /// <param name="allowReentrancy">
+        /// If true, do not throw an exception if the barricade has been entered by this
+        /// same thread.  Instead, the returned scope object does nothing, so assuming 
+        /// the scopes for this thread are all properly nested, the barricade is truly exited 
+        /// when the first scope exits.
+        /// </param>
         /// <exception cref="ObjectDisposedException">
         /// <paramref name="parent" /> indicates its owning object has already been disposed 
         /// (or is in the middle of being disposed by another thread).
