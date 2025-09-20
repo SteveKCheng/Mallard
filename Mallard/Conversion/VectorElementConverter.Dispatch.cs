@@ -99,7 +99,8 @@ internal readonly partial struct VectorElementConverter
     /// <paramref name="vector" />.
     /// </returns>
     /// <remarks>
-    /// Helper used by <see cref="DuckDbVectorReader{T}.DuckDbVectorReader(in DuckDbVectorInfo)" />.
+    /// Helper used by
+    /// <see cref="DuckDbVectorReader{T}.DuckDbVectorReader(in DuckDbVectorInfo, DuckDbTypeMapping)" />.
     /// This code is not integrated into that constructor only to avoid run-time duplication
     /// of code when the generic type is instantiated.
     /// </remarks>
