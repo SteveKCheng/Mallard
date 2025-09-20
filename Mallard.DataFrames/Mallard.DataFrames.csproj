@@ -7,6 +7,8 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>enable</Nullable>
 
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+
     <Description>Adapter for Microsoft.Data.Analysis for Mallard (bindings for DuckDB)</Description>
   </PropertyGroup>
 

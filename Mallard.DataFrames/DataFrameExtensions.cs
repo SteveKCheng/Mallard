@@ -6,8 +6,24 @@ namespace Mallard.DataFrames;
 using Mallard.Types;
 using DataFrameColumnAndReader = (DataFrameColumn Output, Action<DataFrameColumn, DuckDbChunkReader, int> ReadAction);
    
+/// <summary>
+/// Extension methods for working with data frames together with DuckDB. 
+/// </summary>
 public static class DataFrameExtensions
 {
+    /// <summary>
+    /// Copy the results from a DuckDB query into a new data frame. 
+    /// </summary>
+    /// <param name="queryResult">
+    /// The results of a DuckDB query.  As advancing through the results modifies the object,
+    /// be sure that no other thread is using the same object while this method executes.
+    /// </param>
+    /// <returns>
+    /// A newly-instantiated data frame holding a copy of the DuckDB results.
+    /// </returns>
+    /// <exception cref="NotSupportedException">
+    /// The results contain data types that cannot be put into a data frame.
+    /// </exception>
     public static DataFrame Create(DuckDbResult queryResult)
     {
         var columns = new DataFrameColumnAndReader[queryResult.ColumnCount];
@@ -62,7 +78,7 @@ public static class DataFrameExtensions
         return (new PrimitiveDataFrameColumn<T>(name), Read);
     }
 
-    public static DataFrameColumnAndReader GetStringColumnAndReader(string name)
+    private static DataFrameColumnAndReader GetStringColumnAndReader(string name)
     {
         static void Read(DataFrameColumn target, DuckDbChunkReader reader, int columnIndex)
                             => ((StringDataFrameColumn)target).AppendFrom(reader.GetColumnRaw<DuckDbString>(columnIndex));
