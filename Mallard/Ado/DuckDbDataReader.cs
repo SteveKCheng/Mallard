@@ -50,12 +50,21 @@ public sealed class DuckDbDataReader : DbDataReader
     /// <inheritdoc />
     public override bool IsClosed => _isClosed;
 
+    /// <summary>
+    /// Event that is triggered when this object is disposed.
+    /// </summary>
+    /// <remarks>
+    /// This hook is used to implement <see cref="IDbCommand.ExecuteReader(CommandBehavior)" />.
+    /// </remarks>
+    internal event EventHandler<bool>? OnDisposed;
+
     /// <inheritdoc />
     public override void Close()
     {
         _isClosed = true;
         _currentChunk = null;
         _queryResults.Dispose();
+        OnDisposed?.Invoke(this, true);
     }
 
     #endregion
