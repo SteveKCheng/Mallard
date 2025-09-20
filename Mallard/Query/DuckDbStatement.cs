@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using Mallard.Interop;
 using Mallard.Ado;
@@ -307,7 +309,102 @@ public unsafe class DuckDbStatement : IDisposable
             status, 
             "Failed to clear bindings of values to parameters in the prepared statement. ");
     }
+
+    /// <summary>
+    /// A formal parameter in a prepared statement from DuckDB.
+    /// </summary>
+    public readonly struct Parameter : ISettableDuckDbValue
+    {
+        private readonly DuckDbStatement _parent;
+        private readonly int _index;
+
+        void ISettableDuckDbValue.SetNativeValue(_duckdb_value* nativeValue)
+            => _parent.BindParameterInternal(_index, ref nativeValue);
+
+        internal Parameter(DuckDbStatement parent, int index)
+        {
+            _parent = parent;
+            _index = index;
+        }
+    }
     
+    /// <summary>
+    /// The collection of formal parameters in a prepared statement from DuckDB.
+    /// </summary>
+    public readonly struct ParametersCollection : IReadOnlyCollection<Parameter>
+    {
+        private readonly DuckDbStatement _parent;
+
+        /// <inheritdoc />
+        public IEnumerator<Parameter> GetEnumerator()
+        {
+            for (int i = 1; i <= Count; ++i)
+                yield return this[i];
+        }
+
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+        /// <summary>
+        /// Get the number of parameters available to bind in the DuckDB statement.
+        /// </summary>
+        /// <returns>
+        /// The number of parameters.
+        /// </returns>
+        public int Count => _parent.ParameterCount;
+
+        /// <summary>
+        /// Get one of the parameters, by positional index.
+        /// </summary>
+        /// <param name="index">
+        /// 1-based index of the parameter.
+        /// Currently, DuckDB does not support mixing named and positional parameters,
+        /// so if positional parameters are being used, this index
+        /// should match up exactly with the ordinal of the parameter in the SQL statement.
+        /// </param>
+        /// <exception cref="ArgumentOutOfRangeException">
+        /// <paramref name="index" /> is less than 1 or greater than <see cref="ParameterCount" />.
+        /// </exception>
+        public Parameter this[int index]
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get
+            {
+                _parent.ThrowIfParamIndexOutOfRange(index);
+                return new Parameter(_parent, index);
+            }
+        }
+
+        /// <summary>
+        /// Get one of the parameters, by name. 
+        /// </summary>
+        /// <param name="name">The name of the parameter.
+        /// For positional parameters in the SQL statement, the name is the decimal
+        /// representation of the ordinal (in ASCII digits, no leading zeros).
+        /// </param>
+        /// <exception cref="ArgumentException">
+        /// There is no parameter with the given name from the prepared statement.
+        /// </exception>
+        public Parameter this[string name]
+        {
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            get
+            {
+                var index = _parent.GetParameterIndexForName(name);
+                return new Parameter(_parent, index);
+            }
+        }
+        
+        internal ParametersCollection(DuckDbStatement parent)
+        {
+            _parent = parent;
+        }
+    }
+
+    /// <summary>
+    /// The collection of formal parameters in this prepared statement.
+    /// </summary>
+    public ParametersCollection Parameters => new ParametersCollection(this);
+
     /// <summary>
     /// Bind a positional parameter of the prepared statement to the specified value.
     /// </summary>
