@@ -47,14 +47,19 @@ public static class DataFrameExtensions
 
                 DuckDbValueKind.Float => GetColumnAndReaderRaw<float>(columnName),
                 DuckDbValueKind.Double => GetColumnAndReaderRaw<double>(columnName),
+                
+                DuckDbValueKind.Date => GetColumnAndReader<DateOnly>(columnName),
+                DuckDbValueKind.Timestamp => GetColumnAndReader<DateTime>(columnName),
 
                 DuckDbValueKind.VarChar => GetStringColumnAndReader(columnName),
 
-                DuckDbValueKind.Date => GetColumnAndReader<DateOnly>(columnName),
-
+                DuckDbValueKind.Uuid => GetColumnAndReader<Guid>(columnName),
+                
                 DuckDbValueKind.Decimal => GetColumnAndReader<decimal>(columnName),
 
-                _ => throw new NotSupportedException()
+                _ => throw new NotSupportedException(
+                    $"The DuckDB query result contains a column of type {columnInfo.ValueKind} " +
+                    "which is not supported in creating a DataFrame. ")
             };
         }
 
