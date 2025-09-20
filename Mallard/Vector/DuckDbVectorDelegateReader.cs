@@ -6,6 +6,7 @@ using System.IO;
 using System.Text.Unicode;
 
 namespace Mallard;
+using Mallard.Types;
 
 /// <summary>
 /// Provides access to a column of <see cref="DuckDbResultChunk" />.

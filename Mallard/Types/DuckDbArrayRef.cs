@@ -1,4 +1,4 @@
-﻿namespace Mallard;
+﻿namespace Mallard.Types;
 
 /// <summary>
 /// Dummy element type for <see cref="DuckDbVectorRawReader{T}" /> to consume

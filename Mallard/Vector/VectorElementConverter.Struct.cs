@@ -2,6 +2,7 @@
 using System.Collections.Immutable;
 
 namespace Mallard;
+using Mallard.Types;
 
 using UnboundStructMember = (DuckDbColumnInfo ColumnInfo, VectorElementConverter UnboundConverter);
 using BoundStructMember = (DuckDbVectorInfo Vector, VectorElementConverter Converter);

@@ -5,6 +5,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 
 namespace Mallard;
+using Mallard.Types;
 
 /// <summary>
 /// State object required to convert a DuckDB list and its contents to

@@ -5,6 +5,7 @@ using Xunit;
 using TUnit.Core;
 
 namespace Mallard.Tests;
+using Mallard.Types;
 
 [ClassDataSource<DatabaseFixture>(Shared = SharedType.PerTestSession)]
 public class UnitTest1(DatabaseFixture fixture)

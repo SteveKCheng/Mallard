@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 using Mallard;
+using Mallard.Types;
 
 public static partial class DuckDbVectorMethods
 {

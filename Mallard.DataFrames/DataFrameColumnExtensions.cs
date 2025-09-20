@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace Mallard.DataFrames;
+using Mallard.Types;
 
 public static class DataFrameColumnExtensions
 {

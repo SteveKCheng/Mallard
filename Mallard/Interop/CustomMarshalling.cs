@@ -6,6 +6,7 @@ using System.Runtime.InteropServices.Marshalling;
 using System.Text;
 
 namespace Mallard.C_API;
+using Mallard.Types;
 
 [CustomMarshaller(managedType: typeof(string), 
                   marshalMode: MarshalMode.ManagedToUnmanagedOut, 

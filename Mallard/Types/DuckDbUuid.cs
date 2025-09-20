@@ -8,7 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
-namespace Mallard;
+namespace Mallard.Types;
 
 /// <summary>
 /// DuckDB's (RFC 4122) encoding of a UUID (Universally Unique Identifier) as a 128-bit integer.

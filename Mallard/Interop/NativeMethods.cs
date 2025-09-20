@@ -9,6 +9,7 @@ using idx_t = long;
 [assembly: DisableRuntimeMarshalling]
 
 namespace Mallard.C_API;
+using Mallard.Types;
 
 #pragma warning disable IDE1006, CS0169 // Naming Styles, unused struct members
 

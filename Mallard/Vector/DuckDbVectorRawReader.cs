@@ -1,6 +1,7 @@
 ﻿using System;
 
 namespace Mallard;
+using Mallard.Types;
 
 /// <summary>
 /// Points to data for a column within a result chunk from DuckDB,

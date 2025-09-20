@@ -2,6 +2,7 @@ using System;
 using Mallard.C_API;
 
 namespace Mallard;
+using Mallard.Types;
 
 public static partial class DuckDbVectorMethods
 {

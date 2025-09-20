@@ -4,7 +4,7 @@ using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-namespace Mallard;
+namespace Mallard.Types;
 
 /// <summary>
 /// DuckDB's representation of a floating-point decimal number.

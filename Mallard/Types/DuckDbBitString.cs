@@ -4,7 +4,7 @@ using System.Collections;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 
-namespace Mallard;
+namespace Mallard.Types;
 
 /// <summary>
 /// The representation of a bit string in a DuckDB vector.

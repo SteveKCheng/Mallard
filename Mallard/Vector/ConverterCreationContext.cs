@@ -4,6 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
 namespace Mallard;
+using Mallard.Types;
 using unsafe LogicalTypeImplFn = delegate*<void*, _duckdb_logical_type*>;
 
 /// <summary>

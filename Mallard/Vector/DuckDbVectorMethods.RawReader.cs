@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Mallard;
+using Mallard.Types;
 
 public static partial class DuckDbVectorMethods
 {

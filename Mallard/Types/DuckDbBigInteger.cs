@@ -2,7 +2,7 @@
 using System.Numerics;
 using System.Runtime.InteropServices;
 
-namespace Mallard;
+namespace Mallard.Types;
 
 /// <summary>
 /// The representation of a variable-length integer (BIGNUM) in a DuckDB vector.

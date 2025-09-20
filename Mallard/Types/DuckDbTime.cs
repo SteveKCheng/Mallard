@@ -1,6 +1,6 @@
 using System;
 
-namespace Mallard;
+namespace Mallard.Types;
 
 /// <summary>
 /// DuckDB's representation of a time of day.

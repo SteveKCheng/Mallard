@@ -3,6 +3,7 @@ using System;
 using System.Linq;
 
 namespace Mallard.DataFrames;
+using Mallard.Types;
 using DataFrameColumnAndReader = (DataFrameColumn Output, Action<DataFrameColumn, DuckDbChunkReader, int> ReadAction);
    
 public static class DataFrameExtensions

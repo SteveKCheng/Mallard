@@ -1,7 +1,7 @@
 using System;
 using System.Runtime.InteropServices;
 
-namespace Mallard;
+namespace Mallard.Types;
 
 /// <summary>
 /// DuckDB's representation of a date.

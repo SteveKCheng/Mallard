@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 
-namespace Mallard;
+namespace Mallard.Types;
 
 /// <summary>
 /// Reports where the data for one list resides in a list-valued DuckDB vector.

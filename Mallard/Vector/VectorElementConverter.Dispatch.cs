@@ -5,6 +5,7 @@ using System.Numerics;
 using System.Reflection;
 
 namespace Mallard;
+using Mallard.Types;
 
 internal readonly partial struct VectorElementConverter
 {

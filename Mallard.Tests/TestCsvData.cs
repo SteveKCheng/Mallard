@@ -11,6 +11,7 @@ using Xunit;
 using TUnit.Core;
 
 namespace Mallard.Tests;
+using Mallard.Types;
 
 // Wrapper around ImmutableArray to implement structural equality.
 // Also handles parsing from CSV as a semicolon-delimited list since

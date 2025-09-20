@@ -4,6 +4,7 @@ using System.Numerics;
 using System.Runtime.CompilerServices;
 
 namespace Mallard;
+using Mallard.Types;
 
 internal unsafe class DuckDbValue
 {

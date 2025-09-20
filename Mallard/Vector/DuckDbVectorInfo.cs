@@ -4,6 +4,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
 namespace Mallard;
+using Mallard.Types;
 
 /// <summary>
 /// Description for a DuckDB vector containing basic type information, and 

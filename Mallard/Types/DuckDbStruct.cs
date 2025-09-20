@@ -2,7 +2,7 @@
 using System.Collections.Immutable;
 using System.Runtime.CompilerServices;
 
-namespace Mallard;
+namespace Mallard.Types;
 
 /// <summary>
 /// .NET representation of an instance of a structure type from DuckDB, where the member values are boxed.

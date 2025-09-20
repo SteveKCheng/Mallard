@@ -3,7 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace Mallard;
+namespace Mallard.Types;
 
 /// <summary>
 /// Represents a string in DuckDB, as an element in some vector.
