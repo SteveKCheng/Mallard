@@ -6,7 +6,7 @@ using System.Runtime.CompilerServices;
 namespace Mallard;
 using Mallard.Types;
 
-internal unsafe class DuckDbValue
+public unsafe static class DuckDbValue
 {
     [SkipLocalsInit]
     private static _duckdb_value* CreateNativeString(string input)
@@ -99,4 +99,40 @@ internal unsafe class DuckDbValue
 
     internal static _duckdb_value* CreateNativeObject<T>(T input)
         => CreateNativeObject((object?)input);
+
+    /// <summary>
+    /// Set a boolean value into a DuckDB parameter.
+    /// </summary>
+    /// <param name="receiver">The parameter or other object from DuckDB that can accept a value. </param>
+    /// <param name="value">The value to set. </param>
+    /// <typeparam name="TReceiver">
+    /// The type of <paramref name="receiver" />, explicitly parameterized
+    /// to avoid unnecessary boxing when it is value type.
+    /// </typeparam>
+    public static void Set<TReceiver>(this TReceiver receiver, bool value) where TReceiver : ISettableDuckDbValue
+        => receiver.SetNativeValue(NativeMethods.duckdb_create_bool(value));
+    
+    /// <summary>
+    /// Set a 32-bit signed integer value into a DuckDB parameter.
+    /// </summary>
+    /// <param name="receiver">The parameter or other object from DuckDB that can accept a value. </param>
+    /// <param name="value">The value to set. </param>
+    /// <typeparam name="TReceiver">
+    /// The type of <paramref name="receiver" />, explicitly parameterized
+    /// to avoid unnecessary boxing when it is value type.
+    /// </typeparam>
+    public static void Set<TReceiver>(this TReceiver receiver, int value) where TReceiver : ISettableDuckDbValue
+        => receiver.SetNativeValue(NativeMethods.duckdb_create_int32(value));
+    
+    /// <summary>
+    /// Set a 64-bit signed integer value into a DuckDB parameter.
+    /// </summary>
+    /// <param name="receiver">The parameter or other object from DuckDB that can accept a value. </param>
+    /// <param name="value">The value to set. </param>
+    /// <typeparam name="TReceiver">
+    /// The type of <paramref name="receiver" />, explicitly parameterized
+    /// to avoid unnecessary boxing when it is value type.
+    /// </typeparam>
+    public static void Set<TReceiver>(this TReceiver receiver, long value) where TReceiver : ISettableDuckDbValue
+        => receiver.SetNativeValue(NativeMethods.duckdb_create_int64(value));
 }
