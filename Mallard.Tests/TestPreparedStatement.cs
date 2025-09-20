@@ -29,7 +29,7 @@ public class TestPreparedStatement(DatabaseFixture fixture)
 
             using var dbResult = ps.Execute();
             
-            Assert.Equal(limitRows, dbResult.DestructiveGetNumberOfResults());
+            Assert.Equal(limitRows, dbResult.DestructivelyCount());
 
             // Check all values for constrained column are as expected 
             dbResult.ProcessAllChunks(false, (in DuckDbChunkReader reader, bool _) =>
@@ -61,7 +61,7 @@ public class TestPreparedStatement(DatabaseFixture fixture)
         ps.BindParameter(1, 5182.05M);  // decimal literal
         
         using var dbResult = ps.Execute();
-        Assert.Equal(limitRows, dbResult.DestructiveGetNumberOfResults());
+        Assert.Equal(limitRows, dbResult.DestructivelyCount());
     }
 
     [Test]

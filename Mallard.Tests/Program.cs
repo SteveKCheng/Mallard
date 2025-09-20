@@ -55,16 +55,4 @@ internal static class Program
     
     public static readonly string TestDataDirectory =
         Path.Join(SolutionDirectory, "testData");
-
-    internal static int DestructiveGetNumberOfResults(this DuckDbResult result)
-    {
-        bool hasChunk;
-        int totalRows = 0;
-        do
-        {
-            hasChunk = result.ProcessNextChunk(false, (in DuckDbChunkReader reader, bool _) => reader.Length, out var length);
-            totalRows += length;
-        } while (hasChunk);
-        return totalRows;
-    }
 }
