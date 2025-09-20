@@ -27,7 +27,7 @@ namespace Mallard;
 /// <para>
 /// In these cases, Mallard must assume a "default" .NET type to map a DuckDB type
 /// to.  These rules may depend on the context or application.  For instance,
-/// under <see cref="DuckDbDataReader" />, columns of type DATE in DuckDB are
+/// under <see cref="Ado.DuckDbDataReader" />, columns of type DATE in DuckDB are
 /// mapped to <see cref="System.DateTime" /> — for compatibility with existing ADO.NET-using
 /// code, and other databases — even though <see cref="System.DateOnly" /> would be 
 /// the better, modern choice.

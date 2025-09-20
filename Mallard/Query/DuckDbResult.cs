@@ -141,7 +141,7 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
     /// Get the number of changed rows (if this result object is not fronm a pure query).
     /// </summary>
     /// <returns>
-    /// Used to implement <see cref="DuckDbDataReader.RecordsAffected" />
+    /// Used to implement <see cref="Ado.DuckDbDataReader.RecordsAffected" />
     /// and similar properties/methods.
     /// </returns>
     internal long GetNumberOfChangedRows(out bool hasResultRows)

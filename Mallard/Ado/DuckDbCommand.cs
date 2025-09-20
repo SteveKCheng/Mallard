@@ -239,7 +239,7 @@ public sealed class DuckDbCommand : IDbCommand
     /// Even in full-fledged databases like Microsoft SQL Server, the transaction
     /// is associated to the connection and not specific commands.  Still, for some
     /// reason, <see cref="IDbCommand" /> had been designed to allow
-    /// the user to set the transaction object from <see cref="IDbConnection.BeginTransaction" />
+    /// the user to set the transaction object from <see cref="IDbConnection.BeginTransaction()" />
     /// into the <see cref="IDbCommand.Transaction" /> property before the command
     /// is considered valid.  (In fact, the Microsoft SQL client requires it:
     /// otherwise it throws the error: "(Exceute method) requires the command to have a transaction

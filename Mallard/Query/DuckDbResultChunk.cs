@@ -164,14 +164,14 @@ public unsafe sealed class DuckDbResultChunk : IResultColumns, IDisposable
     /// The type of value returned by the caller-specified function.
     /// </typeparam>
     /// <param name="state">
-    /// The state object or structure to pass into <paramref name="function" />.
+    /// The state object or structure to pass into <paramref name="func" />.
     /// </param>
     /// <param name="func">
     /// The caller-specified function that receives the results from the next chunk
     /// and may do any processing on it.
     /// </param>
     /// <returns>
-    /// Whatever <paramref name="function" /> returns.
+    /// Whatever <paramref name="func" /> returns.
     /// </returns>
     /// <remarks>
     /// <para>
