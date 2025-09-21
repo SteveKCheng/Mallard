@@ -2,6 +2,7 @@
 using System.Buffers.Binary;
 using System.Collections;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace Mallard.Types;
@@ -266,6 +267,97 @@ public readonly ref struct DuckDbBitString : IStatelesslyConvertible<DuckDbBitSt
 
         return countBytes;
     }
+
+    /// <summary>
+    /// Convert a bit string in little-endian format to DuckDB's native mixed-endian format.
+    /// </summary>
+    /// <param name="input">
+    /// The input bytes for the bit string with little-endian byte order (same as the one used
+    /// by .NET's <see cref="BitArray" /> class).
+    /// </param>
+    /// <param name="output">
+    /// The output buffer to write the bit string in DuckDB's native format.
+    /// It must be sized appropriately by the caller.
+    /// The first byte will contain the number of padding bits, followed by the data bytes.
+    /// </param>
+    /// <param name="bitLength">
+    /// The actual number of bits (excluding padding) to use from <paramref name="input" />.
+    /// </param>
+    /// <remarks>
+    /// See the body of <see cref="ToBitArray" /> for a description of DuckDB's format for bit strings. 
+    /// </remarks>
+    internal static void ConvertToNativeRepresentation(ReadOnlySpan<byte> input, Span<byte> output, int bitLength)
+    {
+        int numSlackBits = bitLength % 8;
+        int numPaddingBits = numSlackBits == 0 ? 0 : 8 - numSlackBits; 
+        
+        // First byte is always the padding count
+        output[0] = (byte)numPaddingBits;
+        
+        if (input.Length == 0)
+            return;
+
+        static uint ReverseBitsInByte(byte value)
+        {
+            uint v = value;
+            v = ((v >> 1) & 0x55U) | ((v & 0x55U) << 1);  // swap adjacent bits
+            v = ((v >> 2) & 0x33U) | ((v & 0x33U) << 2);  // swap adjacent pairs
+            v = ((v >> 4) & 0x0FU) | ((v & 0x0FU) << 4);  // swap adjacent nibbles
+            return (byte)v;
+        }
+
+        // Example with numPaddingBits = 3
+        //              8 - numPaddingBits = 5.
+        //
+        // Notation: P     : preceding/padding bit
+        //           .     : zero bit
+        //           [0-7] : value for logical bit position
+        //
+        // p                   : [ P P P . . . . . ]
+        //
+        // input               : [ 7 6 5 4 3 2 1 0 ]
+        // w                   : [ 0 1 2 3 4 5 6 7 ]
+        //
+        // w >> numPaddingBits : [ . . . 0 1 2 3 4 ]
+        // output              : [ P P P 0 1 2 3 4 ]
+        //
+        // next p              : [ 5 6 7 . . . . . ]
+        
+        uint v = unchecked((uint)-1);
+        for (int i = 0; i < input.Length; i++)
+        {
+            uint p = (v << (8 - numPaddingBits)) & 0xFFu;
+            uint w = ReverseBitsInByte((byte)input[i]);
+            output[i + 1] = (byte)((w >> numPaddingBits) | p);
+            v = w;
+        }
+    }
+
+    #if !NET10_OR_GREATER
+
+    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "m_array")]
+    private static extern int[] GetRawDataOfBitArrayPrivate(BitArray bitArray);
+
+    /// <summary>
+    /// Polyfill for <c>CollectionsMarshal.AsBytes</c> under .NET 9.
+    /// </summary>
+    internal static Span<byte> GetRawDataOfBitArray(BitArray? value)
+    {
+        ArgumentNullException.ThrowIfNull(value);
+        int[] array = GetRawDataOfBitArrayPrivate(value);
+        
+        // N.B. If there is a multi-thread race (from bad user code), array.Length
+        //      might be inconsistent with value.Length.  Just make sure the Span
+        //      remains in-bounds here, and let user-facing methods in this library
+        //      check lengths for consistency later.
+        var arrayLength = Math.Min(array.Length, (value.Length + 7) / 8);
+        
+        return arrayLength > 0
+            ? MemoryMarshal.CreateSpan(ref Unsafe.As<int, byte>(ref array[0]), arrayLength)
+            : Span<byte>.Empty;
+    }
+    
+    #endif
 
     #region Vector element converter
 

@@ -1,6 +1,7 @@
 ﻿using Mallard.Interop;
 using Mallard.Types;
 using System;
+using System.Collections;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 
@@ -363,7 +364,7 @@ public static unsafe class DuckDbValue
     
     #endregion
     
-    #region Blobs
+    #region Blobs and bit strings
     
     /// <summary>
     /// Set a blob value into a DuckDB parameter.
@@ -376,6 +377,76 @@ public static unsafe class DuckDbValue
     /// </typeparam>
     public static void Set<TReceiver>(this TReceiver receiver, ReadOnlySpan<byte> value) where TReceiver : ISettableDuckDbValue
         => receiver.SetBlob(value);
+
+    /// <summary>
+    /// Set a bit string as the value of a DuckDB parameter.
+    /// </summary>
+    /// <param name="receiver">The parameter or other object from DuckDB that can accept a value. </param>
+    /// <param name="data">The bit string encoded as little-endian byte order, the same format
+    /// used by <see cref="BitArray" /> internally. </param>
+    /// <param name="bitLength">The number of bits in the bit string, excluding padding.
+    /// This value must be consistent with the length of <paramref name="data" />, i.e.
+    /// the former should equal the latter divided by 8 after discarding the remainder.
+    /// </param>
+    /// <typeparam name="TReceiver">
+    /// The type of <paramref name="receiver" />, explicitly parameterized
+    /// to avoid unnecessary boxing when it is value type.
+    /// </typeparam>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// <paramref name="bitLength" /> is negative.
+    /// </exception>
+    /// <exception cref="ArgumentException">
+    /// <paramref name="bitLength" /> is not consistent with the length of <paramref name="data" />.
+    /// </exception>
+    [SkipLocalsInit]
+    public static unsafe void SetBitString<TReceiver>(this TReceiver receiver, ReadOnlySpan<byte> data, int bitLength)
+        where TReceiver : ISettableDuckDbValue
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(bitLength);
+
+        if ((bitLength + 7) / 8 != data.Length)
+        {
+            throw new ArgumentException(
+                "The length of the bit-string data in bytes is not consistent with the specified length in bits. ",
+                nameof(bitLength));
+        }
+
+        int nativeLength = data.Length + 1;
+        Span<byte> buffer = (nativeLength <= 2048) ? stackalloc byte[nativeLength] : new byte[nativeLength];
+        DuckDbBitString.ConvertToNativeRepresentation(data, buffer, bitLength);
+
+        _duckdb_value* nativeValue;
+        fixed (byte* p = buffer)
+        {
+            nativeValue = NativeMethods.duckdb_create_bit(new duckdb_bit
+            {
+                data = p,
+                size = nativeLength
+            });
+        }
+
+        receiver.SetNativeValue(nativeValue);
+    }
+    
+    /// <summary>
+    /// Set a bit string as the value of a DuckDB parameter.
+    /// </summary>
+    /// <param name="receiver">The parameter or other object from DuckDB that can accept a value. </param>
+    /// <param name="value">The bit string to set. </param>
+    /// <typeparam name="TReceiver">
+    /// The type of <paramref name="receiver" />, explicitly parameterized
+    /// to avoid unnecessary boxing when it is value type.
+    /// </typeparam>
+    public static void Set<TReceiver>(this TReceiver receiver, BitArray value)
+        where TReceiver : ISettableDuckDbValue
+    {
+        #if NET10_OR_GREATER
+        ReadOnlySpan<byte> data = CollectionsMarshal.AsBytes(value);
+        #else
+        ReadOnlySpan<byte> data = DuckDbBitString.GetRawDataOfBitArray(value);
+        #endif
+        receiver.SetBitString(data, value.Length);
+    }
     
     #endregion
 }

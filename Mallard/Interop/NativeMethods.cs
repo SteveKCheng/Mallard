@@ -60,6 +60,13 @@ internal unsafe struct duckdb_varint
 }
 
 [StructLayout(LayoutKind.Sequential)]
+internal unsafe struct duckdb_bit
+{
+    internal byte* data;
+    internal idx_t size;
+}
+
+[StructLayout(LayoutKind.Sequential)]
 internal unsafe struct duckdb_result
 {
     private idx_t deprecated_column_count;
@@ -331,6 +338,9 @@ internal unsafe static partial class NativeMethods
     
     [LibraryImport(LibraryName)]
     internal static partial _duckdb_value* duckdb_create_blob(byte *data, idx_t length);
+
+    [LibraryImport(LibraryName)]
+    internal static partial _duckdb_value* duckdb_create_bit(duckdb_bit input);
 
     [LibraryImport(LibraryName)]
     internal static partial _duckdb_value* duckdb_create_bool([MarshalAs(UnmanagedType.I1)] bool input);
