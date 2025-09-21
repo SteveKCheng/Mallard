@@ -6,7 +6,14 @@ using System.Runtime.CompilerServices;
 
 namespace Mallard;
 
-public unsafe static class DuckDbValue
+/// <summary>
+/// Contains methods to input (parameter) values of various types into DuckDB.
+/// </summary>
+/// <remarks>
+/// The methods here work with types that implement <see cref="ISettableDuckDbValue" />.
+/// In particular, they are used to set values for parameters in prepared statements.
+/// </remarks>
+public static unsafe class DuckDbValue
 {
     [SkipLocalsInit]
     private static _duckdb_value* CreateNativeString(string input)
