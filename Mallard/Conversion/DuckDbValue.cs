@@ -282,7 +282,7 @@ public static unsafe class DuckDbValue
     
     #endregion
 
-    #region Variable-width numbers
+    #region Other numbers
     
     /// <summary>
     /// Set a decimal value into a DuckDB parameter.
@@ -295,7 +295,21 @@ public static unsafe class DuckDbValue
     /// </typeparam>
     public static void Set<TReceiver>(this TReceiver receiver, DuckDbDecimal value) where TReceiver : ISettableDuckDbValue
         => receiver.SetDecimal(value);
-    
+
+    /// <summary>
+    /// Set a variable-length integer value into a DuckDB parameter.
+    /// </summary>
+    /// <param name="receiver">The parameter or other object from DuckDB that can accept a value. </param>
+    /// <param name="value">The value to set. </param>
+    /// <typeparam name="TReceiver">
+    /// The type of <paramref name="receiver" />, explicitly parameterized
+    /// to avoid unnecessary boxing when it is value type.
+    /// </typeparam>
+    public static unsafe void Set<TReceiver>(this TReceiver receiver, BigInteger value)
+        where TReceiver : ISettableDuckDbValue
+        // Custom marshaller converts input value
+        => receiver.SetNativeValue(NativeMethods.duckdb_create_varint(value));
+
     #endregion
     
     #region Strings
@@ -322,7 +336,7 @@ public static unsafe class DuckDbValue
     /// to avoid unnecessary boxing when it is value type.
     /// </typeparam>
     [SkipLocalsInit]
-    public static void SetStringUtf16<TReceiver>(this TReceiver receiver, ReadOnlySpan<char> value)
+    public static unsafe void SetStringUtf16<TReceiver>(this TReceiver receiver, ReadOnlySpan<char> value)
         where TReceiver : ISettableDuckDbValue
     {
         using scoped var marshalState = new Utf8StringConverterState();
