@@ -1,10 +1,10 @@
 ﻿using Mallard.Interop;
+using Mallard.Types;
 using System;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 
 namespace Mallard;
-using Mallard.Types;
 
 public unsafe static class DuckDbValue
 {
