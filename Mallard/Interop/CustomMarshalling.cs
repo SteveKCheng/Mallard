@@ -37,22 +37,25 @@ internal unsafe ref struct Utf8StringConverterState
 
     public byte* ConvertToUtf8(string? s, out int utf8Length, Span<byte> buffer)
     {
-        if (s is null)
-        {
-            utf8Length = 0;
-            return null;
-        }
+        if (s is not null) 
+            return ConvertToUtf8(s.AsSpan(), out utf8Length, buffer);
+        
+        utf8Length = 0;
+        return null;
+    }
 
+    public byte* ConvertToUtf8(ReadOnlySpan<char> utf16, out int utf8Length, Span<byte> buffer)
+    {
         const int MaxUtf8BytesPerChar = 3;
 
         // Quick check for the common case of small strings that fit into an
         // already-allocated (stack-based) buffer.
         // Comparison uses >= to account for the null terminating byte.
-        if ((long)MaxUtf8BytesPerChar * s.Length >= buffer.Length)
+        if ((long)MaxUtf8BytesPerChar * utf16.Length >= buffer.Length)
         {
             // Calculate exact byte count when we might need to allocate memory for,
             // including the null terminating byte.
-            int requiredSize = checked(Encoding.UTF8.GetByteCount(s) + 1);
+            int requiredSize = checked(Encoding.UTF8.GetByteCount(utf16) + 1);
 
             if (requiredSize > buffer.Length)
             {
@@ -62,7 +65,7 @@ internal unsafe ref struct Utf8StringConverterState
             }
         }
 
-        utf8Length = Encoding.UTF8.GetBytes(s, buffer);
+        utf8Length = Encoding.UTF8.GetBytes(utf16, buffer);
 
         // Null-terminate
         buffer[utf8Length] = 0;
