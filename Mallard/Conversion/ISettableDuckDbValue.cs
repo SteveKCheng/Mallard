@@ -57,8 +57,10 @@ public unsafe interface ISettableDuckDbValue
     // That DuckDB's C API works this way is considered an implementation detail for .NET
     // clients, so these methods are not part of the public API.  They are wrapped by
     // extension methods inside the static class DuckDbValue.
-    
+
+    internal void SetNull() => SetNativeValue(NativeMethods.duckdb_create_null_value());
     internal void SetBoolean(bool value) => SetNativeValue(NativeMethods.duckdb_create_bool(value));
+    
     internal void SetInt8(sbyte value) => SetNativeValue(NativeMethods.duckdb_create_int8(value));
     internal void SetInt16(short value) => SetNativeValue(NativeMethods.duckdb_create_int16(value));
     internal void SetInt32(int value) => SetNativeValue(NativeMethods.duckdb_create_int32(value));

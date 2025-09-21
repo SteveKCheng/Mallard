@@ -106,6 +106,15 @@ public static unsafe class DuckDbValue
 
     internal static _duckdb_value* CreateNativeObject<T>(T input)
         => CreateNativeObject((object?)input);
+
+    #region Miscellaneous simple types
+    
+    /// <summary>
+    /// Set a null (SQL NULL) value into a DuckDB parameter.
+    /// </summary>
+    /// <param name="receiver">The parameter or other object from DuckDB that can accept a value. </param>
+    public static void SetNull<TReceiver>(this TReceiver receiver) where TReceiver : ISettableDuckDbValue
+        => receiver.SetNull();
     
     /// <summary>
     /// Set a boolean value into a DuckDB parameter.
@@ -118,6 +127,8 @@ public static unsafe class DuckDbValue
     /// </typeparam>
     public static void Set<TReceiver>(this TReceiver receiver, bool value) where TReceiver : ISettableDuckDbValue
         => receiver.SetBoolean(value);
+    
+    #endregion
 
     #region Fixed-width integers
     
