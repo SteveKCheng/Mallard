@@ -118,6 +118,8 @@ public static unsafe class DuckDbValue
     /// </typeparam>
     public static void Set<TReceiver>(this TReceiver receiver, bool value) where TReceiver : ISettableDuckDbValue
         => receiver.SetBoolean(value);
+
+    #region Fixed-width integers
     
     /// <summary>
     /// Set a 32-bit signed integer value into a DuckDB parameter.
@@ -239,6 +241,10 @@ public static unsafe class DuckDbValue
     public static void Set<TReceiver>(this TReceiver receiver, UInt128 value) where TReceiver : ISettableDuckDbValue
         => receiver.SetUInt128(value);
     
+    #endregion
+    
+    #region Fixed-width binary floating-point numbers
+    
     /// <summary>
     /// Set a single-precision floating-point value into a DuckDB parameter.
     /// </summary>
@@ -262,7 +268,11 @@ public static unsafe class DuckDbValue
     /// </typeparam>
     public static void Set<TReceiver>(this TReceiver receiver, double value) where TReceiver : ISettableDuckDbValue
         => receiver.SetDouble(value);
+    
+    #endregion
 
+    #region Variable-width numbers
+    
     /// <summary>
     /// Set a decimal value into a DuckDB parameter.
     /// </summary>
@@ -274,6 +284,10 @@ public static unsafe class DuckDbValue
     /// </typeparam>
     public static void Set<TReceiver>(this TReceiver receiver, DuckDbDecimal value) where TReceiver : ISettableDuckDbValue
         => receiver.SetDecimal(value);
+    
+    #endregion
+    
+    #region Strings
 
     /// <summary>
     /// Set a string value into a DuckDB parameter.
@@ -320,6 +334,10 @@ public static unsafe class DuckDbValue
     public static void SetStringUtf8<TReceiver>(this TReceiver receiver, ReadOnlySpan<byte> value) where TReceiver : ISettableDuckDbValue
         => receiver.SetStringUtf8(value);
     
+    #endregion
+    
+    #region Blobs
+    
     /// <summary>
     /// Set a blob value into a DuckDB parameter.
     /// </summary>
@@ -331,4 +349,6 @@ public static unsafe class DuckDbValue
     /// </typeparam>
     public static void Set<TReceiver>(this TReceiver receiver, ReadOnlySpan<byte> value) where TReceiver : ISettableDuckDbValue
         => receiver.SetBlob(value);
+    
+    #endregion
 }
