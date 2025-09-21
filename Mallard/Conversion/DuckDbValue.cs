@@ -288,7 +288,9 @@ public static unsafe class DuckDbValue
     /// Set a decimal value into a DuckDB parameter.
     /// </summary>
     /// <param name="receiver">The parameter or other object from DuckDB that can accept a value. </param>
-    /// <param name="value">The value to set. </param>
+    /// <param name="value">The value to set.
+    /// Instances of <see cref="Decimal" /> may be (losslessly) implicitly converted in order to call this method.
+    /// </param>
     /// <typeparam name="TReceiver">
     /// The type of <paramref name="receiver" />, explicitly parameterized
     /// to avoid unnecessary boxing when it is value type.

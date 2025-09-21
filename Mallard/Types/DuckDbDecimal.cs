@@ -180,6 +180,13 @@ public readonly struct DuckDbDecimal
                                  scale: input.Scale,
                                  width: ApproximateWidth(significand));
     }
+    
+    /// <summary>
+    /// Implicit conversion.
+    /// </summary>
+    /// <param name="input">The .NET value to convert from. </param>
+    /// <returns>The converted value for DuckDB.  This conversion always succeeds. </returns>
+    public static implicit operator DuckDbDecimal(Decimal input) => FromDecimal(input);
 
     /// <summary>
     /// Extract the 128-bit significand from a floating-point-like value.
