@@ -34,7 +34,7 @@ namespace Mallard;
 /// on almost the same footing.
 /// </para>
 /// </remarks>
-public interface ISettableDuckDbValue
+public unsafe interface ISettableDuckDbValue
 {
     /// <summary>
     /// Accept a value which has been packaged into DuckDB's generic value wrapper.
@@ -44,7 +44,7 @@ public interface ISettableDuckDbValue
     /// This method takes ownership of it (whether this method succeeds or fails with
     /// an exception).  
     /// </param>
-    internal unsafe void SetNativeValue(_duckdb_value* nativeValue);
+    internal void SetNativeValue(_duckdb_value* nativeValue);
 
     // The following "simple" types may have "direct" binding functions in DuckDB's C API 
     // which take in the value without having to allocate memory for _duckdb_value.
@@ -58,31 +58,31 @@ public interface ISettableDuckDbValue
     // clients, so these methods are not part of the public API.  They are wrapped by
     // extension methods inside the static class DuckDbValue.
     
-    internal unsafe void SetBoolean(bool value) => SetNativeValue(NativeMethods.duckdb_create_bool(value));
-    internal unsafe void SetInt8(sbyte value) => SetNativeValue(NativeMethods.duckdb_create_int8(value));
-    internal unsafe void SetInt16(short value) => SetNativeValue(NativeMethods.duckdb_create_int16(value));
-    internal unsafe void SetInt32(int value) => SetNativeValue(NativeMethods.duckdb_create_int32(value));
-    internal unsafe void SetInt64(long value) => SetNativeValue(NativeMethods.duckdb_create_int64(value));
-    internal unsafe void SetInt128(Int128 value) => SetNativeValue(NativeMethods.duckdb_create_hugeint(value));
+    internal void SetBoolean(bool value) => SetNativeValue(NativeMethods.duckdb_create_bool(value));
+    internal void SetInt8(sbyte value) => SetNativeValue(NativeMethods.duckdb_create_int8(value));
+    internal void SetInt16(short value) => SetNativeValue(NativeMethods.duckdb_create_int16(value));
+    internal void SetInt32(int value) => SetNativeValue(NativeMethods.duckdb_create_int32(value));
+    internal void SetInt64(long value) => SetNativeValue(NativeMethods.duckdb_create_int64(value));
+    internal void SetInt128(Int128 value) => SetNativeValue(NativeMethods.duckdb_create_hugeint(value));
 
-    internal unsafe void SetUInt8(byte value) => SetNativeValue(NativeMethods.duckdb_create_uint8(value));
-    internal unsafe void SetUInt16(ushort value) => SetNativeValue(NativeMethods.duckdb_create_uint16(value));
-    internal unsafe void SetUInt32(uint value) => SetNativeValue(NativeMethods.duckdb_create_uint32(value));
-    internal unsafe void SetUInt64(ulong value) => SetNativeValue(NativeMethods.duckdb_create_uint64(value));
-    internal unsafe void SetUInt128(UInt128 value) => SetNativeValue(NativeMethods.duckdb_create_uhugeint(value));
+    internal void SetUInt8(byte value) => SetNativeValue(NativeMethods.duckdb_create_uint8(value));
+    internal void SetUInt16(ushort value) => SetNativeValue(NativeMethods.duckdb_create_uint16(value));
+    internal void SetUInt32(uint value) => SetNativeValue(NativeMethods.duckdb_create_uint32(value));
+    internal void SetUInt64(ulong value) => SetNativeValue(NativeMethods.duckdb_create_uint64(value));
+    internal void SetUInt128(UInt128 value) => SetNativeValue(NativeMethods.duckdb_create_uhugeint(value));
     
-    internal unsafe void SetFloat(float value) => SetNativeValue(NativeMethods.duckdb_create_float(value));
-    internal unsafe void SetDouble(double value) => SetNativeValue(NativeMethods.duckdb_create_double(value));
+    internal void SetFloat(float value) => SetNativeValue(NativeMethods.duckdb_create_float(value));
+    internal void SetDouble(double value) => SetNativeValue(NativeMethods.duckdb_create_double(value));
     
-    internal unsafe void SetDecimal(DuckDbDecimal value) => SetNativeValue(NativeMethods.duckdb_create_decimal(value));
+    internal void SetDecimal(DuckDbDecimal value) => SetNativeValue(NativeMethods.duckdb_create_decimal(value));
 
-    internal unsafe void SetStringUtf8(ReadOnlySpan<byte> span)
+    internal void SetStringUtf8(ReadOnlySpan<byte> span)
     {
         fixed (byte* p = span)
             SetNativeValue(NativeMethods.duckdb_create_varchar_length(p, span.Length));
     }
 
-    internal unsafe void SetBlob(ReadOnlySpan<byte> span)
+    internal void SetBlob(ReadOnlySpan<byte> span)
     {
         fixed (byte* p = span)
             SetNativeValue(NativeMethods.duckdb_create_blob(p, span.Length));
