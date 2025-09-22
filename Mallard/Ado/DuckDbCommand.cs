@@ -95,7 +95,7 @@ public sealed class DuckDbCommand : IDbCommand
             var p = Parameters[i];
             var n = p.ParameterName;
             var j = string.IsNullOrEmpty(n) ? i + 1 : statement.GetParameterIndexForName(n);
-            statement.BindParameter(j, p.Value);
+            statement.Parameters[j].SetObject(p.Value);
         }
 
         return statement;
