@@ -165,7 +165,7 @@ public class TestExecuteScalar
         var sourceBuffer = new byte[512];
         new Random(Seed: 37).NextBytes(sourceBuffer);
         
-        ps.Parameters[1].Set(sourceBuffer);
+        ps.Parameters[1].SetBlob(sourceBuffer);
         var destBuffer = ps.ExecuteValue<byte[]>();
         
         Assert2.Equal(sourceBuffer, destBuffer);

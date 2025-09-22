@@ -333,18 +333,18 @@ public static unsafe class DuckDbValue
     /// Set a UTF-16-encoded string value into a DuckDB parameter.
     /// </summary>
     /// <param name="receiver">The parameter or other object from DuckDB that can accept a value. </param>
-    /// <param name="value">The string encoded in UTF-16. </param>
+    /// <param name="text">The string encoded in UTF-16. </param>
     /// <typeparam name="TReceiver">
     /// The type of <paramref name="receiver" />, explicitly parameterized
     /// to avoid unnecessary boxing when it is value type.
     /// </typeparam>
     [SkipLocalsInit]
-    public static unsafe void SetStringUtf16<TReceiver>(this TReceiver receiver, ReadOnlySpan<char> value)
+    public static unsafe void SetStringUtf16<TReceiver>(this TReceiver receiver, ReadOnlySpan<char> text)
         where TReceiver : ISettableDuckDbValue
     {
         using scoped var marshalState = new Utf8StringConverterState();
         var utf8Ptr = marshalState.ConvertToUtf8(
-            value,
+            text,
             out int utf8Length,
             stackalloc byte[Utf8StringConverterState.SuggestedBufferSize]);
         receiver.SetStringUtf8(new ReadOnlySpan<byte>(utf8Ptr, utf8Length));
@@ -354,29 +354,40 @@ public static unsafe class DuckDbValue
     /// Set a UTF-8-encoded string value into a DuckDB parameter.
     /// </summary>
     /// <param name="receiver">The parameter or other object from DuckDB that can accept a value. </param>
-    /// <param name="value">The string encoded in UTF-8. </param>
+    /// <param name="text">The string encoded in UTF-8. </param>
     /// <typeparam name="TReceiver">
     /// The type of <paramref name="receiver" />, explicitly parameterized
     /// to avoid unnecessary boxing when it is value type.
     /// </typeparam>
-    public static void SetStringUtf8<TReceiver>(this TReceiver receiver, ReadOnlySpan<byte> value) where TReceiver : ISettableDuckDbValue
-        => receiver.SetStringUtf8(value);
+    public static unsafe void SetStringUtf8<TReceiver>(this TReceiver receiver, ReadOnlySpan<byte> text)
+        where TReceiver : ISettableDuckDbValue
+    {
+        fixed (byte* p = text)
+            receiver.SetStringUtf8(p, text.Length);
+    }
     
     #endregion
     
     #region Blobs and bit strings
-    
+
     /// <summary>
     /// Set a blob value into a DuckDB parameter.
     /// </summary>
     /// <param name="receiver">The parameter or other object from DuckDB that can accept a value. </param>
-    /// <param name="value">The binary data to set. </param>
+    /// <param name="data">The binary data to set.
+    /// Note that byte arrays (<c>byte[]</c>) will implicitly convert to spans in C# for calling 
+    /// this method.
+    /// </param>
     /// <typeparam name="TReceiver">
     /// The type of <paramref name="receiver" />, explicitly parameterized
     /// to avoid unnecessary boxing when it is value type.
     /// </typeparam>
-    public static void Set<TReceiver>(this TReceiver receiver, ReadOnlySpan<byte> value) where TReceiver : ISettableDuckDbValue
-        => receiver.SetBlob(value);
+    public static unsafe void SetBlob<TReceiver>(this TReceiver receiver, ReadOnlySpan<byte> data)
+        where TReceiver : ISettableDuckDbValue
+    {
+        fixed (byte* p = data)
+            receiver.SetBlob(p, data.Length);    
+    }
 
     /// <summary>
     /// Set a bit string as the value of a DuckDB parameter.

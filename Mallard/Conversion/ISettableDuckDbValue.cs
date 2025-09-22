@@ -115,19 +115,17 @@ public unsafe interface ISettableDuckDbValue
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void SetDecimal(DuckDbDecimal value) => SetNativeValue(NativeMethods.duckdb_create_decimal(value));
 
+    // The following methods take the raw pointer and length rather than the span
+    // so they do not have to pin, which might prevent the compiler from inlining.
+    // The pinning occurs in the public wrapper methods.
+    
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void SetStringUtf8(ReadOnlySpan<byte> span)
-    {
-        fixed (byte* p = span)
-            SetNativeValue(NativeMethods.duckdb_create_varchar_length(p, span.Length));
-    }
+    internal void SetStringUtf8(byte* data, long length)
+        => SetNativeValue(NativeMethods.duckdb_create_varchar_length(data, length));
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal void SetBlob(ReadOnlySpan<byte> span)
-    {
-        fixed (byte* p = span)
-            SetNativeValue(NativeMethods.duckdb_create_blob(p, span.Length));
-    }
+    internal void SetBlob(byte* data, long length)
+        => SetNativeValue(NativeMethods.duckdb_create_blob(data, length));
     
     // TODO: implement
     // date
