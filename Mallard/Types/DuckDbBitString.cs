@@ -281,15 +281,23 @@ public readonly ref struct DuckDbBitString : IStatelesslyConvertible<DuckDbBitSt
     /// The first byte will contain the number of padding bits, followed by the data bytes.
     /// </param>
     /// <param name="bitLength">
-    /// The actual number of bits (excluding padding) to use from <paramref name="input" />.
+    /// The actual number of bits (excluding padding) to use from the beginning of <paramref name="input" />.
+    /// Must be non-negative.
     /// </param>
     /// <remarks>
     /// See the body of <see cref="ToBitArray" /> for a description of DuckDB's format for bit strings. 
     /// </remarks>
     internal static void ConvertToNativeRepresentation(ReadOnlySpan<byte> input, Span<byte> output, int bitLength)
     {
-        int numSlackBits = bitLength % 8;
-        int numPaddingBits = numSlackBits == 0 ? 0 : 8 - numSlackBits; 
+        Debug.Assert((bitLength + 7) / 8 == input.Length);
+        Debug.Assert(input.Length == output.Length);
+
+        // If bitLength is of the form k + 8n for 0 ≤ k < 7, then
+        //   numPaddingBits = (8 - k) mod 8.
+        // ("mod 8" is the division remainder that produces results in the range 0 ≤ k < 7.
+        //  Note the difference from C#'s operator% for negative operands.)
+        // But (8 - k) mod 8 = (8 - (bitLength-8n)) mod 8 = (-bitLength) mod 8.
+        int numPaddingBits = (-bitLength) & 7; 
         
         // First byte is always the padding count
         output[0] = (byte)numPaddingBits;
@@ -303,7 +311,7 @@ public readonly ref struct DuckDbBitString : IStatelesslyConvertible<DuckDbBitSt
             v = ((v >> 1) & 0x55U) | ((v & 0x55U) << 1);  // swap adjacent bits
             v = ((v >> 2) & 0x33U) | ((v & 0x33U) << 2);  // swap adjacent pairs
             v = ((v >> 4) & 0x0FU) | ((v & 0x0FU) << 4);  // swap adjacent nibbles
-            return (byte)v;
+            return v;
         }
 
         // Example with numPaddingBits = 3
@@ -311,23 +319,25 @@ public readonly ref struct DuckDbBitString : IStatelesslyConvertible<DuckDbBitSt
         //
         // Notation: P     : preceding/padding bit
         //           .     : zero bit
-        //           [0-7] : value for logical bit position
+        //           [0-7] : bit value at logical position in bit array 
         //
-        // p                   : [ P P P . . . . . ]
+        // Below vectors of bits (in the lowest byte) are written with MSB first.
         //
-        // input               : [ 7 6 5 4 3 2 1 0 ]
-        // w                   : [ 0 1 2 3 4 5 6 7 ]
+        // p                   = [ P P P . . . . . ]
         //
-        // w >> numPaddingBits : [ . . . 0 1 2 3 4 ]
-        // output              : [ P P P 0 1 2 3 4 ]
+        // input               = [ 7 6 5 4 3 2 1 0 ]
+        // w                   = [ 0 1 2 3 4 5 6 7 ]
         //
-        // next p              : [ 5 6 7 . . . . . ]
-        
-        uint v = unchecked((uint)-1);
+        // w >> numPaddingBits = [ . . . 0 1 2 3 4 ]
+        // output              = [ P P P 0 1 2 3 4 ]
+        //
+        // next p              = [ 5 6 7 . . . . . ]
+
+        uint v = uint.MaxValue;
         for (int i = 0; i < input.Length; i++)
         {
             uint p = (v << (8 - numPaddingBits)) & 0xFFu;
-            uint w = ReverseBitsInByte((byte)input[i]);
+            uint w = ReverseBitsInByte(input[i]);
             output[i + 1] = (byte)((w >> numPaddingBits) | p);
             v = w;
         }
