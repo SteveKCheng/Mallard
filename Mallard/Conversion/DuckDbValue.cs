@@ -315,6 +315,49 @@ public static unsafe class DuckDbValue
 
     #endregion
     
+    #region Dates and times
+    
+    /// <summary>
+    /// Set a date into a DuckDB parameter.
+    /// </summary>
+    /// <param name="receiver">The parameter or other object from DuckDB that can accept a value. </param>
+    /// <param name="value">The value to set.
+    /// </param>
+    /// <typeparam name="TReceiver">
+    /// The type of <paramref name="receiver" />, explicitly parameterized
+    /// to avoid unnecessary boxing when it is value type.
+    /// </typeparam>
+    public static void Set<TReceiver>(this TReceiver receiver, DuckDbDate value) where TReceiver : ISettableDuckDbValue
+        => receiver.SetDate(value);
+
+    /// <summary>
+    /// Set a timestamp into a DuckDB parameter.
+    /// </summary>
+    /// <param name="receiver">The parameter or other object from DuckDB that can accept a value. </param>
+    /// <param name="value">The value to set.
+    /// </param>
+    /// <typeparam name="TReceiver">
+    /// The type of <paramref name="receiver" />, explicitly parameterized
+    /// to avoid unnecessary boxing when it is value type.
+    /// </typeparam>
+    public static void Set<TReceiver>(this TReceiver receiver, DuckDbTimestamp value) where TReceiver : ISettableDuckDbValue
+        => receiver.SetTimestamp(value);
+
+    /// <summary>
+    /// Set a time interval into a DuckDB parameter.
+    /// </summary>
+    /// <param name="receiver">The parameter or other object from DuckDB that can accept a value. </param>
+    /// <param name="value">The value to set.
+    /// </param>
+    /// <typeparam name="TReceiver">
+    /// The type of <paramref name="receiver" />, explicitly parameterized
+    /// to avoid unnecessary boxing when it is value type.
+    /// </typeparam>
+    public static void Set<TReceiver>(this TReceiver receiver, DuckDbInterval value) where TReceiver : ISettableDuckDbValue
+        => receiver.SetInterval(value);
+
+    #endregion
+    
     #region Strings
 
     /// <summary>

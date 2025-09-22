@@ -70,11 +70,17 @@ public unsafe interface ISettableDuckDbValue
     // compiler does inline them.  (If it does not, we will have to stop using default
     // interface methods, and manually define their bodies for each implementing struct.
 
+    #region Miscellaneous simple types
+    
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void SetNull() => SetNativeValue(NativeMethods.duckdb_create_null_value());
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void SetBoolean(bool value) => SetNativeValue(NativeMethods.duckdb_create_bool(value));
+    
+    #endregion
+    
+    #region Fixed-width integers
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void SetInt8(sbyte value) => SetNativeValue(NativeMethods.duckdb_create_int8(value));
@@ -106,15 +112,40 @@ public unsafe interface ISettableDuckDbValue
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void SetUInt128(UInt128 value) => SetNativeValue(NativeMethods.duckdb_create_uhugeint(value));
     
+    #endregion
+    
+    #region Fixed-width binary floating-point numbers
+    
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void SetFloat(float value) => SetNativeValue(NativeMethods.duckdb_create_float(value));
     
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void SetDouble(double value) => SetNativeValue(NativeMethods.duckdb_create_double(value));
     
+    #endregion
+
+    #region Other numbers
+    
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void SetDecimal(DuckDbDecimal value) => SetNativeValue(NativeMethods.duckdb_create_decimal(value));
+    
+    #endregion
+    
+    #region Dates and times
+    
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal void SetDate(DuckDbDate value) => SetNativeValue(NativeMethods.duckdb_create_date(value));
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal void SetTimestamp(DuckDbTimestamp value) => SetNativeValue(NativeMethods.duckdb_create_timestamp(value));
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal void SetInterval(DuckDbInterval value) => SetNativeValue(NativeMethods.duckdb_create_interval(value));
+    
+    #endregion
+
+    #region Strings and blobs
+    
     // The following methods take the raw pointer and length rather than the span
     // so they do not have to pin, which might prevent the compiler from inlining.
     // The pinning occurs in the public wrapper methods.
@@ -127,10 +158,9 @@ public unsafe interface ISettableDuckDbValue
     internal void SetBlob(byte* data, long length)
         => SetNativeValue(NativeMethods.duckdb_create_blob(data, length));
     
+    #endregion
+
     // TODO: implement
-    // date
     // time
-    // timestamp
     // timestamp_tz
-    // interval
 }
