@@ -14,7 +14,7 @@ namespace Mallard;
 /// The methods here work with types that implement <see cref="ISettableDuckDbValue" />.
 /// In particular, they are used to set values for parameters in prepared statements.
 /// </remarks>
-public static unsafe class DuckDbValue
+public static unsafe partial class DuckDbValue
 {
     [SkipLocalsInit]
     private static _duckdb_value* CreateNativeString(string input)
@@ -103,8 +103,7 @@ public static unsafe class DuckDbValue
         throw new NotSupportedException(
             $"Cannot convert the given type to a DuckDB value.  Type: {input.GetType().Name}");
     }
-
-
+    
     internal static _duckdb_value* CreateNativeObject<T>(T input)
         => CreateNativeObject((object?)input);
 
