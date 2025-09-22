@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.CompilerServices;
 using Mallard.Interop;
 using Mallard.Types;
 
@@ -57,33 +58,71 @@ public unsafe interface ISettableDuckDbValue
     // That DuckDB's C API works this way is considered an implementation detail for .NET
     // clients, so these methods are not part of the public API.  They are wrapped by
     // extension methods inside the static class DuckDbValue.
+    //
+    // Technical limitations with how default interface methods are implemented in the
+    // .NET run-time mean that, in general, calling them on a struct requires that the
+    // struct be boxed.  See
+    // https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/proposals/csharp-8.0/default-interface-methods.
+    // But, fortunately, we can check from the assembly code produced by the compiler
+    // that if the default interface method can be inlined, the boxing can be optimized
+    // away too.  So we set our methods to be "aggressively inlined" into their callers
+    // (where the struct implementing ISettableDuckDbValue will be known), and hope the
+    // compiler does inline them.  (If it does not, we will have to stop using default
+    // interface methods, and manually define their bodies for each implementing struct.
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void SetNull() => SetNativeValue(NativeMethods.duckdb_create_null_value());
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void SetBoolean(bool value) => SetNativeValue(NativeMethods.duckdb_create_bool(value));
     
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void SetInt8(sbyte value) => SetNativeValue(NativeMethods.duckdb_create_int8(value));
+    
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void SetInt16(short value) => SetNativeValue(NativeMethods.duckdb_create_int16(value));
+    
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void SetInt32(int value) => SetNativeValue(NativeMethods.duckdb_create_int32(value));
+    
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void SetInt64(long value) => SetNativeValue(NativeMethods.duckdb_create_int64(value));
+    
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void SetInt128(Int128 value) => SetNativeValue(NativeMethods.duckdb_create_hugeint(value));
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void SetUInt8(byte value) => SetNativeValue(NativeMethods.duckdb_create_uint8(value));
+    
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void SetUInt16(ushort value) => SetNativeValue(NativeMethods.duckdb_create_uint16(value));
+    
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void SetUInt32(uint value) => SetNativeValue(NativeMethods.duckdb_create_uint32(value));
+    
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void SetUInt64(ulong value) => SetNativeValue(NativeMethods.duckdb_create_uint64(value));
+    
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void SetUInt128(UInt128 value) => SetNativeValue(NativeMethods.duckdb_create_uhugeint(value));
     
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void SetFloat(float value) => SetNativeValue(NativeMethods.duckdb_create_float(value));
+    
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void SetDouble(double value) => SetNativeValue(NativeMethods.duckdb_create_double(value));
     
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void SetDecimal(DuckDbDecimal value) => SetNativeValue(NativeMethods.duckdb_create_decimal(value));
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void SetStringUtf8(ReadOnlySpan<byte> span)
     {
         fixed (byte* p = span)
             SetNativeValue(NativeMethods.duckdb_create_varchar_length(p, span.Length));
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void SetBlob(ReadOnlySpan<byte> span)
     {
         fixed (byte* p = span)
