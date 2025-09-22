@@ -107,7 +107,7 @@ public class TestRowOriented(DatabaseFixture fixture)
         int n3 = stringBuilder.Length;
 
         var testString = stringBuilder.ToString();
-        ps.BindParameter(1, testString);
+        ps.Parameters[1].Set(testString);
 
         (int Offset, int Length)[] samples =
         [

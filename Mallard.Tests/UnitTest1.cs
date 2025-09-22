@@ -157,7 +157,7 @@ public class UnitTest1(DatabaseFixture fixture)
 
         var bitArray = new BitArray(buffer[..numBytes].ToArray());
         var bitStringAsString = TestExecuteScalar.CreateStringFromBitArray(bitArray, 0, numBits);
-        ps.BindParameter(1, bitStringAsString);
+        ps.Parameters[1].Set(bitStringAsString);
 
         using var dbResult = ps.Execute();
         dbResult.ProcessAllChunks(false, (in DuckDbChunkReader reader, bool _) =>

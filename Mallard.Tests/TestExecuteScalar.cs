@@ -18,7 +18,7 @@ public class TestExecuteScalar
         decimal v = 0.1M;
 
         var ps = dbConn.PrepareStatement("SELECT $1");
-        ps.BindParameter(1, v);
+        ps.Parameters[1].Set(v);
         object? v_out = ps.ExecuteScalar();
 
         Assert.IsType<Decimal>(v_out);
@@ -38,7 +38,7 @@ public class TestExecuteScalar
             var magnitude = new BigInteger(bytes, isUnsigned: true, isBigEndian: false);
             var value = isNegative ? -magnitude : magnitude;
 
-            ps.BindParameter(1, value);
+            ps.Parameters[1].Set(value);
 
             object? valueOut = ps.ExecuteScalar();
             Assert.IsType<BigInteger>(valueOut);
@@ -101,7 +101,7 @@ public class TestExecuteScalar
             var bitArray = new BitArray(buffer[..numBytes].ToArray());
 
             // Create a string for the value to send into SQL
-            ps.BindParameter(1, CreateStringFromBitArray(bitArray, 0, len));
+            ps.Parameters[1].Set(CreateStringFromBitArray(bitArray, 0, len));
 
             var bitArray2 = ps.ExecuteValue<BitArray>();
             Assert.NotNull(bitArray2);
@@ -126,8 +126,8 @@ public class TestExecuteScalar
 
         using var ps = dbConn.PrepareStatement("SELECT $1::TINYINT");
         sbyte value = 9;
-        ps.BindParameter(1, value);
-
+        ps.Parameters[1].Set(value);
+        
         Assert.Equal(value, ps.ExecuteValue<sbyte>());
         Assert.Equal(value, ps.ExecuteValue<short>());
         Assert.Equal(value, ps.ExecuteValue<int>());
@@ -149,8 +149,8 @@ public class TestExecuteScalar
 
         using var ps = dbConn.PrepareStatement("SELECT $1::ENUM ('すごい', '楽しい', '面白くない', 'まずい')");
         byte value = 1;
-        ps.BindParameter(1, "楽しい");
-
+        ps.Parameters[1].Set("楽しい");
+        
         Assert.Equal(value, ps.ExecuteValue<byte>());
         Assert.Equal(value, ps.ExecuteValue<ushort>());
         Assert.Equal(value, ps.ExecuteValue<uint>());
@@ -165,7 +165,7 @@ public class TestExecuteScalar
         var sourceBuffer = new byte[512];
         new Random(Seed: 37).NextBytes(sourceBuffer);
         
-        ps.BindParameter(1, sourceBuffer);
+        ps.Parameters[1].Set(sourceBuffer);
         var destBuffer = ps.ExecuteValue<byte[]>();
         
         Assert2.Equal(sourceBuffer, destBuffer);

@@ -25,7 +25,7 @@ public class TestPreparedStatement(DatabaseFixture fixture)
         // Use same statement object to query for 2 parameter values
         foreach (var mktsegment in new[] { "AUTOMOBILE", "HOUSEHOLD" })
         {
-            ps.BindParameter(1, mktsegment);
+            ps.Parameters[1].Set(mktsegment);
 
             using var dbResult = ps.Execute();
             
@@ -58,7 +58,7 @@ public class TestPreparedStatement(DatabaseFixture fixture)
 
         Assert.Equal("1", ps.GetParameterName(1));
         
-        ps.BindParameter(1, 5182.05M);  // decimal literal
+        ps.Parameters[1].Set(5182.05M);  // decimal literal
         
         using var dbResult = ps.Execute();
         Assert.Equal(limitRows, dbResult.DestructivelyCount());
@@ -71,10 +71,10 @@ public class TestPreparedStatement(DatabaseFixture fixture)
 
         using var ps = connection.PrepareStatement("SELECT $a // ($b // $c)");
         
-        ps.BindParameter("c", 10);
-        ps.BindParameter("b", 50);
-        ps.BindParameter("a", 800);
-
+        ps.Parameters["c"].Set(10);
+        ps.Parameters["b"].Set(50);
+        ps.Parameters["a"].Set(800);
+        
         var answer = ps.ExecuteValue<int>();
         Assert.Equal(800 / (50 / 10), answer);
     }

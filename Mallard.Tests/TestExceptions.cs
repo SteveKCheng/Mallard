@@ -26,8 +26,8 @@ public class TestExceptions
         var exception2 = Assert.Throws<ArgumentOutOfRangeException>(() => statement.GetParameterValueKind(99));
         Assert.Contains("index", exception2.ParamName ?? "", StringComparison.OrdinalIgnoreCase);
         
-        // BindParameter should throw ArgumentOutOfRangeException for invalid index
-        var exception3 = Assert.Throws<ArgumentOutOfRangeException>(() => statement.BindParameter(99, "test"));
+        // Parameters[i].Set() should throw ArgumentOutOfRangeException for invalid index
+        var exception3 = Assert.Throws<ArgumentOutOfRangeException>(() => statement.Parameters[99].Set("test"));
         Assert.Contains("index", exception3.ParamName ?? "", StringComparison.OrdinalIgnoreCase);
     }
 
@@ -108,7 +108,7 @@ public class TestExceptions
         // Negative indices should throw ArgumentOutOfRangeException
         Assert.Throws<ArgumentOutOfRangeException>(() => statement.GetParameterName(-1));
         Assert.Throws<ArgumentOutOfRangeException>(() => statement.GetParameterValueKind(-1));
-        Assert.Throws<ArgumentOutOfRangeException>(() => statement.BindParameter(-1, "test"));
+        Assert.Throws<ArgumentOutOfRangeException>(() => statement.Parameters[-1].Set("test"));
     }
 
     #endregion
