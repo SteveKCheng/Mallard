@@ -326,11 +326,40 @@ public unsafe class DuckDbStatement : IDisposable
             _parent = parent;
             _index = index;
         }
+        
+        /// <summary>
+        /// The name of this formal parameter within the prepared statement.
+        /// </summary>
+        /// <value>
+        /// The name of the parameter as a string.
+        /// For positional parameters in the SQL statement, the name is the decimal
+        /// representation of the ordinal (in ASCII digits, no leading zeros).
+        /// Note the returned string is not cached.
+        /// </value>
+        /// <exception cref="ObjectDisposedException">
+        /// The containing prepared statement of this parameter has already been
+        /// disposed.  (Retrieving the name requires querying the native
+        /// prepared statement object from DuckDB.)
+        /// </exception>
+        public string Name => _parent.GetParameterName(_index);
+
+        /// <summary>
+        /// The index/position of this formal parameter within the prepared statement.
+        /// </summary>
+        /// <value>
+        /// Index of the parameter, ranging from 1 to the total number of parameters.
+        /// </value>
+        public int Index => _index;
     }
     
     /// <summary>
     /// The collection of formal parameters in a prepared statement from DuckDB.
     /// </summary>
+    /// <remarks>
+    /// This collection is essentially an ordered list of the parameters.
+    /// It does not implement <see cref="IReadOnlyList{T}" /> only
+    /// because DuckDB's parameters are defined to be numbered starting from 1, not 0.  
+    /// </remarks>
     public readonly struct ParametersCollection : IReadOnlyCollection<Parameter>
     {
         private readonly DuckDbStatement _parent;
@@ -347,9 +376,9 @@ public unsafe class DuckDbStatement : IDisposable
         /// <summary>
         /// Get the number of parameters available to bind in the DuckDB statement.
         /// </summary>
-        /// <returns>
-        /// The number of parameters.
-        /// </returns>
+        /// <value>
+        /// The total number of parameters.
+        /// </value>
         public int Count => _parent.ParameterCount;
 
         /// <summary>
@@ -362,7 +391,7 @@ public unsafe class DuckDbStatement : IDisposable
         /// should match up exactly with the ordinal of the parameter in the SQL statement.
         /// </param>
         /// <exception cref="ArgumentOutOfRangeException">
-        /// <paramref name="index" /> is less than 1 or greater than <see cref="ParameterCount" />.
+        /// <paramref name="index" /> is less than 1 or greater than <see cref="Count" />.
         /// </exception>
         public Parameter this[int index]
         {
