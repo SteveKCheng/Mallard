@@ -221,6 +221,10 @@ public unsafe class DuckDbStatement : IDisposable
     /// <summary>
     /// A formal parameter in a prepared statement from DuckDB.
     /// </summary>
+    /// <remarks>
+    /// The value of the parameter can be set with any of the methods from
+    /// <see cref="DuckDbValue" />.    
+    /// </remarks>
     public readonly struct Parameter : ISettableDuckDbValue
     {
         private readonly DuckDbStatement _parent;

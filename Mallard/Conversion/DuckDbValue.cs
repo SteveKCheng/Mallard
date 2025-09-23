@@ -11,8 +11,19 @@ namespace Mallard;
 /// Contains methods to input (parameter) values of various types into DuckDB.
 /// </summary>
 /// <remarks>
+/// <para>
 /// The methods here work with types that implement <see cref="ISettableDuckDbValue" />.
 /// In particular, they are used to set values for parameters in prepared statements.
+/// </para>
+/// <para>
+/// The methods here, depending on a particular type of the receiver
+/// (implementation of <see cref="ISettableDuckDbValue" />),
+/// may throw exceptions when, for whatever reason, the parameter value
+/// cannot be set.  <see cref="DuckDbException" /> is thrown if DuckDB reports
+/// an error in setting the value.  <see cref="ObjectDisposedException" />
+/// is thrown if the parameter object or its container/parent object has
+/// already been disposed.
+/// </para>
 /// </remarks>
 public static partial class DuckDbValue
 {
