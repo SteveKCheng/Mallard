@@ -33,7 +33,8 @@ public static partial class DuckDbValue
     /// Set a null (SQL NULL) value into a DuckDB parameter.
     /// </summary>
     /// <param name="receiver">The parameter or other object from DuckDB that can accept a value. </param>
-    public static void SetNull<TReceiver>(this TReceiver receiver) where TReceiver : ISettableDuckDbValue
+    public static void SetNull<TReceiver>(this TReceiver receiver) 
+        where TReceiver : ISettableDuckDbValue, allows ref struct
         => receiver.SetNull();
     
     /// <summary>
@@ -45,7 +46,8 @@ public static partial class DuckDbValue
     /// The type of <paramref name="receiver" />, explicitly parameterized
     /// to avoid unnecessary boxing when it is value type.
     /// </typeparam>
-    public static void Set<TReceiver>(this TReceiver receiver, bool value) where TReceiver : ISettableDuckDbValue
+    public static void Set<TReceiver>(this TReceiver receiver, bool value) 
+        where TReceiver : ISettableDuckDbValue, allows ref struct
         => receiver.SetBoolean(value);
     
     #endregion
@@ -61,7 +63,8 @@ public static partial class DuckDbValue
     /// The type of <paramref name="receiver" />, explicitly parameterized
     /// to avoid unnecessary boxing when it is value type.
     /// </typeparam>
-    public static void Set<TReceiver>(this TReceiver receiver, int value) where TReceiver : ISettableDuckDbValue
+    public static void Set<TReceiver>(this TReceiver receiver, int value) 
+        where TReceiver : ISettableDuckDbValue, allows ref struct
         => receiver.SetInt32(value);
     
     /// <summary>
@@ -73,7 +76,8 @@ public static partial class DuckDbValue
     /// The type of <paramref name="receiver" />, explicitly parameterized
     /// to avoid unnecessary boxing when it is value type.
     /// </typeparam>
-    public static void Set<TReceiver>(this TReceiver receiver, long value) where TReceiver : ISettableDuckDbValue
+    public static void Set<TReceiver>(this TReceiver receiver, long value) 
+        where TReceiver : ISettableDuckDbValue, allows ref struct
         => receiver.SetInt64(value);
     
     /// <summary>
@@ -85,7 +89,8 @@ public static partial class DuckDbValue
     /// The type of <paramref name="receiver" />, explicitly parameterized
     /// to avoid unnecessary boxing when it is value type.
     /// </typeparam>
-    public static void Set<TReceiver>(this TReceiver receiver, sbyte value) where TReceiver : ISettableDuckDbValue
+    public static void Set<TReceiver>(this TReceiver receiver, sbyte value) 
+        where TReceiver : ISettableDuckDbValue, allows ref struct
         => receiver.SetInt8(value);
     
     /// <summary>
@@ -97,7 +102,8 @@ public static partial class DuckDbValue
     /// The type of <paramref name="receiver" />, explicitly parameterized
     /// to avoid unnecessary boxing when it is value type.
     /// </typeparam>
-    public static void Set<TReceiver>(this TReceiver receiver, short value) where TReceiver : ISettableDuckDbValue
+    public static void Set<TReceiver>(this TReceiver receiver, short value) 
+        where TReceiver : ISettableDuckDbValue, allows ref struct
         => receiver.SetInt16(value);
     
     /// <summary>
@@ -109,7 +115,8 @@ public static partial class DuckDbValue
     /// The type of <paramref name="receiver" />, explicitly parameterized
     /// to avoid unnecessary boxing when it is value type.
     /// </typeparam>
-    public static void Set<TReceiver>(this TReceiver receiver, Int128 value) where TReceiver : ISettableDuckDbValue
+    public static void Set<TReceiver>(this TReceiver receiver, Int128 value) 
+        where TReceiver : ISettableDuckDbValue, allows ref struct
         => receiver.SetInt128(value);
     
     /// <summary>
@@ -121,7 +128,8 @@ public static partial class DuckDbValue
     /// The type of <paramref name="receiver" />, explicitly parameterized
     /// to avoid unnecessary boxing when it is value type.
     /// </typeparam>
-    public static void Set<TReceiver>(this TReceiver receiver, byte value) where TReceiver : ISettableDuckDbValue
+    public static void Set<TReceiver>(this TReceiver receiver, byte value) 
+        where TReceiver : ISettableDuckDbValue, allows ref struct
         => receiver.SetUInt8(value);
     
     /// <summary>
@@ -133,7 +141,8 @@ public static partial class DuckDbValue
     /// The type of <paramref name="receiver" />, explicitly parameterized
     /// to avoid unnecessary boxing when it is value type.
     /// </typeparam>
-    public static void Set<TReceiver>(this TReceiver receiver, ushort value) where TReceiver : ISettableDuckDbValue
+    public static void Set<TReceiver>(this TReceiver receiver, ushort value) 
+        where TReceiver : ISettableDuckDbValue, allows ref struct
         => receiver.SetUInt16(value);
     
     /// <summary>
@@ -145,7 +154,8 @@ public static partial class DuckDbValue
     /// The type of <paramref name="receiver" />, explicitly parameterized
     /// to avoid unnecessary boxing when it is value type.
     /// </typeparam>
-    public static void Set<TReceiver>(this TReceiver receiver, uint value) where TReceiver : ISettableDuckDbValue
+    public static void Set<TReceiver>(this TReceiver receiver, uint value) 
+        where TReceiver : ISettableDuckDbValue, allows ref struct
         => receiver.SetUInt32(value);
     
     /// <summary>
@@ -157,7 +167,8 @@ public static partial class DuckDbValue
     /// The type of <paramref name="receiver" />, explicitly parameterized
     /// to avoid unnecessary boxing when it is value type.
     /// </typeparam>
-    public static void Set<TReceiver>(this TReceiver receiver, ulong value) where TReceiver : ISettableDuckDbValue
+    public static void Set<TReceiver>(this TReceiver receiver, ulong value) 
+        where TReceiver : ISettableDuckDbValue, allows ref struct
         => receiver.SetUInt64(value);
     
     /// <summary>
@@ -169,7 +180,8 @@ public static partial class DuckDbValue
     /// The type of <paramref name="receiver" />, explicitly parameterized
     /// to avoid unnecessary boxing when it is value type.
     /// </typeparam>
-    public static void Set<TReceiver>(this TReceiver receiver, UInt128 value) where TReceiver : ISettableDuckDbValue
+    public static void Set<TReceiver>(this TReceiver receiver, UInt128 value) 
+        where TReceiver : ISettableDuckDbValue, allows ref struct
         => receiver.SetUInt128(value);
     
     #endregion
@@ -185,7 +197,8 @@ public static partial class DuckDbValue
     /// The type of <paramref name="receiver" />, explicitly parameterized
     /// to avoid unnecessary boxing when it is value type.
     /// </typeparam>
-    public static void Set<TReceiver>(this TReceiver receiver, float value) where TReceiver : ISettableDuckDbValue
+    public static void Set<TReceiver>(this TReceiver receiver, float value) 
+        where TReceiver : ISettableDuckDbValue, allows ref struct
         => receiver.SetFloat(value);
     
     /// <summary>
@@ -197,7 +210,8 @@ public static partial class DuckDbValue
     /// The type of <paramref name="receiver" />, explicitly parameterized
     /// to avoid unnecessary boxing when it is value type.
     /// </typeparam>
-    public static void Set<TReceiver>(this TReceiver receiver, double value) where TReceiver : ISettableDuckDbValue
+    public static void Set<TReceiver>(this TReceiver receiver, double value) 
+        where TReceiver : ISettableDuckDbValue, allows ref struct
         => receiver.SetDouble(value);
     
     #endregion
@@ -215,7 +229,8 @@ public static partial class DuckDbValue
     /// The type of <paramref name="receiver" />, explicitly parameterized
     /// to avoid unnecessary boxing when it is value type.
     /// </typeparam>
-    public static void Set<TReceiver>(this TReceiver receiver, DuckDbDecimal value) where TReceiver : ISettableDuckDbValue
+    public static void Set<TReceiver>(this TReceiver receiver, DuckDbDecimal value) 
+        where TReceiver : ISettableDuckDbValue, allows ref struct
         => receiver.SetDecimal(value);
 
     /// <summary>
@@ -228,7 +243,7 @@ public static partial class DuckDbValue
     /// to avoid unnecessary boxing when it is value type.
     /// </typeparam>
     public static unsafe void Set<TReceiver>(this TReceiver receiver, BigInteger value)
-        where TReceiver : ISettableDuckDbValue
+        where TReceiver : ISettableDuckDbValue, allows ref struct
         // Custom marshaller converts input value
         => receiver.SetNativeValue(NativeMethods.duckdb_create_varint(value));
 
@@ -246,7 +261,8 @@ public static partial class DuckDbValue
     /// The type of <paramref name="receiver" />, explicitly parameterized
     /// to avoid unnecessary boxing when it is value type.
     /// </typeparam>
-    public static void Set<TReceiver>(this TReceiver receiver, DuckDbDate value) where TReceiver : ISettableDuckDbValue
+    public static void Set<TReceiver>(this TReceiver receiver, DuckDbDate value) 
+        where TReceiver : ISettableDuckDbValue, allows ref struct
         => receiver.SetDate(value);
 
     /// <summary>
@@ -259,7 +275,8 @@ public static partial class DuckDbValue
     /// The type of <paramref name="receiver" />, explicitly parameterized
     /// to avoid unnecessary boxing when it is value type.
     /// </typeparam>
-    public static void Set<TReceiver>(this TReceiver receiver, DuckDbTimestamp value) where TReceiver : ISettableDuckDbValue
+    public static void Set<TReceiver>(this TReceiver receiver, DuckDbTimestamp value) 
+        where TReceiver : ISettableDuckDbValue, allows ref struct
         => receiver.SetTimestamp(value);
 
     /// <summary>
@@ -272,7 +289,8 @@ public static partial class DuckDbValue
     /// The type of <paramref name="receiver" />, explicitly parameterized
     /// to avoid unnecessary boxing when it is value type.
     /// </typeparam>
-    public static void Set<TReceiver>(this TReceiver receiver, DuckDbInterval value) where TReceiver : ISettableDuckDbValue
+    public static void Set<TReceiver>(this TReceiver receiver, DuckDbInterval value) 
+        where TReceiver : ISettableDuckDbValue, allows ref struct
         => receiver.SetInterval(value);
 
     #endregion
@@ -288,7 +306,8 @@ public static partial class DuckDbValue
     /// The type of <paramref name="receiver" />, explicitly parameterized
     /// to avoid unnecessary boxing when it is value type.
     /// </typeparam>
-    public static void Set<TReceiver>(this TReceiver receiver, string value) where TReceiver : ISettableDuckDbValue
+    public static void Set<TReceiver>(this TReceiver receiver, string value) 
+        where TReceiver : ISettableDuckDbValue, allows ref struct
         => receiver.SetStringUtf16(value.AsSpan());
     
     /// <summary>
@@ -302,7 +321,7 @@ public static partial class DuckDbValue
     /// </typeparam>
     [SkipLocalsInit]
     public static unsafe void SetStringUtf16<TReceiver>(this TReceiver receiver, ReadOnlySpan<char> text)
-        where TReceiver : ISettableDuckDbValue
+        where TReceiver : ISettableDuckDbValue, allows ref struct
     {
         using scoped var marshalState = new Utf8StringConverterState();
         var utf8Ptr = marshalState.ConvertToUtf8(
@@ -322,7 +341,7 @@ public static partial class DuckDbValue
     /// to avoid unnecessary boxing when it is value type.
     /// </typeparam>
     public static unsafe void SetStringUtf8<TReceiver>(this TReceiver receiver, ReadOnlySpan<byte> text)
-        where TReceiver : ISettableDuckDbValue
+        where TReceiver : ISettableDuckDbValue, allows ref struct
     {
         fixed (byte* p = text)
             receiver.SetStringUtf8(p, text.Length);
@@ -345,7 +364,7 @@ public static partial class DuckDbValue
     /// to avoid unnecessary boxing when it is value type.
     /// </typeparam>
     public static unsafe void SetBlob<TReceiver>(this TReceiver receiver, ReadOnlySpan<byte> data)
-        where TReceiver : ISettableDuckDbValue
+        where TReceiver : ISettableDuckDbValue, allows ref struct
     {
         fixed (byte* p = data)
             receiver.SetBlob(p, data.Length);    
@@ -373,7 +392,7 @@ public static partial class DuckDbValue
     /// </exception>
     [SkipLocalsInit]
     public static unsafe void SetBitString<TReceiver>(this TReceiver receiver, ReadOnlySpan<byte> data, int bitLength)
-        where TReceiver : ISettableDuckDbValue
+        where TReceiver : ISettableDuckDbValue, allows ref struct
     {
         ArgumentOutOfRangeException.ThrowIfNegative(bitLength);
 
@@ -411,7 +430,7 @@ public static partial class DuckDbValue
     /// to avoid unnecessary boxing when it is value type.
     /// </typeparam>
     public static void Set<TReceiver>(this TReceiver receiver, BitArray value)
-        where TReceiver : ISettableDuckDbValue
+        where TReceiver : ISettableDuckDbValue, allows ref struct
     {
         #if NET10_OR_GREATER
         ReadOnlySpan<byte> data = CollectionsMarshal.AsBytes(value);
