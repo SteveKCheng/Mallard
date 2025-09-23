@@ -98,7 +98,10 @@ public class TestExecuteScalar
             // which is what we want.
             buffer[numBytes - 1] &= (byte)(uint.MaxValue >> (32 - (len & 7)));
 
-            var bitArray = new BitArray(buffer[..numBytes].ToArray());
+            var bitArray = new BitArray(len);
+            for (int i = 0; i < len; ++i)
+                bitArray[i] = (buffer[i / 8] & (1 << (i % 8))) != 0;
+            // var bitArray = new BitArray(buffer[..numBytes].ToArray());
 
             // Create a string for the value to send into SQL
             ps.Parameters[1].Set(CreateStringFromBitArray(bitArray, 0, len));
@@ -107,7 +110,13 @@ public class TestExecuteScalar
             Assert.NotNull(bitArray2);
 
             // BitArray does not do structural equality, so convert to IEnumerable<bool> first.
-            Assert2.Equal(bitArray.Cast<bool>().Take(len), bitArray2.Cast<bool>());
+            Assert2.Equal(bitArray.Cast<bool>(), bitArray2.Cast<bool>());
+            
+            // Repeat, but send an actual bit-string to DuckDB this time
+            ps.Parameters[1].Set(bitArray);
+            var bitArray3 = ps.ExecuteValue<BitArray>();
+            Assert.NotNull(bitArray3);
+            Assert2.Equal(bitArray.Cast<bool>(), bitArray3.Cast<bool>());
         }
     }
     
