@@ -269,6 +269,76 @@ internal unsafe static partial class NativeMethods
 
     #endregion
 
+    #region Binding values to parameters of prepared statements
+
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_bind_boolean(_duckdb_prepared_statement* prepared_statement, idx_t param_idx, [MarshalAs(UnmanagedType.I1)] bool val);
+    
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_bind_int8(_duckdb_prepared_statement* prepared_statement, idx_t param_idx, sbyte val);
+    
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_bind_int16(_duckdb_prepared_statement* prepared_statement, idx_t param_idx, short val);
+    
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_bind_int32(_duckdb_prepared_statement* prepared_statement, idx_t param_idx, int val);
+    
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_bind_int64(_duckdb_prepared_statement* prepared_statement, idx_t param_idx, long val);
+    
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_bind_hugeint(_duckdb_prepared_statement* prepared_statement, idx_t param_idx, DuckDbUInt128 val);
+    
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_bind_uhugeint(_duckdb_prepared_statement* prepared_statement, idx_t param_idx, DuckDbUInt128 val);
+    
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_bind_decimal(_duckdb_prepared_statement* prepared_statement, idx_t param_idx, DuckDbDecimal val);
+    
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_bind_uint8(_duckdb_prepared_statement* prepared_statement, idx_t param_idx, byte val);
+    
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_bind_uint16(_duckdb_prepared_statement* prepared_statement, idx_t param_idx, ushort val);
+    
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_bind_uint32(_duckdb_prepared_statement* prepared_statement, idx_t param_idx, uint val);
+    
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_bind_uint64(_duckdb_prepared_statement* prepared_statement, idx_t param_idx, ulong val);
+    
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_bind_float(_duckdb_prepared_statement* prepared_statement, idx_t param_idx, float val);
+    
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_bind_double(_duckdb_prepared_statement* prepared_statement, idx_t param_idx, double val);
+    
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_bind_date(_duckdb_prepared_statement* prepared_statement, idx_t param_idx, DuckDbDate val);
+    
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_bind_time(_duckdb_prepared_statement* prepared_statement, idx_t param_idx, DuckDbTime val);
+    
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_bind_timestamp(_duckdb_prepared_statement* prepared_statement, idx_t param_idx, DuckDbTimestamp val);
+    
+    // [LibraryImport(LibraryName)]
+    // internal static partial duckdb_state duckdb_bind_timestamp_tz(_duckdb_prepared_statement* prepared_statement, idx_t param_idx, DuckDbTimestamp val);
+    
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_bind_interval(_duckdb_prepared_statement* prepared_statement, idx_t param_idx, DuckDbInterval val);
+    
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_bind_varchar_length(_duckdb_prepared_statement* prepared_statement, idx_t param_idx, byte* val, idx_t length);
+    
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_bind_blob(_duckdb_prepared_statement* prepared_statement, idx_t param_idx, void* data, idx_t length);
+
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_bind_null(_duckdb_prepared_statement* prepared_statement, idx_t param_idx);    
+    
+    #endregion
+    
     #region Logical types
 
     [LibraryImport(LibraryName)]

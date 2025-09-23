@@ -57,6 +57,10 @@ internal struct DuckDbUInt128
             upper = p[0];
         }
     }
+    
+    public static implicit operator DuckDbUInt128(UInt128 input) => new DuckDbUInt128(input);
+    
+    public static implicit operator DuckDbUInt128(Int128 input) => new DuckDbUInt128(input);
 
     public readonly Int128 ToInt128() => new(upper, lower);
     public readonly UInt128 ToUInt128() => new(upper, lower);

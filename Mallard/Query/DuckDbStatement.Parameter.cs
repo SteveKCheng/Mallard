@@ -1,5 +1,6 @@
 using System;
 using Mallard.Interop;
+using Mallard.Types;
 
 namespace Mallard;
 
@@ -16,9 +17,6 @@ public partial class DuckDbStatement
     {
         private readonly DuckDbStatement _parent;
         private readonly int _index;
-
-        void ISettableDuckDbValue.SetNativeValue(_duckdb_value* nativeValue)
-            => _parent.BindParameter(_index, ref nativeValue);
 
         internal Parameter(DuckDbStatement parent, int index)
         {
@@ -62,5 +60,132 @@ public partial class DuckDbStatement
         /// Index of the parameter, ranging from 1 to the total number of parameters.
         /// </value>
         public int Index => _index;
+
+        #region Implementation of ISettableDuckDbValue
+        
+        void ISettableDuckDbValue.SetNativeValue(_duckdb_value* nativeValue)
+            => _parent.BindParameter(_index, ref nativeValue);
+
+        void ISettableDuckDbValue.SetNull()
+        {
+            using var _ = _parent._barricade.EnterScope(_parent);
+            _parent.ThrowOnBindFailure(NativeMethods.duckdb_bind_null(_parent._nativeStatement, _index));
+        }
+
+        void ISettableDuckDbValue.SetBoolean(bool value)
+        {
+            using var _ = _parent._barricade.EnterScope(_parent);
+            _parent.ThrowOnBindFailure(NativeMethods.duckdb_bind_boolean(_parent._nativeStatement, _index, value));
+        }
+
+        void ISettableDuckDbValue.SetInt8(sbyte value)
+        {
+            using var _ = _parent._barricade.EnterScope(_parent);
+            _parent.ThrowOnBindFailure(NativeMethods.duckdb_bind_int8(_parent._nativeStatement, _index, value));
+        }
+
+        void ISettableDuckDbValue.SetInt16(short value)
+        {
+            using var _ = _parent._barricade.EnterScope(_parent);
+            _parent.ThrowOnBindFailure(NativeMethods.duckdb_bind_int16(_parent._nativeStatement, _index, value));
+        }
+    
+        void ISettableDuckDbValue.SetInt32(int value)
+        {
+            using var _ = _parent._barricade.EnterScope(_parent);
+            _parent.ThrowOnBindFailure(NativeMethods.duckdb_bind_int32(_parent._nativeStatement, _index, value));
+        }
+
+        void ISettableDuckDbValue.SetInt64(long value)
+        {
+            using var _ = _parent._barricade.EnterScope(_parent);
+            _parent.ThrowOnBindFailure(NativeMethods.duckdb_bind_int64(_parent._nativeStatement, _index, value));
+        }
+
+        void ISettableDuckDbValue.SetInt128(Int128 value)
+        {
+            using var _ = _parent._barricade.EnterScope(_parent);
+            _parent.ThrowOnBindFailure(NativeMethods.duckdb_bind_hugeint(_parent._nativeStatement, _index, value));
+        }
+
+        void ISettableDuckDbValue.SetUInt8(byte value)
+        {
+            using var _ = _parent._barricade.EnterScope(_parent);
+            _parent.ThrowOnBindFailure(NativeMethods.duckdb_bind_uint8(_parent._nativeStatement, _index, value));
+        }
+
+        void ISettableDuckDbValue.SetUInt16(ushort value)
+        {
+            using var _ = _parent._barricade.EnterScope(_parent);
+            _parent.ThrowOnBindFailure(NativeMethods.duckdb_bind_uint16(_parent._nativeStatement, _index, value));
+        }
+    
+        void ISettableDuckDbValue.SetUInt32(uint value)
+        {
+            using var _ = _parent._barricade.EnterScope(_parent);
+            _parent.ThrowOnBindFailure(NativeMethods.duckdb_bind_uint32(_parent._nativeStatement, _index, value));
+        }
+
+        void ISettableDuckDbValue.SetUInt64(ulong value)
+        {
+            using var _ = _parent._barricade.EnterScope(_parent);
+            _parent.ThrowOnBindFailure(NativeMethods.duckdb_bind_uint64(_parent._nativeStatement, _index, value));
+        }
+
+        void ISettableDuckDbValue.SetUInt128(UInt128 value)
+        {
+            using var _ = _parent._barricade.EnterScope(_parent);
+            _parent.ThrowOnBindFailure(NativeMethods.duckdb_bind_uhugeint(_parent._nativeStatement, _index, value));
+        }
+
+        void ISettableDuckDbValue.SetFloat(float value)
+        {
+            using var _ = _parent._barricade.EnterScope(_parent);
+            _parent.ThrowOnBindFailure(NativeMethods.duckdb_bind_float(_parent._nativeStatement, _index, value));
+        }
+
+        void ISettableDuckDbValue.SetDouble(double value)
+        {
+            using var _ = _parent._barricade.EnterScope(_parent);
+            _parent.ThrowOnBindFailure(NativeMethods.duckdb_bind_double(_parent._nativeStatement, _index, value));
+        }
+
+        void ISettableDuckDbValue.SetDecimal(DuckDbDecimal value)
+        {
+            using var _ = _parent._barricade.EnterScope(_parent);
+            _parent.ThrowOnBindFailure(NativeMethods.duckdb_bind_decimal(_parent._nativeStatement, _index, value));
+        }
+
+        void ISettableDuckDbValue.SetDate(DuckDbDate value)
+        {
+            using var _ = _parent._barricade.EnterScope(_parent);
+            _parent.ThrowOnBindFailure(NativeMethods.duckdb_bind_date(_parent._nativeStatement, _index, value));
+        }
+
+        void ISettableDuckDbValue.SetTimestamp(DuckDbTimestamp value)
+        {
+            using var _ = _parent._barricade.EnterScope(_parent);
+            _parent.ThrowOnBindFailure(NativeMethods.duckdb_bind_timestamp(_parent._nativeStatement, _index, value));
+        }
+
+        void ISettableDuckDbValue.SetInterval(DuckDbInterval value)
+        {
+            using var _ = _parent._barricade.EnterScope(_parent);
+            _parent.ThrowOnBindFailure(NativeMethods.duckdb_bind_interval(_parent._nativeStatement, _index, value));
+        }
+
+        void ISettableDuckDbValue.SetStringUtf8(byte* data, long length)
+        {
+            using var _ = _parent._barricade.EnterScope(_parent);
+            _parent.ThrowOnBindFailure(NativeMethods.duckdb_bind_varchar_length(_parent._nativeStatement, _index, data, length));
+        }
+
+        void ISettableDuckDbValue.SetBlob(byte* data, long length)
+        {
+            using var _ = _parent._barricade.EnterScope(_parent);
+            _parent.ThrowOnBindFailure(NativeMethods.duckdb_bind_blob(_parent._nativeStatement, _index, data, length));
+        }
+
+        #endregion
     }
 }
