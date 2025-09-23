@@ -27,6 +27,16 @@ namespace Mallard;
 /// </remarks>
 public static partial class DuckDbValue
 {
+    #region Helper functions for implementations
+
+    internal static unsafe void ThrowOnNullDuckDbValue(_duckdb_value* nativeValue)
+    {
+        if (nativeValue == null)
+            throw new DuckDbException("Failed to create object wrapping value. ");
+    }
+    
+    #endregion
+    
     #region Miscellaneous simple types
     
     /// <summary>

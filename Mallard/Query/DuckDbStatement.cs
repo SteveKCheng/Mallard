@@ -350,9 +350,8 @@ public unsafe partial class DuckDbStatement : IDisposable
     /// </summary>
     private void BindParameter(int index, ref _duckdb_value* nativeValue)
     {
-        if (nativeValue == null)
-            throw new DuckDbException("Failed to create object wrapping value. ");
-
+        DuckDbValue.ThrowOnNullDuckDbValue(nativeValue);
+        
         try
         {
             duckdb_state status;

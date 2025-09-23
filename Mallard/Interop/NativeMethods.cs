@@ -475,6 +475,9 @@ internal unsafe static partial class NativeMethods
 
     [LibraryImport(LibraryName)]
     internal static partial _duckdb_value* duckdb_create_null_value();
+    
+    [LibraryImport(LibraryName)]
+    internal static partial _duckdb_value* duckdb_create_struct_value(_duckdb_logical_type* type, _duckdb_value** values);
 
     #endregion
 }

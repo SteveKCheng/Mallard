@@ -140,4 +140,26 @@ public unsafe sealed class DuckDbStructColumns : IResultColumns, IDisposable
     {
         DisposeImpl(disposing: false);
     }
+
+    /// <summary>
+    /// Get access to the native "logical type" object from DuckDB while taking
+    /// shared ownership of this instance.
+    /// </summary>
+    /// <param name="scope">
+    /// Holder that should be disposed once the caller is finished with using
+    /// the native object.  The scope prevents the native object from being
+    /// destroyed from a concurrent thread calling <see cref="Dispose" />,
+    /// or from garbage collection on this instance.
+    /// </param>
+    /// <returns>
+    /// The native "logical type" object.  It is not null when this method succeeds.
+    /// </returns>
+    /// <exception cref="ObjectDisposedException">
+    /// This instance has already been disposed.
+    /// </exception>
+    internal _duckdb_logical_type* BorrowNativeLogicalType(out HandleRefCount.Scope scope)
+    {
+        scope = _refCount.EnterScope(this);
+        return _nativeType;
+    }
 }
