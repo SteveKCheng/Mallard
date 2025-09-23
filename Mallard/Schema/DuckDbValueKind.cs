@@ -23,6 +23,14 @@
 /// </remarks>
 public enum DuckDbValueKind : int
 {
+    /// <summary>
+    /// Invalid or undetermined type of value.
+    /// </summary>
+    /// <remarks>
+    /// This kind is reported for formal parameters in a prepared statement
+    /// that have no specific implied data type.  For example, from a statement
+    /// like <c>SELECT $1</c>.
+    /// </remarks>
     Invalid = 0,
 
     /// <summary>
@@ -151,7 +159,6 @@ public enum DuckDbValueKind : int
     // duckdb_timestamp (microseconds)
     TimestampTz = 31,
 
-    // enum type, only useful as logical type
     Any = 34,
     
     /// <summary>

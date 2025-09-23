@@ -41,19 +41,6 @@ public partial class DuckDbStatement
         public string Name => _parent.GetParameterName(_index);
         
         /// <summary>
-        /// The DuckDB type of this parameter.
-        /// </summary>
-        /// <value>
-        /// The DuckDB type of value that this parameter accepts. 
-        /// </value>
-        /// <exception cref="ObjectDisposedException">
-        /// The containing prepared statement of this parameter has already been
-        /// disposed.  (This method internally requires querying the native
-        /// prepared statement object from DuckDB.)
-        /// </exception>
-        public DuckDbValueKind ValueKind => _parent.GetParameterValueKind(_index);
-
-        /// <summary>
         /// The index/position of this formal parameter within the prepared statement.
         /// </summary>
         /// <value>
@@ -186,6 +173,31 @@ public partial class DuckDbStatement
             _parent.ThrowOnBindFailure(NativeMethods.duckdb_bind_blob(_parent._nativeStatement, _index, data, length));
         }
 
+        #endregion
+        
+        #region Type information
+        
+        /// <summary>
+        /// The DuckDB type of this parameter.
+        /// </summary>
+        /// <value>
+        /// The DuckDB kind of the value that this parameter has been set to, or
+        /// the kind of value that this parameter accepts if no value has been set yet.
+        /// If the type of an unset (unbound) parameter is indeterminate,
+        /// <see cref="DuckDbValueKind.Invalid" /> is returned. 
+        /// </value>
+        /// <exception cref="ObjectDisposedException">
+        /// The containing prepared statement of this parameter has already been
+        /// disposed.  (This method internally requires querying the native
+        /// prepared statement object from DuckDB.)
+        /// </exception>
+        /// <remarks>
+        /// On setting (binding) a value on a parameter, DuckDB will automatically cast
+        /// the value to the parameter's type (if not <see cref="DuckDbValueKind.Invalid" />),
+        /// so consulting this property is usually not necessary.
+        /// </remarks>
+        public DuckDbValueKind ValueKind => _parent.GetParameterValueKind(_index);
+        
         #endregion
     }
 }
