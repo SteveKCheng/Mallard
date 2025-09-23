@@ -346,7 +346,10 @@ public readonly ref struct DuckDbBitString : IStatelesslyConvertible<DuckDbBitSt
     #if !NET10_OR_GREATER
 
     [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "m_array")]
-    private static extern int[] GetRawDataOfBitArrayPrivate(BitArray bitArray);
+    private static extern ref int[] GetRawDataOfBitArrayPrivate(BitArray bitArray);
+
+    [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_array")]
+    private static extern ref byte[] GetRawDataOfBitArrayPrivateDotNet10(BitArray bitArray);
 
     /// <summary>
     /// Polyfill for <c>CollectionsMarshal.AsBytes</c> under .NET 9.
@@ -354,17 +357,31 @@ public readonly ref struct DuckDbBitString : IStatelesslyConvertible<DuckDbBitSt
     internal static Span<byte> GetRawDataOfBitArray(BitArray? value)
     {
         ArgumentNullException.ThrowIfNull(value);
-        int[] array = GetRawDataOfBitArrayPrivate(value);
+
+        if (Environment.Version.Major < 10)
+        {
+            int[] array = GetRawDataOfBitArrayPrivate(value);
         
-        // N.B. If there is a multi-thread race (from bad user code), array.Length
-        //      might be inconsistent with value.Length.  Just make sure the Span
-        //      remains in-bounds here, and let user-facing methods in this library
-        //      check lengths for consistency later.
-        var arrayLength = Math.Min(array.Length, (value.Length + 7) / 8);
+            // N.B. If there is a multi-thread race (from bad user code), array.Length
+            //      might be inconsistent with value.Length.  Just make sure the Span
+            //      remains in-bounds here, and let user-facing methods in this library
+            //      check lengths for consistency later.
+            var arrayLength = Math.Min(array.Length, (value.Length + 7) / 8);
         
-        return arrayLength > 0
-            ? MemoryMarshal.CreateSpan(ref Unsafe.As<int, byte>(ref array[0]), arrayLength)
-            : Span<byte>.Empty;
+            return arrayLength > 0
+                ? MemoryMarshal.CreateSpan(ref Unsafe.As<int, byte>(ref array[0]), arrayLength)
+                : Span<byte>.Empty;
+        }
+
+        // We might be executing an assembly targeting .NET 9 under .NET 10,
+        // where BitArray's internals changed slightly.  We can remove all these
+        // ugly hacks once we target .NET 10 exclusively.
+        else
+        {
+            byte[] array = GetRawDataOfBitArrayPrivateDotNet10(value);
+            var arrayLength = Math.Min(array.Length, (value.Length + 7) / 8);
+            return array.AsSpan()[0..arrayLength];
+        }
     }
     
     #endif
