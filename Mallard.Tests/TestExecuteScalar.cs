@@ -18,7 +18,11 @@ public class TestExecuteScalar
         decimal v = 0.1M;
 
         var ps = dbConn.PrepareStatement("SELECT $1");
+        Assert.Equal(DuckDbValueKind.Invalid, ps.Parameters[1].ValueKind);
+        
         ps.Parameters[1].Set(v);
+        Assert.Equal(DuckDbValueKind.Decimal, ps.Parameters[1].ValueKind);
+        
         object? v_out = ps.ExecuteScalar();
 
         Assert.IsType<Decimal>(v_out);
@@ -31,6 +35,8 @@ public class TestExecuteScalar
         using var dbConn = new DuckDbConnection("");
 
         using var ps = dbConn.PrepareStatement("SELECT $1");
+        Assert.Equal(DuckDbValueKind.Invalid, ps.Parameters[1].ValueKind);
+
         Span<byte> buffer = stackalloc byte[1024];
 
         void Check(Span<byte> bytes, bool isNegative)
@@ -39,6 +45,7 @@ public class TestExecuteScalar
             var value = isNegative ? -magnitude : magnitude;
 
             ps.Parameters[1].Set(value);
+            Assert.Equal(DuckDbValueKind.VarInt, ps.Parameters[1].ValueKind);
 
             object? valueOut = ps.ExecuteScalar();
             Assert.IsType<BigInteger>(valueOut);
@@ -83,7 +90,8 @@ public class TestExecuteScalar
     {
         using var dbConn = new DuckDbConnection("");
         using var ps = dbConn.PrepareStatement("SELECT $1::BITSTRING");
-
+        Assert.Equal(DuckDbValueKind.Bit, ps.Parameters[1].ValueKind);
+        
         Span<byte> buffer = stackalloc byte[512];
         var random = new Random(Seed: 37);
 
@@ -105,6 +113,7 @@ public class TestExecuteScalar
 
             // Create a string for the value to send into SQL
             ps.Parameters[1].Set(CreateStringFromBitArray(bitArray, 0, len));
+            Assert.Equal(DuckDbValueKind.Bit, ps.Parameters[1].ValueKind);
 
             var bitArray2 = ps.ExecuteValue<BitArray>();
             Assert.NotNull(bitArray2);
