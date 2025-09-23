@@ -204,98 +204,6 @@ public unsafe class DuckDbStatement : IDisposable
         _nativeStatement = nativeStatement;
     }
 
-    private void ThrowIfParamIndexOutOfRange(int index, [CallerArgumentExpression(nameof(index))] string? paramName = null)
-    {
-        if (unchecked((uint)index - 1u) >= (uint)_numParams)
-            throw new ArgumentOutOfRangeException(paramName, "The index of the SQL parameter is out of range. ");
-    }
-
-    /// <summary>
-    /// The number of parameters in the prepared statement.
-    /// </summary>
-    /// <remarks>
-    /// In this class, all indices of parameters are 1-based, i.e. the first parameter has index 1.
-    /// This convention matches DuckDB's API and SQL syntax, where positional parameters
-    /// are also 1-based.
-    /// </remarks>
-    public int ParameterCount => _numParams;
-
-    /// <summary>
-    /// Get the name of the parameter at the specified index.
-    /// </summary>
-    /// <param name="index">1-based index of the parameter. </param>
-    /// <returns>The name of the parameter in the SQL statement.
-    /// For positional parameters, the name is the decimal representation
-    /// of the ordinal of the parameter (in ASCII digits, no leading zeros).
-    /// (Currently, DuckDB does not support mixed use of positional and named
-    /// parameters, so for positional parameters the name coincides with
-    /// <paramref name="index" /> converted to a string.)
-    /// </returns>
-    /// <exception cref="ArgumentOutOfRangeException">
-    /// <paramref name="index" /> is less than 1 or greater than <see cref="ParameterCount" />.
-    /// </exception>
-    /// <exception cref="ObjectDisposedException">
-    /// This statement has been disposed.
-    /// </exception>
-    public string GetParameterName(int index)
-    {
-        ThrowIfParamIndexOutOfRange(index);
-
-        using var _ = _barricade.EnterScope(this);
-        return NativeMethods.duckdb_parameter_name(_nativeStatement, index);
-    }
-
-    /// <summary>
-    /// Get the DuckDB type of the parameter at the specified index.
-    /// </summary>
-    /// <param name="index">1-based index of the parameter.</param>
-    /// <returns>The DuckDB type of the parameter.</returns>
-    /// <exception cref="ArgumentOutOfRangeException">
-    /// <paramref name="index" /> is less than 1 or greater than <see cref="ParameterCount" />.
-    /// </exception>
-    /// <exception cref="ObjectDisposedException">
-    /// This statement has been disposed.
-    /// </exception>
-    public DuckDbValueKind GetParameterValueKind(int index)
-    {
-        ThrowIfParamIndexOutOfRange(index);
-
-        using var _ = _barricade.EnterScope(this);
-        return NativeMethods.duckdb_param_type(_nativeStatement, index);
-    }
-    
-    /// <summary>
-    /// Get the index of a parameter corresponding to the given name.
-    /// </summary>
-    /// <param name="name">
-    /// The name of the parameter in the SQL statement.
-    /// </param>
-    /// <returns>
-    /// The 1-based index of the parameter, suitable for passing into
-    /// <see cref="BindParameter{T}(int, T)" />.
-    /// </returns>
-    /// <exception cref="ArgumentException">
-    /// There is no parameter with the given name from the SQL statement.
-    /// </exception>
-    /// <exception cref="ObjectDisposedException">
-    /// This statement has been disposed.
-    /// </exception>
-    public int GetParameterIndexForName(string name)
-    {
-        long index;
-        duckdb_state status;
-
-        using (var _ = _barricade.EnterScope(this))
-        {
-            status = NativeMethods.duckdb_bind_parameter_index(_nativeStatement, out index, name);
-        }
-
-        if (status != duckdb_state.DuckDBSuccess)
-            throw new ArgumentException($"Parameter with the given name was not found. Name: {name}");
-
-        return (int)index;
-    }
-
     #region Binding values to parameters
 
     /// <summary>
@@ -319,7 +227,7 @@ public unsafe class DuckDbStatement : IDisposable
         private readonly int _index;
 
         void ISettableDuckDbValue.SetNativeValue(_duckdb_value* nativeValue)
-            => _parent.BindParameterInternal(_index, ref nativeValue);
+            => _parent.BindParameter(_index, ref nativeValue);
 
         internal Parameter(DuckDbStatement parent, int index)
         {
@@ -342,6 +250,19 @@ public unsafe class DuckDbStatement : IDisposable
         /// prepared statement object from DuckDB.)
         /// </exception>
         public string Name => _parent.GetParameterName(_index);
+        
+        /// <summary>
+        /// The DuckDB type of this parameter.
+        /// </summary>
+        /// <value>
+        /// The DuckDB type of value that this parameter accepts. 
+        /// </value>
+        /// <exception cref="ObjectDisposedException">
+        /// The containing prepared statement of this parameter has already been
+        /// disposed.  (This method internally requires querying the native
+        /// prepared statement object from DuckDB.)
+        /// </exception>
+        public DuckDbValueKind ValueKind => _parent.GetParameterValueKind(_index);
 
         /// <summary>
         /// The index/position of this formal parameter within the prepared statement.
@@ -356,9 +277,15 @@ public unsafe class DuckDbStatement : IDisposable
     /// The collection of formal parameters in a prepared statement from DuckDB.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// This collection is essentially an ordered list of the parameters.
-    /// It does not implement <see cref="IReadOnlyList{T}" /> only
-    /// because DuckDB's parameters are defined to be numbered starting from 1, not 0.  
+    /// (It does not implement <see cref="IReadOnlyList{T}" /> only
+    /// because DuckDB's parameters are defined to be numbered starting from 1, not 0.)
+    /// </para>
+    /// <para>
+    /// Parameters may also be looked up by the name they have been defined
+    /// under in the SQL prepared statement.
+    /// </para>
     /// </remarks>
     public readonly struct ParametersCollection : IReadOnlyCollection<Parameter>
     {
@@ -385,10 +312,15 @@ public unsafe class DuckDbStatement : IDisposable
         /// Get one of the parameters, by positional index.
         /// </summary>
         /// <param name="index">
+        /// <para>
         /// 1-based index of the parameter.
+        /// </para>
+        /// <para>
         /// Currently, DuckDB does not support mixing named and positional parameters,
         /// so if positional parameters are being used, this index
-        /// should match up exactly with the ordinal of the parameter in the SQL statement.
+        /// should match up exactly with the ordinal of the parameter in the SQL statement,
+        /// e.g. <c>$1</c> maps to index 1.
+        /// </para>
         /// </param>
         /// <exception cref="ArgumentOutOfRangeException">
         /// <paramref name="index" /> is less than 1 or greater than <see cref="Count" />.
@@ -413,15 +345,39 @@ public unsafe class DuckDbStatement : IDisposable
         /// <exception cref="ArgumentException">
         /// There is no parameter with the given name from the prepared statement.
         /// </exception>
+        /// <exception cref="ObjectDisposedException">
+        /// The prepared statement for this parameter collection has already been
+        /// disposed.  (Looking up the name requires querying the native
+        /// prepared statement object from DuckDB.)
+        /// </exception>
         public Parameter this[string name]
         {
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             get
             {
-                var index = _parent.GetParameterIndexForName(name);
+                var index = _parent.GetParameterIndexForName(name, throwIfNotFound: true);
                 return new Parameter(_parent, index);
             }
         }
+
+        /// <summary>
+        /// Get the index of the parameter with the given name.
+        /// </summary>
+        /// <param name="name">
+        /// The name of the parameter in the SQL statement.
+        /// </param>
+        /// <returns>
+        /// The 1-based index of the named parameter, suitable for indexing into
+        /// this collection.  If no parameter with the given name exists,
+        /// -1 is returned.
+        /// </returns>
+        /// <exception cref="ObjectDisposedException">
+        /// The prepared statement for this parameter collection has already been
+        /// disposed.  (Looking up the name requires querying the native
+        /// prepared statement object from DuckDB.)
+        /// </exception>
+        public int GetIndexForName(string name) 
+            => _parent.GetParameterIndexForName(name, throwIfNotFound: false);
         
         internal ParametersCollection(DuckDbStatement parent)
         {
@@ -434,70 +390,20 @@ public unsafe class DuckDbStatement : IDisposable
     /// </summary>
     public ParametersCollection Parameters => new ParametersCollection(this);
 
-    /// <summary>
-    /// Bind a positional parameter of the prepared statement to the specified value.
-    /// </summary>
-    /// <param name="index">
-    /// <para>
-    /// 1-based index of the parameter.
-    /// Currently, DuckDB does not support mixing named and positional parameters,
-    /// so if positional parameters are being used, this index
-    /// should match up exactly with the ordinal of the parameter in the SQL statement.
-    /// </para>
-    /// <para>
-    /// For a named parameter, DuckDB will assign the index, which can be retrieved
-    /// using <see cref="GetParameterIndexForName" />.  Alternatively, just use
-    /// the overload of this method that takes the name of the parameter.
-    /// </para>
-    /// </param>
-    /// <param name="value">The value to set for the parameter. </param>
-    /// <typeparam name="T">The .NET type of the value.
-    /// It does not have to match the underlying DuckDB type; conversions
-    /// will be performed as necessary.
-    /// </typeparam>
-    /// <exception cref="ArgumentOutOfRangeException">
-    /// <paramref name="index" /> is less than 1 or greater than <see cref="ParameterCount" />.
-    /// </exception>
-    /// <exception cref="DuckDbException">
-    /// Failed to create a native value wrapper for <paramref name="value" />, or
-    /// failed to bind the value to the parameter due to type incompatibility or other database error.
-    /// </exception>
-    /// <exception cref="ObjectDisposedException">
-    /// This statement has been disposed.
-    /// </exception>
-    public void BindParameter<T>(int index, T value)
+    #endregion
+    
+    #region Methods for implementing Parameter and ParameterCollection
+    
+    private void ThrowIfParamIndexOutOfRange(int index, [CallerArgumentExpression(nameof(index))] string? paramName = null)
     {
-        ThrowIfParamIndexOutOfRange(index);
-        var nativeObject = DuckDbValue.CreateNativeObject(value);
-        BindParameterInternal(index, ref nativeObject);
+        if (unchecked((uint)index - 1u) >= (uint)_numParams)
+            throw new ArgumentOutOfRangeException(paramName, "The index of the SQL parameter is out of range. ");
     }
 
     /// <summary>
-    /// Bind a named parameter of the prepared statement to the specified value.
+    /// Binds a value of a parameter.
     /// </summary>
-    /// <param name="name">The name of the parameter.
-    /// For positional parameters in the SQL statement, the name is the decimal
-    /// representation of the ordinal (in ASCII digits, no leading zeros).
-    /// </param>
-    /// <param name="value">The value to set for the parameter. </param>
-    /// <typeparam name="T">The .NET type of the value.
-    /// It does not have to match the underlying DuckDB type; conversions
-    /// will be performed as necessary.
-    /// </typeparam>
-    /// <exception cref="ArgumentException">
-    /// There is no parameter with the given name from the SQL statement.
-    /// </exception>
-    /// <exception cref="DuckDbException">
-    /// Failed to create a native value wrapper for <paramref name="value" />, or
-    /// failed to bind the value to the parameter due to type incompatibility or other database error.
-    /// </exception>
-    /// <exception cref="ObjectDisposedException">
-    /// This statement has been disposed.
-    /// </exception>
-    public void BindParameter<T>(string name, T value)
-        => BindParameter<T>(GetParameterIndexForName(name), value); 
-
-    private void BindParameterInternal(int index, ref _duckdb_value* nativeValue)
+    private void BindParameter(int index, ref _duckdb_value* nativeValue)
     {
         if (nativeValue == null)
             throw new DuckDbException("Failed to create object wrapping value. ");
@@ -519,6 +425,55 @@ public unsafe class DuckDbStatement : IDisposable
         }
     }
     
+    /// <summary>
+    /// Get the name of the parameter at the specified index.
+    /// </summary>
+    private string GetParameterName(int index)
+    {
+        ThrowIfParamIndexOutOfRange(index);
+
+        using var _ = _barricade.EnterScope(this);
+        return NativeMethods.duckdb_parameter_name(_nativeStatement, index);
+    }
+
+    /// <summary>
+    /// Get the DuckDB type of the parameter at the specified index.
+    /// </summary>
+    private DuckDbValueKind GetParameterValueKind(int index)
+    {
+        ThrowIfParamIndexOutOfRange(index);
+
+        using var _ = _barricade.EnterScope(this);
+        return NativeMethods.duckdb_param_type(_nativeStatement, index);
+    }
+
+    /// <summary>
+    /// Get the index for a named parameter.
+    /// </summary>
+    private int GetParameterIndexForName(string name, bool throwIfNotFound)
+    {
+        long index;
+        duckdb_state status;
+
+        using (var _ = _barricade.EnterScope(this))
+        {
+            status = NativeMethods.duckdb_bind_parameter_index(_nativeStatement, out index, name);
+        }
+
+        if (status == duckdb_state.DuckDBSuccess)
+            return (int)index;
+        
+        if (throwIfNotFound)
+            throw new ArgumentException($"Parameter with the given name was not found. Name: {name}");
+
+        return -1;
+    }
+
+    /// <summary>
+    /// The number of parameters in the prepared statement.
+    /// </summary>
+    private int ParameterCount => _numParams;
+
     #endregion
 
     #region Resource management

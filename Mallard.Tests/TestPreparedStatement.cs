@@ -17,10 +17,10 @@ public class TestPreparedStatement(DatabaseFixture fixture)
         var paramName = "mktSegment";
         using var ps = DbConnection.PrepareStatement($"SELECT c_custkey, c_mktsegment FROM customer WHERE c_mktsegment = ${paramName} LIMIT {limitRows}");
 
-        Assert.Equal(paramName, ps.GetParameterName(1));
-        Assert.Equal(DuckDbValueKind.VarChar, ps.GetParameterValueKind(1));
-        Assert.Equal(1, ps.ParameterCount);
-        Assert.Equal(1, ps.GetParameterIndexForName(paramName));
+        Assert.Equal(paramName, ps.Parameters[1].Name);
+        Assert.Equal(DuckDbValueKind.VarChar, ps.Parameters[1].ValueKind);
+        Assert.Equal(1, ps.Parameters.Count);
+        Assert.Equal(1, ps.Parameters.GetIndexForName(paramName));
 
         // Use same statement object to query for 2 parameter values
         foreach (var mktsegment in new[] { "AUTOMOBILE", "HOUSEHOLD" })
@@ -56,7 +56,7 @@ public class TestPreparedStatement(DatabaseFixture fixture)
         const int limitRows = 50;
         using var ps = DbConnection.PrepareStatement($"SELECT c_name, c_acctbal FROM customer WHERE ABS(c_acctbal) >= $1 LIMIT {limitRows}");
 
-        Assert.Equal("1", ps.GetParameterName(1));
+        Assert.Equal("1", ps.Parameters[1].Name);
         
         ps.Parameters[1].Set(5182.05M);  // decimal literal
         

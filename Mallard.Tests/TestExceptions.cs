@@ -18,17 +18,8 @@ public class TestExceptions
         using var connection = new DuckDbConnection("");  // In-memory database
         using var statement = connection.PrepareStatement("SELECT 1");
         
-        // GetParameterName should throw ArgumentOutOfRangeException for invalid index
-        var exception1 = Assert.Throws<ArgumentOutOfRangeException>(() => statement.GetParameterName(99));
-        Assert.Contains("index", exception1.ParamName ?? "", StringComparison.OrdinalIgnoreCase);
-        
-        // GetParameterValueKind should throw ArgumentOutOfRangeException for invalid index
-        var exception2 = Assert.Throws<ArgumentOutOfRangeException>(() => statement.GetParameterValueKind(99));
-        Assert.Contains("index", exception2.ParamName ?? "", StringComparison.OrdinalIgnoreCase);
-        
-        // Parameters[i].Set() should throw ArgumentOutOfRangeException for invalid index
-        var exception3 = Assert.Throws<ArgumentOutOfRangeException>(() => statement.Parameters[99].Set("test"));
-        Assert.Contains("index", exception3.ParamName ?? "", StringComparison.OrdinalIgnoreCase);
+        var exception = Assert.Throws<ArgumentOutOfRangeException>(() => statement.Parameters[99]);
+        Assert.Contains("index", exception.ParamName ?? "", StringComparison.OrdinalIgnoreCase);
     }
 
     [Test]
@@ -37,8 +28,7 @@ public class TestExceptions
         using var connection = new DuckDbConnection("");  // In-memory database
         using var statement = connection.PrepareStatement("SELECT 1");
         
-        // GetParameterIndexForName should throw ArgumentException for nonexistent parameter
-        var exception = Assert.Throws<ArgumentException>(() => statement.GetParameterIndexForName("nonexistent"));
+        var exception = Assert.Throws<ArgumentException>(() => statement.Parameters["nonexistent"]);
         Assert.Contains("nonexistent", exception.Message);
     }
 
@@ -85,18 +75,18 @@ public class TestExceptions
         using var statement = connection.PrepareStatement("SELECT $1, $2");
         
         // These should work without throwing
-        Assert.Equal("1", statement.GetParameterName(1));
-        Assert.Equal("2", statement.GetParameterName(2));
+        Assert.Equal("1", statement.Parameters[1].Name);
+        Assert.Equal("2", statement.Parameters[2].Name);
 
         // Parameter value kind might be Invalid until bound - just check it doesn't throw
-        var valueKind = statement.GetParameterValueKind(1);
+        var valueKind = statement.Parameters[1].ValueKind;
         Assert.True(Enum.IsDefined(typeof(DuckDbValueKind), valueKind));
         
         // Boundary: index 0 should throw (1-based indexing)
-        Assert.Throws<ArgumentOutOfRangeException>(() => statement.GetParameterName(0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => statement.Parameters[0]);
         
         // Boundary: index 3 should throw (only 2 parameters)
-        Assert.Throws<ArgumentOutOfRangeException>(() => statement.GetParameterName(3));
+        Assert.Throws<ArgumentOutOfRangeException>(() => statement.Parameters[3]);
     }
 
     [Test]
@@ -106,9 +96,7 @@ public class TestExceptions
         using var statement = connection.PrepareStatement("SELECT 1");
         
         // Negative indices should throw ArgumentOutOfRangeException
-        Assert.Throws<ArgumentOutOfRangeException>(() => statement.GetParameterName(-1));
-        Assert.Throws<ArgumentOutOfRangeException>(() => statement.GetParameterValueKind(-1));
-        Assert.Throws<ArgumentOutOfRangeException>(() => statement.Parameters[-1].Set("test"));
+        Assert.Throws<ArgumentOutOfRangeException>(() => statement.Parameters[-1]);
     }
 
     #endregion
@@ -122,8 +110,7 @@ public class TestExceptions
         using var statement = connection.PrepareStatement("SELECT 1");
         
         // Empty parameter name should throw ArgumentException
-        Assert.Throws<ArgumentException>(() => statement.GetParameterIndexForName(""));
-        Assert.Throws<ArgumentException>(() => statement.GetParameterIndexForName(null!));
+        Assert.Throws<ArgumentException>(() => statement.Parameters[""]);
     }
 
     [Test]
@@ -133,12 +120,12 @@ public class TestExceptions
         using var statement = connection.PrepareStatement("SELECT $test");
         
         // Valid parameter name should work
-        var index = statement.GetParameterIndexForName("test");
+        var index = statement.Parameters["test"].Index;
         Assert.Equal(1, index);
         
         // Test with clearly non-existent parameter names
-        Assert.Throws<ArgumentException>(() => statement.GetParameterIndexForName("completely_nonexistent_param_name"));
-        Assert.Throws<ArgumentException>(() => statement.GetParameterIndexForName("xyz123"));
+        Assert.Throws<ArgumentException>(() => statement.Parameters["completely_nonexistent_param_name"]);
+        Assert.Throws<ArgumentException>(() => statement.Parameters["xyz123"]);
     }
 
     #endregion
