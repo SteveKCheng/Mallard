@@ -39,7 +39,13 @@ jobs:
         dotnet-version: 9.x
 
     - name: Get Docfx
-      run: dotnet tool update -g docfx
+      # Need to use nightly version of Docfx that fixes this bug:
+      #   https://github.com/dotnet/docfx/issues/10655
+      #     NullReferenceException when analyzing extension methods
+      #     when the receiver type allows ref struct.  (It is 
+      #     actually a bug in the older version of Roslyn that
+      #     the current release version of Docfx depends on.)
+      run: dotnet nuget add source https://nuget.pkg.github.com/dotnet/index.json -n github -u ${{github.actor}} -p ${{secrets.READ_GITHUB_PACKAGES_TOKEN}} --store-password-in-clear-text && dotnet tool update -g docfx --version 2.78.4-preview.171 --add-source=github
 
     - name: Run Docfx
       run: docfx docfx/docfx.json
