@@ -111,11 +111,24 @@ public static unsafe partial class DuckDbValue
 
         private void SetNativeValue(_duckdb_value* nativeValue)
         {
-            // Allow overwriting old value.
-            if (_memberValue != null)
-                NativeMethods.duckdb_destroy_value(ref _memberValue);
-            
-            _memberValue = nativeValue;
+            _duckdb_value* valueToDestroy = nativeValue;
+            try
+            {
+                // Read this first.  Forces a NullReferenceException if 
+                // this instance is default-initialized.
+                var oldMemberValue = _memberValue;
+
+                ThrowOnNullDuckDbValue(nativeValue);
+
+                // Write new value, overwriting the old if any.
+                valueToDestroy = oldMemberValue;
+                _memberValue = nativeValue;
+            }
+            finally
+            {
+                if (valueToDestroy != null)
+                    NativeMethods.duckdb_destroy_value(ref valueToDestroy);
+            }
         }
         
         #region Implementation of ISettableDuckDbValue
