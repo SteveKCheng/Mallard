@@ -67,7 +67,7 @@ The test programs support AOT (ahead-of-time) compilation.  To run in AOT mode:
 
 ## API documentation
 
-  * [API documentation generated from “XML doc comments”](https://github.gold-saucer.org/Mallard/api/Mallard.html)
+  * [API documentation generated from “XML doc comments”](https://github.gold-saucer.org/Mallard/api/Mallard.html) (currently not updated due to a bug in the documentation toolchain)
 
 ## Relation to other .NET bindings
 
