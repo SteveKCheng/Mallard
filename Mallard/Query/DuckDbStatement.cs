@@ -345,30 +345,6 @@ public unsafe partial class DuckDbStatement : IDisposable
             throw new ArgumentOutOfRangeException(paramName, "The index of the SQL parameter is out of range. ");
     }
 
-    /// <summary>
-    /// Binds a value of a parameter.
-    /// </summary>
-    private void BindParameter(int index, ref _duckdb_value* nativeValue)
-    {
-        DuckDbValue.ThrowOnNullDuckDbValue(nativeValue);
-        
-        try
-        {
-            duckdb_state status;
-
-            using (var _ = _barricade.EnterScope(this))
-            {
-                status = NativeMethods.duckdb_bind_value(_nativeStatement, index, nativeValue);
-            }
-
-            ThrowOnBindFailure(status);
-        }
-        finally
-        {
-            NativeMethods.duckdb_destroy_value(ref nativeValue);
-        }
-    }
-
     private void ThrowOnBindFailure(duckdb_state status)
         => DuckDbException.ThrowOnFailure(status, "Could not bind specified value to parameter. ");
     

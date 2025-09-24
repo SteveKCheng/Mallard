@@ -49,9 +49,31 @@ public partial class DuckDbStatement
         public int Index => _index;
 
         #region Implementation of ISettableDuckDbValue
-        
+
         void ISettableDuckDbValue.SetNativeValue(_duckdb_value* nativeValue)
-            => _parent.BindParameter(_index, ref nativeValue);
+        {
+            DuckDbValue.ThrowOnNullDuckDbValue(nativeValue);
+        
+            try
+            {
+                duckdb_state status;
+                using (var _ = _parent._barricade.EnterScope(this))
+                {
+                    status = NativeMethods.duckdb_bind_value(_parent._nativeStatement, 
+                                                             _index, 
+                                                             nativeValue);
+                }
+
+                _parent.ThrowOnBindFailure(status);
+            }
+            finally
+            {
+                // N.B. Proper clean-up still occurs if _parent is null (because
+                //      the user called this method on a default-initialized instance),
+                //      and above access causes NullReferenceException.
+                NativeMethods.duckdb_destroy_value(ref nativeValue);
+            }
+        }
 
         void ISettableDuckDbValue.SetNull()
         {
