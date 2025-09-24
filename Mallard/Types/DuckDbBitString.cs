@@ -366,7 +366,7 @@ public readonly ref struct DuckDbBitString : IStatelesslyConvertible<DuckDbBitSt
             //      might be inconsistent with value.Length.  Just make sure the Span
             //      remains in-bounds here, and let user-facing methods in this library
             //      check lengths for consistency later.
-            var arrayLength = Math.Min(array.Length, (value.Length + 7) / 8);
+            var arrayLength = Math.Min(array.Length * sizeof(int), (value.Length + 7) / 8);
         
             return arrayLength > 0
                 ? MemoryMarshal.CreateSpan(ref Unsafe.As<int, byte>(ref array[0]), arrayLength)
