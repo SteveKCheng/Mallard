@@ -18,7 +18,8 @@ namespace Mallard;
 /// and is disposable.
 /// </para>
 /// </remarks>
-public unsafe sealed class DuckDbEnumDictionary : IReadOnlyDictionary<uint, string>, IDisposable
+public unsafe sealed class DuckDbEnumDictionary 
+    : DuckDbComplexTypeInfo, IReadOnlyDictionary<uint, string>, IDisposable
 {
     private _duckdb_logical_type* _nativeType;
     private readonly uint _totalEnumMembers;

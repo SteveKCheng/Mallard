@@ -13,7 +13,8 @@ namespace Mallard;
 /// and is disposable.
 /// </para>
 /// </remarks>
-public unsafe sealed class DuckDbStructColumns : IResultColumns, IDisposable
+public unsafe sealed class DuckDbStructColumns 
+    : DuckDbComplexTypeInfo, IResultColumns, IDisposable
 {
     private HandleRefCount _refCount;
     private _duckdb_logical_type* _nativeType;
