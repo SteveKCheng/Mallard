@@ -253,6 +253,9 @@ internal unsafe static partial class NativeMethods
 
     [LibraryImport(LibraryName)]
     internal static partial DuckDbValueKind duckdb_param_type(_duckdb_prepared_statement* parepared_statement, idx_t param_idx);
+    
+    [LibraryImport(LibraryName)]
+    internal static partial _duckdb_logical_type* duckdb_param_logical_type(_duckdb_prepared_statement* prepared_statement, idx_t param_idx);
 
     [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
     internal static partial duckdb_state duckdb_bind_parameter_index(_duckdb_prepared_statement* prepared_statement,

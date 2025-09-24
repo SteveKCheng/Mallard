@@ -197,6 +197,35 @@ public partial class DuckDbStatement
         /// so consulting this property is usually not necessary.
         /// </remarks>
         public DuckDbValueKind ValueKind => _parent.GetParameterValueKind(_index);
+
+        /// <summary>
+        /// Get a detailed description of the DuckDB type of this parameter, if it is a complex type.
+        /// </summary>
+        /// <returns>
+        /// A new instance of <see cref="DuckDbComplexTypeInfo" />, if this parameter
+        /// is a complex type (STRUCT or ENUM).  Null otherwise.
+        /// </returns>
+        public DuckDbComplexTypeInfo? GetComplexTypeInfo()
+        {
+            using var _ = _parent._barricade.EnterScope(this);
+            var valueKind = NativeMethods.duckdb_param_type(_parent._nativeStatement, _index);
+            if (valueKind != DuckDbValueKind.Struct)
+                return null;
+            
+            // FIXME implement for enum also
+                
+            var nativeType = NativeMethods.duckdb_param_logical_type(_parent._nativeStatement, _index);
+            try
+            {
+                // FIXME DuckDbTypeMapping needs to be propagated from the connection
+                return new DuckDbStructColumns(ref nativeType, DuckDbTypeMapping.Default);
+            }
+            catch
+            {
+                NativeMethods.duckdb_destroy_logical_type(ref nativeType);
+                throw;
+            }
+        }
         
         #endregion
     }
