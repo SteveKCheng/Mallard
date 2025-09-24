@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Linq;
 using System.Numerics;
+using Mallard.Types;
 using Xunit;
 using TUnit.Core;
 
@@ -187,5 +188,26 @@ public class TestExecuteScalar
         var destBuffer = ps.ExecuteValue<byte[]>();
         
         Assert2.Equal(sourceBuffer, destBuffer);
+    }
+
+    [Test]
+    public void StructParameter()
+    {
+        using var dbConn = new DuckDbConnection("");
+        dbConn.Execute("CREATE TYPE my_struct AS STRUCT(ordinal INTEGER, name VARCHAR)");
+        using var ps = dbConn.PrepareStatement("SELECT $1::my_struct");
+        
+        Assert.Equal(DuckDbValueKind.Struct, ps.Parameters[1].ValueKind);
+        var structType = Assert.IsType<DuckDbStructColumns>(ps.Parameters[1].GetComplexTypeInfo());
+        
+        ps.Parameters[1].SetStruct(structType, false, (s, _) =>
+        {
+            s[0].Set("5");
+            s[1].Set("Oceanside School #5");
+        });
+
+        ps.Execute();
+        
+        // TODO: also check result can be read as a STRUCT
     }
 }
