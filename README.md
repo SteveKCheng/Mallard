@@ -84,11 +84,14 @@ without intermediate copying or heavy conversions involving GC objects.  I think
 useful in applications involving machine learning or data science.  An ADO.NET-based interface would just 
 not be performant enough, and so I do not put high priority on it.
 
-## What works today (as of September 15, 2025)
+## What works today (as of September 24, 2025)
 
   - [X] Executing SQL queries and reading results incrementally
   - [X] Prepared statements with parameter binding
   - [X] Reading values from DuckDB columns with strong typing and no boxing (unless explicitly requested)
+    - “Zero-copy” read of primitive types is possible if client code is prepared for it
+  - [X] Writing parameter values also does not require boxing
+    - Populating strings, blobs, etc. can even be done through ``ReadOnlySpan``
   - [X] Type checks are done once per column not for each value read (high performance)
   - DuckDB types supported
     - [X] all fixed-width integers
@@ -109,6 +112,7 @@ not be performant enough, and so I do not put high priority on it.
     - [X] ``System.Data.IDbCommand``
     - [X] ``System.Data.IDataReader``
   - [X] Null values in database can be checked explicitly or flagged implicitly with ``System.Nullable<T>`` element types
+  - [X] Thoroughly documented API and internals
   - [X] Thread-safe and memory-safe public API 
     - If you do not use unsafe code, then even improper use of the public API should not crash the .NET run-time
     - ``ref struct`` is used to carefully control lifetime so user sees no dangling pointers to DuckDB native objects
@@ -124,14 +128,16 @@ not be performant enough, and so I do not put high priority on it.
     - STRUCT
     - arrays (fixed-length)
   - Not all types whose values can be read (from DuckDB vectors) can be bound to parameters in prepared statements
+  - Query extended type information (for STRUCT, ENUM, etc.)
   - Caching of objects
     - Open DuckDB database objects
+  - Implement “version 2” of ADO.NET
+    - Using the base classes from ``System.Data.Common`` not the interfaces
   - User-defined functions
   - Appenders (DuckDB's API to insert many values quickly into a table)
   - Adapters for ``Microsoft.Data.Analysis.DataFrame``
-  - Error reporting (exceptions) needs to be regularized
   - Not all features that work have been thoroughly tested
-  - Not completely compatible with AOT compilation
+  - Make completely compatible with AOT compilation
     - Reflection is required at least for conversion of composite types, e.g. ``MyEnum[]``
     - Does not use MSIL code generation but does instantiate generic methods for types only known at run-time
     - Conversion for primitive types does not require reflection; all code is statically visible to the compiler
