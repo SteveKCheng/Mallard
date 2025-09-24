@@ -294,7 +294,7 @@ public readonly ref struct DuckDbBitString : IStatelesslyConvertible<DuckDbBitSt
 
         // If bitLength is of the form k + 8n for 0 ≤ k < 7, then
         //   numPaddingBits = (8 - k) mod 8.
-        // ("mod 8" is the division remainder that produces results in the range 0 ≤ k < 7.
+        // ("mod 8" is the division remainder that produces results in the range 0 ≤ k < 8.
         //  Note the difference from C#'s operator% for negative operands.)
         // But (8 - k) mod 8 = (8 - (bitLength-8n)) mod 8 = (-bitLength) mod 8.
         int numPaddingBits = (-bitLength) & 7; 
