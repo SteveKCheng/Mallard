@@ -62,6 +62,7 @@ internal struct Antitear<T>(T initialValue) where T : struct
                     // https://stackoverflow.com/questions/56419723/which-of-these-implementations-of-seqlock-are-correct
                     // https://github.com/dotnet/runtime/issues/98837
                     // https://github.com/dotnet/runtime/blob/main/docs/design/specs/Memory-model.md
+                    // https://github.com/dotnet/runtime/pull/35597
                     //
                     // We need a Read-Read barrier (as above) but there is no API to do so before .NET 10,
                     // so we add a dummy "release" write and an "acquire" load, hoping that the compiler
