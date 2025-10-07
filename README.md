@@ -6,7 +6,9 @@
 
 Alternative .NET bindings for [DuckDB](https://duckdb.org/).
 
-Do not expect anything to work right now.  This page will be updated as the code approaches a working state.
+This library works, and has been tested, but much work remains.  See further below this document for more details.
+
+_Update on October 7, 2025:_ The author will be on vacation and has other projects in parallel, so for the next few months, updates to this repository will be scant.  The project is not dead.
 
 ## Build status
 
@@ -74,8 +76,8 @@ The test programs support AOT (ahead-of-time) compilation.  To run in AOT mode:
 There is another, much more mature project, called [DuckDB.NET](https://duckdb.net/docs/introduction.html).
 Needless to say, you should certainly look there if you need DuckDB working now in your .NET code.
 
-I only found out about that other project after starting to write this code on my own.  I might still continue 
-this project though for a more personal reason: practicing writing good C# code.  In particular, I like to exploit 
+I only found out about that other project after starting to write this code on my own.  I will still continue 
+this project though for a more personal reason: practicing writing good, solid C# code.  In particular, I like to exploit 
 the abilities of recent versions of .NET to write C# that has "close to the metal" performance yet remain (relatively) safe —
 similar to Rust, even though C# does not have the same sophistication of analysis in borrowing/aliasing references.
 
