@@ -277,12 +277,12 @@ public readonly ref struct DuckDbBitString : IStatelesslyConvertible<DuckDbBitSt
     /// </param>
     /// <param name="output">
     /// The output buffer to write the bit string in DuckDB's native format.
-    /// It must be sized appropriately by the caller.
+    /// It must be sized exactly by the caller to the length of <paramref name="input" />, plus one.
     /// The first byte will contain the number of padding bits, followed by the data bytes.
     /// </param>
     /// <param name="bitLength">
-    /// The actual number of bits (excluding padding) to use from the beginning of <paramref name="input" />.
-    /// Must be non-negative.
+    /// The actual number of bits (excluding padding) to use from the beginning of <paramref name="input" />,
+    /// Must be non-negative.  All the bytes from <paramref name="input" /> must be consumed.
     /// </param>
     /// <remarks>
     /// See the body of <see cref="ToBitArray" /> for a description of DuckDB's format for bit strings. 
@@ -290,7 +290,7 @@ public readonly ref struct DuckDbBitString : IStatelesslyConvertible<DuckDbBitSt
     internal static void ConvertToNativeRepresentation(ReadOnlySpan<byte> input, Span<byte> output, int bitLength)
     {
         Debug.Assert((bitLength + 7) / 8 == input.Length);
-        Debug.Assert(input.Length == output.Length);
+        Debug.Assert(input.Length + 1 == output.Length);
 
         // If bitLength is of the form k + 8n for 0 ≤ k < 7, then
         //   numPaddingBits = (8 - k) mod 8.
