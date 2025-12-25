@@ -37,7 +37,7 @@ jobs:
     - name: Set up .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: 9.x
+        dotnet-version: 10.x
 
     - name: Get Docfx
       # Need to use nightly version of Docfx that fixes this bug:
