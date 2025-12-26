@@ -652,28 +652,13 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
     /// </summary>
     private readonly DuckDbTypeMapping _typeMapping;
 
-    /// <summary>
-    /// The number of columns present in the result.
-    /// </summary>
+    /// <see cref="IResultColumns.ColumnCount" />
     public int ColumnCount => _columns.Length;
 
-    /// <summary>
-    /// Get information about a column in the results.
-    /// </summary>
-    /// <param name="columnIndex">
-    /// The index of the column, between 0 (inclusive) to <see cref="ColumnCount" /> (exclusive).
-    /// </param>
+    /// <see cref="IResultColumns.GetColumnInfo" />
     public DuckDbColumnInfo GetColumnInfo(int columnIndex) => _columns[columnIndex].Info;
 
-    /// <summary>
-    /// Get the name of a column in the results.
-    /// </summary>
-    /// <param name="columnIndex">
-    /// The index of the column, between 0 (inclusive) to <see cref="ColumnCount" /> (exclusive).
-    /// </param>
-    /// <returns>
-    /// The name of the column, or <see cref="string.Empty" /> if it has no name.
-    /// </returns>
+    /// <see cref="IResultColumns.GetColumnName" />
     public string GetColumnName(int columnIndex)
     {
         ref string? nameRef = ref _columns[columnIndex].Name;

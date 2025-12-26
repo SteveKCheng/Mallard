@@ -143,16 +143,16 @@ public unsafe sealed class DuckDbResultChunk : IResultColumns, IDisposable
         GC.SuppressFinalize(this);
     }
 
-    /// <see cref="DuckDbResult.ColumnCount" />.
+    /// <see cref="IResultColumns.ColumnCount" />.
     public int ColumnCount => _resultColumns.ColumnCount;
 
-    /// <see cref="DuckDbResult.GetColumnInfo" />.
+    /// <see cref="IResultColumns.GetColumnInfo" />.
     public DuckDbColumnInfo GetColumnInfo(int columnIndex) => _resultColumns.GetColumnInfo(columnIndex);
     
-    /// <see cref="DuckDbResult.GetColumnName" />.
+    /// <see cref="IResultColumns.GetColumnName" />.
     public string GetColumnName(int columnIndex) => _resultColumns.GetColumnName(columnIndex);
     
-    /// <see cref="DuckDbResult.GetColumnIndex" />
+    /// <see cref="IResultColumns.GetColumnIndex" />
     public int GetColumnIndex(string columnName) => _resultColumns.GetColumnIndex(columnName);
 
     /// <summary>
@@ -160,7 +160,7 @@ public unsafe sealed class DuckDbResultChunk : IResultColumns, IDisposable
     /// </summary>
     public int Length => _length;
 
-    /// <summary>
+    /// <summary>b
     /// Access the contents of this chunk of results in a direct, column-oriented manner.
     /// </summary>
     /// <typeparam name="TState">
