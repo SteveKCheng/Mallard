@@ -242,7 +242,6 @@ internal struct AsymmetricLock
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void CompilerFence()
     {
-        #if NET10_OR_GREATER
         // Test if this code is running on the x86 (or x86-64) CPU architecture.
         // If so, Volatile.ReadBarrier does not generate any CPU-level memory barrier,
         // which is exactly what we want.
@@ -255,7 +254,6 @@ internal struct AsymmetricLock
             Volatile.ReadBarrier();
             return;
         }
-        #endif
 
         // For other CPU architectures, block re-ordering of memory operations
         // by interposing a dummy function.  Obviously this does not result

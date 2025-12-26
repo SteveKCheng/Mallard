@@ -4,6 +4,7 @@ using System;
 using System.Collections;
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace Mallard;
 
@@ -442,11 +443,7 @@ public static partial class DuckDbValue
     public static void Set<TReceiver>(this TReceiver receiver, BitArray value)
         where TReceiver : ISettableDuckDbValue, allows ref struct
     {
-        #if NET10_OR_GREATER
         ReadOnlySpan<byte> data = CollectionsMarshal.AsBytes(value);
-        #else
-        ReadOnlySpan<byte> data = DuckDbBitString.GetRawDataOfBitArray(value);
-        #endif
         receiver.SetBitString(data, value.Length);
     }
     

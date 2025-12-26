@@ -4,18 +4,13 @@
   <Import Project="../NuPkg.props" />
 
   <PropertyGroup>
-    <TargetFrameworks>net9.0</TargetFrameworks>
-    <TargetFrameworks Condition="$([MSBuild]::VersionGreaterThanOrEquals($(NETCoreAppMaximumVersion), '10.0'))">net10.0;$(TargetFrameworks)</TargetFrameworks>
+    <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <RootNamespace>Mallard</RootNamespace>
 
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    
-    <!-- Enable "field-backed properties" in C# 13 used in .NET 9 -->
-    <LangVersion Condition="'$(TargetFramework)' == 'net9.0'">14</LangVersion>
-    <LangVersion Condition="!$([MSBuild]::VersionGreaterThanOrEquals($(NETCoreAppMaximumVersion), '10.0'))">preview</LangVersion>
 
     <Description>.NET bindings for DuckDB embedded database library</Description>
   </PropertyGroup>
