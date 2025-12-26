@@ -8,19 +8,17 @@ Alternative .NET bindings for [DuckDB](https://duckdb.org/).
 
 This library works, and has been tested, but much work remains.  See further below this document for more details.
 
-_Update on October 7, 2025:_ The author will be on vacation and has other projects in parallel, so for the next few months, updates to this repository will be scant.  The project is not dead.
-
 ## Build status
 
 [![Build&Test status](https://github.com/SteveKCheng/Mallard/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/SteveKCheng/Mallard/actions/workflows/build-and-test.yml)
 
 ## Requirements
 
-  - .NET 9 or later
+  - .NET 10
 
-Mallard requires .NET 9+ for substituting ``ref struct`` types in generic parameters.
-.NET 10 (version with long-term support) is currently in preview, and Mallard will switch
-to target that exclusively once a release version is widely available.
+(Earlier versions had worked with .NET 9, but required “hacky” workarounds in the code.
+It is messy to automatically test both .NET 9 and .NET 10, so the support for the former 
+has been removed.)
 
 ## Build instructions
 
@@ -69,7 +67,7 @@ The test programs support AOT (ahead-of-time) compilation.  To run in AOT mode:
 
 ## API documentation
 
-  * [API documentation generated from “XML doc comments”](https://github.gold-saucer.org/Mallard/api/Mallard.html) (currently not updated due to a bug in the documentation toolchain)
+  * [API documentation generated from “XML doc comments”](https://github.gold-saucer.org/Mallard/api/Mallard.html)
 
 ## Relation to other .NET bindings
 
