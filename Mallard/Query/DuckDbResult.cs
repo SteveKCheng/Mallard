@@ -675,6 +675,9 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
 
         return name;
     }
+    
+    /// <see cref="IResultColumns.GetColumnIndex" />
+    public int GetColumnIndex(string columnName) => IResultColumns.LinearSearchForColumnIndex(this, columnName);
 
     VectorElementConverter IResultColumns.GetColumnConverter(int columnIndex, Type? targetType)
         => GetColumnConverter(columnIndex, targetType);

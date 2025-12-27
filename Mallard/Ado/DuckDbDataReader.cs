@@ -216,14 +216,14 @@ public sealed class DuckDbDataReader : DbDataReader
     /// <inheritdoc />
     public override int GetOrdinal(string name)
     {
+        int foundIndex;
+        
         // Linear search if there are 8 columns or fewer
         if (_queryResults.ColumnCount < 8)
         {
-            for (int columnIndex = 0; columnIndex < _queryResults.ColumnCount; ++columnIndex)
-            {
-                if (_queryResults.GetColumnName(columnIndex) == name)
-                    return columnIndex;
-            }
+            foundIndex = _queryResults.GetColumnIndex(name);
+            if (foundIndex >= 0)
+                return foundIndex;
         }
 
         // Construct a dictionary to look up names
@@ -237,7 +237,7 @@ public sealed class DuckDbDataReader : DbDataReader
                 _fieldNamesMap = builder.ToImmutable();
             }
 
-            if (_fieldNamesMap.TryGetValue(name, out int foundIndex))
+            if (_fieldNamesMap.TryGetValue(name, out foundIndex))
                 return foundIndex;
         }
 

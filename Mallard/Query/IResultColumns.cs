@@ -52,11 +52,13 @@ public interface IResultColumns
     /// <returns>
     /// The index of the column, or -1 if there is no column with the given name.
     /// </returns>
-    int GetColumnIndex(string columnName)
+    int GetColumnIndex(string columnName) => LinearSearchForColumnIndex(this, columnName);
+
+    internal static int LinearSearchForColumnIndex(IResultColumns self, string columnName)
     {
-        for (int i = 0; i < ColumnCount; ++i)
+        for (int i = 0; i < self.ColumnCount; ++i)
         {
-            if (string.Equals(GetColumnName(i), columnName, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(self.GetColumnName(i), columnName, StringComparison.OrdinalIgnoreCase))
                 return i;
         }
 
