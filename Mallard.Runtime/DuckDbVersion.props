@@ -20,6 +20,6 @@
          case you must provide the required native library files manually,
          in the ../native directory; the build process obviously 
          cannot download it from DuckDB's GitHub releases page. -->
-    <DuckDbVersion Condition="'$(DuckDbVersion)' == ''">1.3.2</DuckDbVersion>
+    <DuckDbVersion Condition="'$(DuckDbVersion)' == ''">1.5.5</DuckDbVersion>
   </PropertyGroup>
 </Project>

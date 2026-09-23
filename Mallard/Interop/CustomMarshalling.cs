@@ -107,7 +107,7 @@ internal static unsafe class Utf8StringMarshallerWithoutFree
                   marshallerType: typeof(BigIntegerMarshaller.ManagedToUnmanagedIn))]
 internal static unsafe class BigIntegerMarshaller
 {
-    public static BigInteger ConvertToManaged(duckdb_varint input)
+    public static BigInteger ConvertToManaged(duckdb_bignum input)
     {
         var output = new BigInteger(new ReadOnlySpan<byte>(input.data, (int)input.size),
                                     isUnsigned: true, isBigEndian: false);
@@ -118,7 +118,7 @@ internal static unsafe class BigIntegerMarshaller
     {
         public static int BufferSize { get; } = 0x200;
 
-        private duckdb_varint _output;
+        private duckdb_bignum _output;
         private byte* _extraBuffer;
 
         public void FromManaged(BigInteger input, Span<byte> buffer)
@@ -152,7 +152,7 @@ internal static unsafe class BigIntegerMarshaller
             _output.is_negative = (input.Sign < 0);
         }
 
-        public duckdb_varint ToUnmanaged() => _output;
+        public duckdb_bignum ToUnmanaged() => _output;
 
         public void Free()
         {

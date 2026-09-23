@@ -256,7 +256,7 @@ public static partial class DuckDbValue
     public static unsafe void Set<TReceiver>(this TReceiver receiver, BigInteger value)
         where TReceiver : ISettableDuckDbValue, allows ref struct
         // Custom marshaller converts input value
-        => receiver.SetNativeValue(NativeMethods.duckdb_create_varint(value));
+        => receiver.SetNativeValue(NativeMethods.duckdb_create_bignum(value));
 
     #endregion
     

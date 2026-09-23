@@ -52,7 +52,7 @@ internal unsafe struct _duckdb_vector { private void* internal_ptr; }
 internal unsafe struct _duckdb_logical_type { private void* internal_ptr; }
 
 [StructLayout(LayoutKind.Sequential)]
-internal unsafe struct duckdb_varint 
+internal unsafe struct duckdb_bignum 
 {
     internal byte* data;
     internal idx_t size;
@@ -457,7 +457,7 @@ internal unsafe static partial class NativeMethods
         [MarshalUsing(typeof(UInt128Marshaller))] UInt128 input);
 
     [LibraryImport(LibraryName)]
-    internal static partial _duckdb_value* duckdb_create_varint(
+    internal static partial _duckdb_value* duckdb_create_bignum(
         [MarshalUsing(typeof(BigIntegerMarshaller))] BigInteger input);
 
     [LibraryImport(LibraryName)]
