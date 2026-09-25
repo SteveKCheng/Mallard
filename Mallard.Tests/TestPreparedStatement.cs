@@ -78,4 +78,22 @@ public class TestPreparedStatement(DatabaseFixture fixture)
         var answer = ps.ExecuteValue<int>();
         Assert.Equal(800 / (50 / 10), answer);
     }
+
+    [Test]
+    public void DateOnlyParameter()
+    {
+        using var connection = new DuckDbConnection("");
+        using var ps = connection.PrepareStatement("SELECT $1");
+
+        var date = new DateOnly(2026, 9, 25);
+        DateOnly? dateOpt = date;
+
+        // Note: relies on implicit conversion
+        ps.Parameters[1].Set(date);
+        Assert.Equal(date, ps.ExecuteValue<DateOnly>());
+        
+        // Use generic interface to set the value typed as Nullable<DateOnly>
+        ps.Parameters[1].SetGeneric(dateOpt);
+        Assert.Equal(date, ps.ExecuteValue<DateOnly>());
+    }
 }

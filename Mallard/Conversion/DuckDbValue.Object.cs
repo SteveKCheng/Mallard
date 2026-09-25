@@ -115,6 +115,12 @@ public static partial class DuckDbValue
             return true;
         }
 
+        if (input is DateOnly date3)
+        {
+            receiver.Set(DuckDbDate.FromDateOnly(date3));
+            return true;
+        }
+
         if (input is DuckDbTimestamp timestamp)
         {
             receiver.Set(timestamp);
