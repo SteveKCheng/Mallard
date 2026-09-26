@@ -348,6 +348,9 @@ internal unsafe static partial class NativeMethods
     #region Logical types
 
     [LibraryImport(LibraryName)]
+    internal static partial _duckdb_logical_type* duckdb_create_logical_type(DuckDbValueKind type);
+    
+    [LibraryImport(LibraryName)]
     internal static partial void duckdb_destroy_logical_type(ref _duckdb_logical_type* type);
 
     [LibraryImport(LibraryName)]
