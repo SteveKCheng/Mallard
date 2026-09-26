@@ -36,10 +36,10 @@
          declaration in a generated source file. -->
     <Using Include="System.Collections.Generic" />
   </ItemGroup>
+
+  <Target Name="CustomAfterBuild" AfterTargets="Build">
+    <MSBuild Projects="../Mallard.Runtime/Mallard.Runtime.csproj" Targets="EnsureDuckDbDownloaded" />
+  </Target>
   
-  <Import Project="../Mallard.Runtime/DuckDbDownload.targets" />
-
-  <Target Name="CustomAfterBuild" AfterTargets="Build" DependsOnTargets="EnsureDuckDbDownloaded" />
-
 </Project>
 

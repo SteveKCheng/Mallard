@@ -35,9 +35,9 @@
     <Compile Include="../Mallard.Tests/DatabaseFixture.cs" />
   </ItemGroup>
 
-  <Import Project="../Mallard.Runtime/DuckDbDownload.targets" />
-
-  <Target Name="CustomAfterBuild" AfterTargets="Build" DependsOnTargets="EnsureDuckDbDownloaded" />
+  <Target Name="CustomAfterBuild" AfterTargets="Build"> 
+    <MSBuild Projects="../Mallard.Runtime/Mallard.Runtime.csproj" Targets="EnsureDuckDbDownloaded" />
+  </Target>
 
 </Project>
 
