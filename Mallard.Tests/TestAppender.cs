@@ -7,8 +7,19 @@ using Xunit;
 
 namespace Mallard.Tests;
 
+/// <summary>
+/// Unit tests for DuckDB appender functionality (<see cref="DuckDbAppender"/>),
+/// verifying row insertion, column type mapping, default/null values, bulk data,
+/// schema qualification, and slot safety guard rails.
+/// </summary>
 public class TestAppender
 {
+    /// <summary>
+    /// Verifies basic appender workflow: creates a table with integer, string, double, boolean,
+    /// and date columns; inserts multiple rows via <see cref="DuckDbAppender.Append"/> and
+    /// <see cref="DuckDbAppender.FinishRow"/>; and verifies rows and column values using
+    /// <see cref="DuckDbChunkReader"/>.
+    /// </summary>
     [Test]
     public void BasicAppend()
     {
@@ -68,6 +79,11 @@ public class TestAppender
         });
     }
 
+    /// <summary>
+    /// Validates <see cref="DuckDbAppender.Slot.SetDefault"/> and <see cref="DuckDbValue.SetNull"/>
+    /// against column definitions with DEFAULT expressions and nullable columns, asserting validity
+    /// masks via <see cref="DuckDbVectorReader{T}.IsItemValid"/> and <see cref="DuckDbVectorReader{T}.GetItemOrDefault"/>.
+    /// </summary>
     [Test]
     public void AppendDefaultAndNull()
     {
@@ -125,6 +141,12 @@ public class TestAppender
         });
     }
 
+    /// <summary>
+    /// Exhaustively verifies native types mapped through <see cref="ISettableDuckDbValue"/>:
+    /// signed and unsigned fixed-width integers (8, 16, 32, 64, 128-bit), floating point numbers
+    /// (float, double), decimal (<see cref="DuckDbDecimal"/>), blobs (<see cref="DuckDbValue.SetBlob"/>),
+    /// strings, dates (<see cref="DuckDbDate"/>), timestamps (<see cref="DuckDbTimestamp"/>), and intervals (<see cref="DuckDbInterval"/>).
+    /// </summary>
     [Test]
     public void AppendDataTypes()
     {
@@ -210,6 +232,10 @@ public class TestAppender
         });
     }
 
+    /// <summary>
+    /// Bulk insertion of 5,000 rows to ensure chunk transitions and buffer handling perform
+    /// properly, followed by aggregate sum and count assertions.
+    /// </summary>
     [Test]
     public void AppendBulkData()
     {
@@ -232,6 +258,9 @@ public class TestAppender
         Assert.Equal(expectedSum, connection.ExecuteValue<long>("SELECT SUM(val)::BIGINT FROM bulk_data"));
     }
 
+    /// <summary>
+    /// Tests <see cref="DuckDbConnection.CreateAppender(string, string)"/> targeting non-default schemas.
+    /// </summary>
     [Test]
     public void AppendWithExplicitSchema()
     {
@@ -249,6 +278,9 @@ public class TestAppender
         Assert.Equal(42, connection.ExecuteValue<int>("SELECT num FROM test_schema.numbers"));
     }
 
+    /// <summary>
+    /// Ensures attempting to create an appender for a non-existent table throws <see cref="DuckDbException"/>.
+    /// </summary>
     [Test]
     public void NonExistentTableThrows()
     {
@@ -256,6 +288,10 @@ public class TestAppender
         Assert.Throws<DuckDbException>(() => connection.CreateAppender("does_not_exist"));
     }
 
+    /// <summary>
+    /// Verifies that calling .Set(...) twice on the same <see cref="DuckDbAppender.Slot"/> instance
+    /// triggers an <see cref="InvalidOperationException"/> due to sequence counter mismatch.
+    /// </summary>
     [Test]
     public void SlotSafetyCannotReuseSlot()
     {
@@ -270,6 +306,10 @@ public class TestAppender
         Assert.Throws<InvalidOperationException>(() => slot.Set(2));
     }
 
+    /// <summary>
+    /// Verifies that calling <see cref="DuckDbAppender.Append"/> multiple times and then attempting
+    /// to write through an older, stale slot triggers an <see cref="InvalidOperationException"/>.
+    /// </summary>
     [Test]
     public void SlotSafetyCannotUseStaleSlot()
     {
@@ -287,6 +327,10 @@ public class TestAppender
         Assert.Throws<InvalidOperationException>(() => slot1.Set(20));
     }
 
+    /// <summary>
+    /// Checks that invoking methods on a disposed appender throws <see cref="ObjectDisposedException"/>
+    /// via <see cref="Barricade"/>.
+    /// </summary>
     [Test]
     public void DisposedAppenderThrows()
     {
