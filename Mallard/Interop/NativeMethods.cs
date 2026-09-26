@@ -27,6 +27,38 @@ internal enum duckdb_result_type : int
     DUCKDB_RESULT_TYPE_QUERY_RESULT = 3,
 }
 
+// Notes on how "object" types from the DuckDB C API are imported internally in Mallard:
+//
+// In DuckDB's header file (<c>duckdb.h</c>), <c>typedef</c> is for opaque pointers to various kinds
+// of "objects", as is standard in well-designed C APIs which hide the ABI details of those objects
+// from the client.
+//
+// While theoretically, C#'s type aliases (<c>using type_alias = …</c>) work like <c>typedef</c> in C,
+// they are not part of the .NET type system, and their definitions have to be duplicated on all source
+// files that use them.  (C# has standard "header inclusion" facility.)
+//
+// So we do not use C# type alias, instead writing out what the <c>typedef</c> expands to at every
+// use.  Typically the <c>typedef</c> in C refers to a pointer to a <c>struct</c> tag.  (Recall that in C,
+// unlike C++, <c>struct</c> tags live in a different than actual types.)  We repeat the definitions
+// of those <c>struct</c> types in C#, named with an underscore prefix (<c>_</c>).  We do not manipulate
+// the data contents of these structures directly of course.  For all we know, the definitions might be "fake"
+// in the sense that DuckDB internally uses a different definition of the structure, whose instances are
+// heap-allocated, and we just have to store or load *pointers* to them.  To emphasize, our C# code would 
+// work with and store values of type <c>_duckdb_connection*</c> and never of type <c>_duckdb_connection</c>.
+//
+// Pay attention to the number of pointer indirections in the DuckDB C API functions.  The number of
+// "stars" (<c>*</c> de-references) may not match what is superficially apparent.
+//
+// Especially, watch out for some older functions in the DuckDB C API where the client is expected to *store*
+// the entire data structure, i.e. the data members of the structure are stored in the C# stack or even
+// as part of a heap-allocated C# object.  Some of those are design mistakes in the DuckDB C API but
+// have to stick around for compatibility reasons.  Others are intentional because the client is expected
+// to work with the data members directly, for efficiency reasons, such as <c>duckdb_bignum</c>.
+// Note that the corresponding <c>typedef</c>s for those types generally refer to the <c>struct</c>
+// itself in <c>duckdb.h</c>.  In our C# codebase, such structures are named *without* the underscore
+// prefix, i.e. the name of the type in C# is the same as the <c>typedef</c> name in C.  
+//
+
 [StructLayout(LayoutKind.Sequential)]
 internal unsafe struct _duckdb_connection { private void* internal_ptr; }
 
