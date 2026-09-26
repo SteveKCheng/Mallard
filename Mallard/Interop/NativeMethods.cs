@@ -491,8 +491,8 @@ internal unsafe static partial class NativeMethods
 
     [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
     internal static partial duckdb_state duckdb_appender_create_ext(_duckdb_connection* connection,
-                                                                    string catalog,
-                                                                    string schema,
+                                                                    string? catalog,
+                                                                    string? schema,
                                                                     string table,
                                                                     out _duckdb_appender* out_appender);
     

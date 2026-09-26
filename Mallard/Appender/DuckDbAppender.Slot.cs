@@ -6,9 +6,45 @@ namespace Mallard;
 
 public partial class DuckDbAppender
 {
-    public readonly unsafe struct ItemState : ISettableDuckDbValue
+    /// <summary>
+    /// Receives one data value that is to be appended as part of <see cref="DuckDbAppender" />.  
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// All the methods to "set" a value may throw
+    /// <see cref="ObjectDisposedException" /> or <see cref="DuckDbException" />.
+    /// </para>
+    /// <para>
+    /// Default-initialized instances should not be constructed.
+    /// Attempting to use such instances will result in <see cref="NullReferenceException" />
+    /// being thrown.
+    /// </para>
+    /// </remarks>
+    public readonly unsafe struct Slot : ISettableDuckDbValue
     {
+        /// <summary>
+        /// The "appender" object that this slot belongs to.
+        /// </summary>
         private readonly DuckDbAppender _parent;
+        
+        /// <summary>
+        /// The initially captured sequence counter from <see cref="_parent" />.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// When a data value is about to be sent to the DuckDB C API for appending, this counter is compared
+        /// for equality against the current counter value in <see cref="_parent" />, to ensure no other value
+        /// was appended after this instance was created from <see cref="DuckDbAppender.Append" />.
+        /// </para>
+        /// <para>
+        /// Once the data value is successfully sent, this counter is incremented, so that
+        /// subsequent attempts to "set" a value on the same slot will fail.
+        /// </para>
+        /// <para>
+        /// The counter must be checked and manipulated under a thread-exclusive lock; no atomic instructions
+        /// are used.
+        /// </para>
+        /// </remarks>
         private readonly uint _sequenceCounter;
 
         private void CheckSequenceCounter()
@@ -191,7 +227,7 @@ public partial class DuckDbAppender
         
         #endregion
 
-        internal ItemState(DuckDbAppender parent)
+        internal Slot(DuckDbAppender parent)
         {
             _parent = parent;
             
@@ -200,5 +236,4 @@ public partial class DuckDbAppender
             _sequenceCounter = parent._sequenceCounter;
         }
     }
-    
 }
