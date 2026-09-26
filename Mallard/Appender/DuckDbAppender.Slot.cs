@@ -235,5 +235,22 @@ public partial class DuckDbAppender
             //      in one of the Set* methods under a lock.
             _sequenceCounter = parent._sequenceCounter;
         }
+
+        /// <summary>
+        /// Set the desired data value to the default for the target column.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// That value is what is assigned by the <c>DEFAULT</c> clause in the database column's definition.
+        /// If there is no <c>DEFAULT</c> clause then the value of null if set.
+        /// </para> 
+        /// </remarks>
+        public void SetDefault()
+        {
+            using var _ = _parent._barricade.EnterScope(_parent);
+            CheckSequenceCounter();
+            _parent.ThrowOnAppendFailure(NativeMethods.duckdb_append_default(_parent._nativeObj));
+            _parent._sequenceCounter++;
+        }
     }
 }
