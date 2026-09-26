@@ -174,6 +174,26 @@ public enum DuckDbValueKind : int
     IntegerLiteral = 38,
     
     TimeNanoseconds = 39,
+    
+    /// <summary>
+    /// Geometric objects for geospatial processing: GEOMETRY in DuckDB SQL.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <a href="https://duckdb.org/docs/current/sql/data_types/geometry">DuckDB Documentation: SQL : Data Types : Geometry Data Type</a>.
+    /// </para>
+    /// </remarks>
+    Geometry = 40,
+    
+    /// <summary>
+    /// VARIANT in DuckDB SQL.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <a href="https://duckdb.org/docs/current/sql/data_types/variant">DuckDB Documentation: SQL : Data Types : Variant Type</a>
+    /// </para>
+    /// </remarks>
+    Variant = 41
 }
 
 #pragma warning restore CS1591 // Missing XML comment for publicly visible type or member
