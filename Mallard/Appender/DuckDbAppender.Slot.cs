@@ -45,7 +45,7 @@ public partial class DuckDbAppender
         /// are used.
         /// </para>
         /// </remarks>
-        private readonly uint _sequenceCounter;
+        private readonly ulong _sequenceCounter;
 
         private void CheckSequenceCounter()
         {

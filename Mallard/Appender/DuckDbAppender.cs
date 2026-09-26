@@ -46,7 +46,7 @@ public sealed unsafe partial class DuckDbAppender : IDisposable
     /// the same instance of <see cref="Slot" /> cannot be used to set another value.
     /// </para>
     /// </remarks>
-    private uint _sequenceCounter;
+    private ulong _sequenceCounter;
     
     internal DuckDbAppender(_duckdb_connection* nativeConn,
                             string? catalogName,
