@@ -9,6 +9,8 @@ public partial class DuckDbConnection
     /// </summary>
     /// <param name="catalog">
     /// Names the catalog (database) that contains the table to append to, or null for the default catalog.
+    /// The default catalog is the primary database file initially opened by this connection,
+    /// or whichever database that was selected via a <c>USE</c> statement.
     /// </param>
     /// <param name="schema">
     /// Names the schema, within the named catalog, that contains the table to append to, or null for the default schema.
