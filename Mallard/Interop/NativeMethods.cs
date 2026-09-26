@@ -52,6 +52,9 @@ internal unsafe struct _duckdb_vector { private void* internal_ptr; }
 internal unsafe struct _duckdb_logical_type { private void* internal_ptr; }
 
 [StructLayout(LayoutKind.Sequential)]
+internal unsafe struct _duckdb_appender { private void* internal_ptr; }
+
+[StructLayout(LayoutKind.Sequential)]
 internal unsafe struct duckdb_bignum 
 {
     internal byte* data;
@@ -482,6 +485,94 @@ internal unsafe static partial class NativeMethods
     [LibraryImport(LibraryName)]
     internal static partial _duckdb_value* duckdb_create_struct_value(_duckdb_logical_type* type, _duckdb_value** values);
 
+    #endregion
+    
+    #region Appender
+
+    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial duckdb_state duckdb_appender_create_ext(_duckdb_connection* connection,
+                                                                    string catalog,
+                                                                    string schema,
+                                                                    string table,
+                                                                    out _duckdb_appender* out_appender);
+    
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_appender_destroy(ref _duckdb_appender* appender);
+
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_appender_end_row(_duckdb_appender* appender);
+    
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_append_bool(_duckdb_appender* appender, 
+                                                            [MarshalAs(UnmanagedType.I1)] bool value);
+    
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_append_int8(_duckdb_appender* appender, sbyte value);
+    
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_append_int16(_duckdb_appender* appender, short value);
+    
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_append_int32(_duckdb_appender* appender, int value);
+    
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_append_int64(_duckdb_appender* appender, long value);
+
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_append_hugeint(_duckdb_appender* appender,
+                                                               [MarshalUsing(typeof(Int128Marshaller))] Int128 value);
+    
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_append_uint8(_duckdb_appender* appender, byte value);
+    
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_append_uint16(_duckdb_appender* appender, ushort value);
+    
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_append_uint32(_duckdb_appender* appender, uint value);
+    
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_append_uint64(_duckdb_appender* appender, ulong value);
+
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_append_uhugeint(_duckdb_appender* appender,
+                                                                [MarshalUsing(typeof(UInt128Marshaller))] UInt128 value);
+    
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_append_float(_duckdb_appender* appender, float value);
+    
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_append_double(_duckdb_appender* appender, double value);
+    
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_append_date(_duckdb_appender* appender, DuckDbDate value);
+    
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_append_time(_duckdb_appender* appender, DuckDbTime value);
+    
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_append_timestamp(_duckdb_appender* appender, DuckDbTimestamp value);
+    
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_append_interval(_duckdb_appender* appender, DuckDbInterval value);
+    
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_append_varchar_length(_duckdb_appender* appender, byte* data, long length);
+    
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_append_blob(_duckdb_appender* appender, void *data, long length);
+    
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_append_null(_duckdb_appender* appender);
+    
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_append_value(_duckdb_appender* appender, _duckdb_value* value);
+
+    /*
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_append_data_chunk(_duckdb_appender* appender, duckdb_data_chunk chunk);    
+    */
+    
     #endregion
 }
 

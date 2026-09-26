@@ -417,6 +417,16 @@ public unsafe sealed partial class DuckDbConnection : IDisposable
     }
 
     #endregion
+    
+    #region Appenders
+
+    public DuckDbAppender CreateAppender(string catalog, string schema, string table)
+    {
+        using var _ = _refCount.EnterScope(this);
+        return new DuckDbAppender(_nativeConn, catalog, schema, table);
+    }
+    
+    #endregion
 
     #region Global information
 
