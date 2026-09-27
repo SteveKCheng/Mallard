@@ -25,6 +25,10 @@ These lists are not exhaustive.  Rules that are implicitly followed in the codeb
     - Using the formal `<exception>` tag in the XML documentation is preferred
     - But when that is not practical, a list, not necessarily exhaustive, may be given in accompanying remarks
     - Ask the question: "what would a piece of robust software want to know in order to properly handle all operational errors?"
+  - Tone for user documentation: assume the audience is an intelligent programmer
+    - Write in English that's generally agreed to be good: do not overuse passive voice, nominalization, obscure abbreviations
+    - Avoid corporate buzzwords & pep talk
+    - It is okay to be opinionated when justifications for a design choice is adequately given
 
 ## Identifier names
 
