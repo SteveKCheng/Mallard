@@ -63,7 +63,7 @@ The test programs support AOT (ahead-of-time) compilation.  To run in AOT mode:
       - Execute ``dotnet pack -p:RuntimeIdentifier=«platform»`` from the ``Mallard.Runtime/`` directory.
       - Output will be in ``out/package/release/Mallard.Runtime.«platform».«version».nupkg``.
       - ``«version»`` here refers to DuckDB's version.
-
+  - There is a POSIX shell script `createPackages.sh` that automates building all packages.
 
 ## API documentation
 
