@@ -9,9 +9,3 @@ These have been created to optimize AI coding, but there is a fair amount of inf
   - [Appender.md](DuckDB Appender)
   - [DisposeErrors.md](What to do with errors in disposing a .NET object?)
 
-## Instructions for AI coding agents
-
-  - Feel free to edit/update these notes with the latest findings on the development process
-  - Important notes on specific .NET types' behavior should go into the source files instead, either as comments or XML documentation
-  - Notes that clients of Mallard would also want to know should go into XML documentation or DocFX
-

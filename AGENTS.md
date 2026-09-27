@@ -1,5 +1,12 @@
 # Pointers for AI coding agents
 
-  - Various `.md` files in this repository give color on how the code and its development works
+  - Various `.md` files in this repository give color on the code and its development process
+    - In particular `notes/*.md` contain the most technical of details
   - The organization of source files should be pretty similar to other .NET projects of this scale
-  - If you have any questions about the design, architecture, code, etc. feel free to ask, although this codebase is pretty well documented compared to many others. 
+
+## Updating the notes
+
+  - Feel free to edit/update `notes/*.md` with the latest findings
+  - Important notes on specific .NET types' behavior should go into the source files instead, either as comments or XML documentation
+  - Notes that clients of Mallard would likely want to know should go into XML documentation or DocFX
+
