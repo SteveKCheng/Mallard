@@ -58,17 +58,16 @@ public sealed unsafe partial class DuckDbAppender : IDisposable
                                                      schemaName, 
                                                      tableName, 
                                                      out var nativeObj);
-        try
+        if (status == duckdb_state.DuckDBError)
         {
-            if (status == duckdb_state.DuckDBError)
+            try
             {
-                throw new DuckDbException("Failed to create appender. ");
+                DuckDbException.ThrowForAppenderFailure(nativeObj, "Failed to create appender. ");
             }
-        }
-        catch
-        {
-            NativeMethods.duckdb_appender_destroy(ref nativeObj);
-            throw;
+            finally
+            {
+                NativeMethods.duckdb_appender_destroy(ref nativeObj);
+            }
         }
 
         _nativeObj = nativeObj;
@@ -131,7 +130,7 @@ public sealed unsafe partial class DuckDbAppender : IDisposable
     private void ThrowOnAppendFailure(duckdb_state status)
     {
         if (status != duckdb_state.DuckDBSuccess)
-            throw new DuckDbException("Failed to append value. ");
+            DuckDbException.ThrowForAppenderFailure(_nativeObj, "Failed to append value. ");
     }
 
     /// <summary>
@@ -140,9 +139,14 @@ public sealed unsafe partial class DuckDbAppender : IDisposable
     /// <exception cref="ObjectDisposedException">
     /// This connection has been disposed.
     /// </exception>
+    /// <exception cref="DuckDbException">
+    /// Failed to finish the row, e.g. because fewer columns were appended than expected.
+    /// </exception>
     public void FinishRow()
     {
         using var _ = _barricade.EnterScope(this);
-        NativeMethods.duckdb_appender_end_row(_nativeObj);
+        var status = NativeMethods.duckdb_appender_end_row(_nativeObj);
+        if (status != duckdb_state.DuckDBSuccess)
+            DuckDbException.ThrowForAppenderFailure(_nativeObj, "Failed to finish row. ");
     }
 }

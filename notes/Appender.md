@@ -96,13 +96,20 @@ During unit test construction, the following reader semantics were verified:
 
 ---
 
-## 5. Potential Enhancements for Future Work
+## 5. Error Handling via `duckdb_error_data`
 
-1. **Check `duckdb_appender_end_row` status**:
-   Ensure `FinishRow()` invokes `ThrowOnAppendFailure(NativeMethods.duckdb_appender_end_row(_nativeObj))` so premature row completion or type errors fail fast.
-2. **Native error extraction**:
-   Call `duckdb_appender_error(_nativeObj)` inside `ThrowOnAppendFailure` to surface descriptive native messages rather than generic exceptions.
-3. **Explicit `Flush()` and `Close()` methods**:
+DuckDB's modern C API uses `duckdb_error_data` as the unified error mechanism. Mallard integrates with it via:
+- P/Invokes: `duckdb_destroy_error_data`, `duckdb_error_data_error_type`, `duckdb_error_data_message`, `duckdb_error_data_has_error`, and `duckdb_appender_error_data`.
+- Exception helpers in [`DuckDbException`](file:///home/steve/dev/Mallard/Mallard/Basics/DuckDbException.cs):
+  - `ThrowForErrorData`: extracts the native message and `DuckDbErrorKind`, cleans up the error data in a `finally` block, and throws.
+  - `ThrowForAppenderFailure`: retrieves `duckdb_appender_error_data(appender)` and passes to `ThrowForErrorData`.
+- `DuckDbAppender` uses `ThrowForAppenderFailure` upon creation failure (e.g. non-existent table reporting `DuckDbErrorKind.Catalog`), on append failure, and in `FinishRow` when `duckdb_appender_end_row` returns `DuckDBError` (e.g. premature end-row reporting `DuckDbErrorKind.InvalidInput`).
+
+---
+
+## 6. Remaining Potential Enhancements for Future Work
+
+1. **Explicit `Flush()` and `Close()` methods**:
    Expose `Flush()` and `Close()` on `DuckDbAppender` for long-running streaming pipelines that require checkpointing before disposal.
-4. **Appender metadata introspection**:
+2. **Appender metadata introspection**:
    Expose `duckdb_appender_column_count` and `duckdb_appender_column_type` to allow callers to verify column counts and types dynamically.

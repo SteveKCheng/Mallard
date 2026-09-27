@@ -279,13 +279,36 @@ public class TestAppender
     }
 
     /// <summary>
-    /// Ensures attempting to create an appender for a non-existent table throws <see cref="DuckDbException"/>.
+    /// Ensures attempting to create an appender for a non-existent table throws <see cref="DuckDbException"/>
+    /// with <see cref="DuckDbErrorKind.Catalog"/> and descriptive native error message.
     /// </summary>
     [Test]
     public void NonExistentTableThrows()
     {
         using var connection = new DuckDbConnection("");
-        Assert.Throws<DuckDbException>(() => connection.CreateAppender("does_not_exist"));
+        var e = Assert.Throws<DuckDbException>(() => connection.CreateAppender("does_not_exist"));
+        Assert.Equal(DuckDbErrorKind.Catalog, e.ErrorKind);
+        Assert.Contains("does_not_exist", e.Message);
+    }
+
+    /// <summary>
+    /// Ensures that calling <see cref="DuckDbAppender.FinishRow"/> before all columns have been
+    /// appended throws a <see cref="DuckDbException"/> with descriptive error data.
+    /// </summary>
+    [Test]
+    public void PrematureFinishRowThrows()
+    {
+        using var connection = new DuckDbConnection("");
+        connection.ExecuteNonQuery("CREATE TABLE multi_col (a INTEGER, b VARCHAR, c DOUBLE)");
+
+        using var appender = connection.CreateAppender("multi_col");
+        appender.Append().Set(1);
+
+        // Table has 3 columns, but only 1 value was appended before FinishRow
+        var e = Assert.Throws<DuckDbException>(() => appender.FinishRow());
+        Assert.NotEmpty(e.Message);
+        Assert.Contains("EndRow", e.Message);
+        Assert.Equal(DuckDbErrorKind.InvalidInput, e.ErrorKind);
     }
 
     /// <summary>
