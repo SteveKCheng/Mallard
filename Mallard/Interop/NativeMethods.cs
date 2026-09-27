@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -85,6 +85,9 @@ internal unsafe struct _duckdb_logical_type { private void* internal_ptr; }
 
 [StructLayout(LayoutKind.Sequential)]
 internal unsafe struct _duckdb_appender { private void* internal_ptr; }
+
+[StructLayout(LayoutKind.Sequential)]
+internal unsafe struct _duckdb_error_data { private void* internal_ptr; }
 
 [StructLayout(LayoutKind.Sequential)]
 internal unsafe struct duckdb_bignum 
@@ -606,11 +609,32 @@ internal unsafe static partial class NativeMethods
     [LibraryImport(LibraryName)]
     internal static partial duckdb_state duckdb_append_value(_duckdb_appender* appender, _duckdb_value* value);
 
+    [LibraryImport(LibraryName)]
+    internal static partial _duckdb_error_data* duckdb_appender_error_data(_duckdb_appender* appender);
+
     /*
     [LibraryImport(LibraryName)]
     internal static partial duckdb_state duckdb_append_data_chunk(_duckdb_appender* appender, duckdb_data_chunk chunk);    
     */
     
+    #endregion
+
+    #region Error data
+
+    [LibraryImport(LibraryName)]
+    internal static partial void duckdb_destroy_error_data(ref _duckdb_error_data* error_data);
+
+    [LibraryImport(LibraryName)]
+    internal static partial DuckDbErrorKind duckdb_error_data_error_type(_duckdb_error_data* error_data);
+
+    [LibraryImport(LibraryName)]
+    [return: MarshalUsing(typeof(Utf8StringMarshallerWithoutFree))]
+    internal static partial string? duckdb_error_data_message(_duckdb_error_data* error_data);
+
+    [LibraryImport(LibraryName)]
+    [return: MarshalAs(UnmanagedType.I1)]
+    internal static partial bool duckdb_error_data_has_error(_duckdb_error_data* error_data);
+
     #endregion
 }
 

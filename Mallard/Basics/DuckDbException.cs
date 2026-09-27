@@ -1,11 +1,11 @@
-﻿using Mallard.Interop;
+using Mallard.Interop;
 using System;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Mallard;
 
 /// <summary>
-/// Reprsents a database-level error from DuckDB.
+/// Represents a database-level error from DuckDB.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -30,11 +30,24 @@ public sealed class DuckDbException : Exception
     internal DuckDbException(string? message) : base(message)
     {
     }
+
+    internal DuckDbException(string? message, DuckDbErrorKind errorKind) : base(message)
+    {
+        ErrorKind = errorKind;
+    }
     
     internal static void ThrowOnFailure(duckdb_state status, string errorMessage)
     {
         if (status != duckdb_state.DuckDBSuccess)
             throw new DuckDbException(errorMessage);
+    }
+
+    internal static unsafe void ThrowOnFailure(duckdb_state status, _duckdb_error_data* errorData, string defaultErrorMessage = "An error occurred in DuckDB. ")
+    {
+        if (status != duckdb_state.DuckDBSuccess)
+            ThrowForErrorData(errorData, defaultErrorMessage);
+        else if (errorData != null)
+            NativeMethods.duckdb_destroy_error_data(ref errorData);
     }
 
     [DoesNotReturn]
@@ -43,5 +56,46 @@ public sealed class DuckDbException : Exception
         var errorMessage = NativeMethods.duckdb_result_error(ref nativeResult);
         var errorKind = NativeMethods.duckdb_result_error_type(ref nativeResult);
         throw new DuckDbException(errorMessage) { ErrorKind = errorKind };
+    }
+
+    [DoesNotReturn]
+    internal static unsafe void ThrowForErrorData(_duckdb_error_data* errorData, string defaultErrorMessage = "An error occurred in DuckDB. ")
+    {
+        DuckDbException exceptionToThrow;
+        try
+        {
+            if (errorData != null && NativeMethods.duckdb_error_data_has_error(errorData))
+            {
+                var errorMessage = NativeMethods.duckdb_error_data_message(errorData);
+                var errorKind = NativeMethods.duckdb_error_data_error_type(errorData);
+                exceptionToThrow = new DuckDbException(string.IsNullOrEmpty(errorMessage) ? defaultErrorMessage : errorMessage)
+                {
+                    ErrorKind = errorKind
+                };
+            }
+            else
+            {
+                exceptionToThrow = new DuckDbException(defaultErrorMessage);
+            }
+        }
+        finally
+        {
+            if (errorData != null)
+                NativeMethods.duckdb_destroy_error_data(ref errorData);
+        }
+
+        throw exceptionToThrow;
+    }
+
+    [DoesNotReturn]
+    internal static unsafe void ThrowForAppenderFailure(_duckdb_appender* nativeAppender, string defaultErrorMessage = "Failed to append value. ")
+    {
+        if (nativeAppender != null)
+        {
+            var errorData = NativeMethods.duckdb_appender_error_data(nativeAppender);
+            ThrowForErrorData(errorData, defaultErrorMessage);
+        }
+
+        throw new DuckDbException(defaultErrorMessage);
     }
 }
