@@ -1,7 +1,7 @@
 # Pointers for AI coding agents
 
   - Various `.md` files in this repository give color on the code and its development process
-    - In particular `notes/*.md` contain the most technical of details
+    - In particular `notes/*.md` contain the most technical of details: [table of contents](notes/README.md)
   - The organization of source files should be pretty similar to other .NET projects of this scale
 
 ## Updating the notes

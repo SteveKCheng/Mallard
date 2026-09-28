@@ -4,8 +4,8 @@ These have been created to optimize AI coding, but there is a fair amount of inf
 
 ## Table of contents
 
-  - [Overview.md](Project Overview)
-  - [CodingStyle.md](Coding Style and Design Standards)
-  - [Appender.md](DuckDB Appender)
-  - [DisposeErrors.md](What to do with errors in disposing a .NET object?)
+  - [Project Overview](Overview.md)
+  - [Coding Style and Design Standards](CodingStyle.md)
+  - [DuckDB Appender](Appender.md)
+  - [What to do with errors in disposing a .NET object?](DisposeErrors.md)
 
