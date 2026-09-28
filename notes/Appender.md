@@ -10,14 +10,14 @@ The DuckDB Appender API is designed for high-throughput bulk row insertion direc
 
 In Mallard, the Appender implementation is split into three primary files:
 
-- [`Mallard/Appender/DuckDbAppender.cs`](file:///home/steve/dev/Mallard/Mallard/Appender/DuckDbAppender.cs): Main wrapper around the native `_duckdb_appender*` handle. Manages resource lifecycle, disposal, thread synchronization, and row finalization (`FinishRow`).
-- [`Mallard/Appender/DuckDbAppender.Slot.cs`](file:///home/steve/dev/Mallard/Mallard/Appender/DuckDbAppender.Slot.cs): Implements [`ISettableDuckDbValue`](file:///home/steve/dev/Mallard/Mallard/Conversion/ISettableDuckDbValue.cs). Each slot represents an individual column value in the current row being appended.
-- [`Mallard/Database/DuckDbConnection.Appender.cs`](file:///home/steve/dev/Mallard/Mallard/Database/DuckDbConnection.Appender.cs): Connection factory methods (`CreateAppender`) supporting default catalog/schema, explicit schema, or explicit catalog and schema.
+- [`Mallard/Appender/DuckDbAppender.cs`](../Mallard/Appender/DuckDbAppender.cs): Main wrapper around the native `_duckdb_appender*` handle. Manages resource lifecycle, disposal, thread synchronization, and row finalization (`FinishRow`).
+- [`Mallard/Appender/DuckDbAppender.Slot.cs`](../Mallard/Appender/DuckDbAppender.Slot.cs): Implements [`ISettableDuckDbValue`](../Mallard/Conversion/ISettableDuckDbValue.cs). Each slot represents an individual column value in the current row being appended.
+- [`Mallard/Database/DuckDbConnection.Appender.cs`](../Mallard/Database/DuckDbConnection.Appender.cs): Connection factory methods (`CreateAppender`) supporting default catalog/schema, explicit schema, or explicit catalog and schema.
 
 ### Key Mallard Patterns Utilized
 
 1. **`ISettableDuckDbValue` and C# 13 `allows ref struct`**:
-   The value-setting API relies on extension methods in [`DuckDbValue`](file:///home/steve/dev/Mallard/Mallard/Conversion/DuckDbValue.cs) parameterized over `TReceiver where TReceiver : ISettableDuckDbValue, allows ref struct`. This avoids boxing allocations when writing values through `ref struct` types like [`DuckDbAppender.Slot`](file:///home/steve/dev/Mallard/Mallard/Appender/DuckDbAppender.Slot.cs).
+   The value-setting API relies on extension methods in [`DuckDbValue`](../Mallard/Conversion/DuckDbValue.cs) parameterized over `TReceiver where TReceiver : ISettableDuckDbValue, allows ref struct`. This avoids boxing allocations when writing values through `ref struct` types like [`DuckDbAppender.Slot`](../Mallard/Appender/DuckDbAppender.Slot.cs).
 
 2. **Sequence Counter (`_sequenceCounter`) Guard**:
    To prevent API misuse (such as reusing a `Slot` instance or writing through stale slots out of order), `DuckDbAppender` tracks an internal `ulong _sequenceCounter`.
@@ -26,7 +26,7 @@ In Mallard, the Appender implementation is split into three primary files:
    - On successful append, `_parent._sequenceCounter` increments, immediately invalidating the slot for further writes.
 
 3. **Concurrency Control via `Barricade`**:
-   Like connections and statements in Mallard, native calls on the appender are guarded by [`Barricade`](file:///home/steve/dev/Mallard/Mallard/Utilities/Barricade.cs). This enforces single-threaded exclusive execution, disallows accidental recursive re-entrancy from the same thread, and throws `ObjectDisposedException` if operations are attempted on a disposed appender.
+   Like connections and statements in Mallard, native calls on the appender are guarded by [`Barricade`](../Mallard/Utilities/Barricade.cs). This enforces single-threaded exclusive execution, disallows accidental recursive re-entrancy from the same thread, and throws `ObjectDisposedException` if operations are attempted on a disposed appender.
 
 ---
 
@@ -69,14 +69,14 @@ Analysis of DuckDB's C header (`src/include/duckdb.h`) revealed several specific
 During unit test construction, the following reader semantics were verified:
 
 1. **Strict Non-Null Check on `GetItem`**:
-   [`DuckDbVectorReader<T>.GetItem(int index)`](file:///home/steve/dev/Mallard/Mallard/Vector/DuckDbVectorReader.cs#L100) enforces `requireValid: true`. Attempting to call `GetItem` on a column whose validity mask bit is 0 throws `InvalidOperationException: The element of the vector at index ... is invalid (null)`.
+   [`DuckDbVectorReader<T>.GetItem(int index)`](../Mallard/Vector/DuckDbVectorReader.cs#L100) enforces `requireValid: true`. Attempting to call `GetItem` on a column whose validity mask bit is 0 throws `InvalidOperationException: The element of the vector at index ... is invalid (null)`.
    - To inspect or read nullable elements safely, callers must use:
      - `IsItemValid(index)`: checks validity mask.
      - `GetItemOrDefault(index)`: returns `T?` (`null` or `default` when invalid).
      - `TryGetItem(index, out T? item)`: boolean check pattern.
 
 2. **Blob Writing**:
-   The extension method for writing binary blobs is [`DuckDbValue.SetBlob(ReadOnlySpan<byte>)`](file:///home/steve/dev/Mallard/Mallard/Conversion/DuckDbValue.cs#L377) rather than `Set(...)` to avoid overload ambiguity with other span types.
+   The extension method for writing binary blobs is [`DuckDbValue.SetBlob(ReadOnlySpan<byte>)`](../Mallard/Conversion/DuckDbValue.cs#L377) rather than `Set(...)` to avoid overload ambiguity with other span types.
 
 ---
 
@@ -100,16 +100,55 @@ During unit test construction, the following reader semantics were verified:
 
 DuckDB's modern C API uses `duckdb_error_data` as the unified error mechanism. Mallard integrates with it via:
 - P/Invokes: `duckdb_destroy_error_data`, `duckdb_error_data_error_type`, `duckdb_error_data_message`, `duckdb_error_data_has_error`, and `duckdb_appender_error_data`.
-- Exception helpers in [`DuckDbException`](file:///home/steve/dev/Mallard/Mallard/Basics/DuckDbException.cs):
+- Exception helpers in [`DuckDbException`](../Mallard/Basics/DuckDbException.cs):
   - `ThrowForErrorData`: extracts the native message and `DuckDbErrorKind`, cleans up the error data in a `finally` block, and throws.
-  - `ThrowForAppenderFailure`: retrieves `duckdb_appender_error_data(appender)` and passes to `ThrowForErrorData`.
 - `DuckDbAppender` uses `ThrowForAppenderFailure` upon creation failure (e.g. non-existent table reporting `DuckDbErrorKind.Catalog`), on append failure, and in `FinishRow` when `duckdb_appender_end_row` returns `DuckDBError` (e.g. premature end-row reporting `DuckDbErrorKind.InvalidInput`).
 
 ---
 
-## 6. Remaining Potential Enhancements for Future Work
+## 6. Error Handling on `Dispose`/`Close`
 
-1. **Explicit `Flush()` and `Close()` methods**:
-   Expose `Flush()` and `Close()` on `DuckDbAppender` for long-running streaming pipelines that require checkpointing before disposal.
+See [`notes/DisposeErrors.md`](DisposeErrors.md) for the general
+background on why `Dispose` throwing exceptions is usually discouraged, but is an established exception
+for write-buffered I/O types (like `Stream`) where silently discarding unflushed data would be worse.
+`DuckDbAppender` follows that same reasoning, since disposing it is what actually flushes appended rows
+to the table:
+
+- `DuckDbAppender` tracks a private `_hasFailed` flag, set whenever any operation (appending a value,
+  or `FinishRow`) reports a DuckDB error. This flag is only ever touched while the appender's `Barricade`
+  lock is held (or while `Barricade.PrepareToDisposeOwner` has already claimed exclusive access during
+  disposal), so it needs no separate synchronization.
+- If `_hasFailed` is already set by the time `Dispose` runs, `Dispose` does **not** attempt to flush or
+  report any further error: it just calls `duckdb_appender_destroy` and returns normally. This avoids
+  masking the exception that was already thrown for the original failure (e.g. inside a `using` block's
+  implicit `finally`).
+- Otherwise, `Dispose` calls `duckdb_appender_close` first (which flushes buffered data), captures any
+  error via `duckdb_appender_error_data` (while the appender is still alive), *then* calls
+  `duckdb_appender_destroy`, and only then throws the captured exception, if any. This matches the nuance
+  documented in section 2 above: querying error details after `destroy` is not possible.
+- A public `Close()` method is exposed purely as a documented synonym for `Dispose()` (mirroring
+  `Stream.Close()`), so callers who want an explicit, obvious point in their code where a flush error
+  might surface can call it instead of relying on the implicit `Dispose` at the end of a `using` block.
+- Whether called from the finalizer or not, `DisposeImpl` never lets an exception escape unless
+  `disposing` is true *and* this is the first error being reported — the finalizer path (`disposing:
+  false`) unconditionally skips straight to `duckdb_appender_destroy`.
+
+**Important finding on DuckDB's appender error state (not idempotent):** inspecting DuckDB's own C API
+implementation (`AppenderWrapper` in `src/include/duckdb/main/capi/capi_internal.hpp`, and
+`src/main/capi/appender-c.cpp`) shows that the appender's stored `ErrorData` is unconditionally
+overwritten by each subsequent failing call — there is no "already failed, don't bother trying" guard in
+the C++ layer, except for a separate sticky `flush_failed` bool used only by `duckdb_appender_close`/
+`duckdb_appender_destroy`. This means that, once an error has occurred, a further append call is not
+guaranteed to keep failing (it may spuriously succeed) or to report the *same* error if it does fail; the
+original diagnostic information can simply be lost. Because of this, Mallard does **not** rely on DuckDB
+to keep reporting a consistent error after the first failure. Instead, `DuckDbAppender.CheckNotFailed`
+(called before every attempt to append a value or finish a row) explicitly throws
+`InvalidOperationException` once `_hasFailed` is set, without making any further native calls.
+
+## 7. Remaining Potential Enhancements for Future Work
+
+1. **Explicit `Flush()` method**:
+   Expose `Flush()` on `DuckDbAppender` for long-running streaming pipelines that require checkpointing
+   before disposal. (`Close()` is now implemented; see section 6.)
 2. **Appender metadata introspection**:
    Expose `duckdb_appender_column_count` and `duckdb_appender_column_type` to allow callers to verify column counts and types dynamically.

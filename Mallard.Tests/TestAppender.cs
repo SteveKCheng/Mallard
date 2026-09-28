@@ -365,4 +365,81 @@ public class TestAppender
 
         Assert.Throws<ObjectDisposedException>(() => appender.FinishRow());
     }
+
+    /// <summary>
+    /// Verifies that a constraint violation which is only detected when data is flushed
+    /// (rather than immediately when a value or row is appended) is reported by
+    /// <see cref="DuckDbAppender.Dispose"/>, since this is the first time the appender
+    /// has reported an error.
+    /// </summary>
+    [Test]
+    public void DisposeReportsFlushError()
+    {
+        using var connection = new DuckDbConnection("");
+        connection.ExecuteNonQuery("CREATE TABLE t (a INTEGER NOT NULL)");
+
+        var appender = connection.CreateAppender("t");
+        appender.Append().SetNull();
+        appender.FinishRow();  // Not caught yet: NOT NULL is only enforced when flushed.
+
+        var e = Assert.Throws<DuckDbException>(() => appender.Dispose());
+        Assert.Contains("NOT NULL", e.Message);
+    }
+
+    /// <summary>
+    /// Same as <see cref="DisposeReportsFlushError"/> but using the explicit
+    /// <see cref="DuckDbAppender.Close"/> method instead of relying on <see cref="DuckDbAppender.Dispose"/>.
+    /// </summary>
+    [Test]
+    public void CloseReportsFlushError()
+    {
+        using var connection = new DuckDbConnection("");
+        connection.ExecuteNonQuery("CREATE TABLE t (a INTEGER NOT NULL)");
+
+        var appender = connection.CreateAppender("t");
+        appender.Append().SetNull();
+        appender.FinishRow();
+
+        var e = Assert.Throws<DuckDbException>(() => appender.Close());
+        Assert.Contains("NOT NULL", e.Message);
+    }
+
+    /// <summary>
+    /// Verifies that once an appender has already reported one error (from
+    /// <see cref="DuckDbAppender.FinishRow"/>), a subsequent call to <see cref="DuckDbAppender.Dispose"/>
+    /// does not throw a second exception, so as to not mask the original one, e.g. when both would
+    /// occur inside the same <c>using</c> statement.
+    /// </summary>
+    [Test]
+    public void DisposeDoesNotThrowAfterEarlierError()
+    {
+        using var connection = new DuckDbConnection("");
+        connection.ExecuteNonQuery("CREATE TABLE multi_col (a INTEGER, b VARCHAR, c DOUBLE)");
+
+        var appender = connection.CreateAppender("multi_col");
+        appender.Append().Set(1);
+        Assert.Throws<DuckDbException>(() => appender.FinishRow());
+
+        // Must not throw, even though the appender was never explicitly flushed/closed.
+        appender.Dispose();
+    }
+
+    /// <summary>
+    /// Verifies that once an appender has reported an error, further attempts to append data or
+    /// finish a row throw <see cref="InvalidOperationException"/> rather than being sent to DuckDB
+    /// (whose own error state is not guaranteed to remain consistent after the first failure).
+    /// </summary>
+    [Test]
+    public void CannotContinueAppendingAfterError()
+    {
+        using var connection = new DuckDbConnection("");
+        connection.ExecuteNonQuery("CREATE TABLE multi_col (a INTEGER, b VARCHAR, c DOUBLE)");
+
+        using var appender = connection.CreateAppender("multi_col");
+        appender.Append().Set(1);
+        Assert.Throws<DuckDbException>(() => appender.FinishRow());
+
+        Assert.Throws<InvalidOperationException>(() => appender.Append().Set(2));
+        Assert.Throws<InvalidOperationException>(() => appender.FinishRow());
+    }
 }

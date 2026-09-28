@@ -537,6 +537,14 @@ internal unsafe static partial class NativeMethods
     [LibraryImport(LibraryName)]
     internal static partial duckdb_state duckdb_appender_destroy(ref _duckdb_appender* appender);
 
+    /// <summary>
+    /// Flushes and closes the appender for further appends, without deallocating it, so that
+    /// <see cref="duckdb_appender_error_data" /> may still be called afterward to retrieve
+    /// diagnostics for any error that occurred while flushing.
+    /// </summary>
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_appender_close(_duckdb_appender* appender);
+
     [LibraryImport(LibraryName)]
     internal static partial duckdb_state duckdb_appender_end_row(_duckdb_appender* appender);
     
