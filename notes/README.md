@@ -8,4 +8,5 @@ These have been created to optimize AI coding, but there is a fair amount of inf
   - [Coding Style and Design Standards](CodingStyle.md)
   - [DuckDB Appender](Appender.md)
   - [What to do with errors in disposing a .NET object?](DisposeErrors.md)
+  - [Advanced features of appenders in DuckDB](AppenderFeatures.md)
 
