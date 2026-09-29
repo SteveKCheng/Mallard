@@ -57,7 +57,10 @@ These lists are not exhaustive.  Rules that are implicitly followed in the codeb
   - Private/internal methods that are particularly "dangerous" or "unsafe", or subtly so such that those aspects are easy to miss, should probably be named with words like `Dangerous` or `Unsafe`
   - In code that locally works with both the native DuckDB object/value and the corresponding .NET object/value at the same time, name the variable for the former with the `native` prefix
     - The .NET object/value's name does not need a prefix unless confusion results otherwise
-    - Other than the prefix, align the names of the DuckDB native object/value and the corresponding .NET object/value unless distinct names are justified by other considerations
+  - Overload methods only when the functionality between the overloads is essentially the same
+    - … and only the types of values differ, or some overloads just supply defaults for certain arguments.
+    - Variations of some functionality (e.g. table-based append versus query-based append) should have distinct method names
+    - Rationale: many languages don't allow overloading precisely because it can make the code difficult to understand; the types of arguments may not be obvious on a quick glance
 
 ## API/ABI compatibility
 
@@ -93,6 +96,10 @@ These lists are not exhaustive.  Rules that are implicitly followed in the codeb
       - That may occur dynamically (dictionaries of custom conversion functions) or statically (extension methods)
   - If a design is both inefficient and difficult to use at the same time, that may hint at something being wrong
     - ADO.NET is arguably that but we do have to implement it for compatibility, obviously
+  - Prefer factory methods over constructors for the public API
+    - Factory methods are easier to make forward-compatible with later feature additions
+    - The *verb* in the method name makes intent more clearer than some of the abstract nouns in class names
+    - When constructing object B (e.g. `DuckDbStatement`) from "parent" object A (e.g. `DuckDbConnection`), object B often needs to read private members of object A initially.  A factory method from object A can directly pass the needed members as arguments to the `internal` constructor of object B.  If object B is created through a public constructor, then that constructor would need object A's members be made `internal` instead of `private`, which opens up the guts of object A too much to the rest of the library.
 
 ## Memory- and thread-safety
 
