@@ -116,24 +116,42 @@ public sealed unsafe partial class DuckDbAppender : IDisposable
     /// </remarks>
     internal DuckDbAppender(_duckdb_connection* nativeConn,
                             string query,
-                            ReadOnlySpan<Type> columnTypes)
+                            ReadOnlySpan<Type> columnTypes,
+                            string? tableName,
+                            ReadOnlySpan<string> columnNames)
     {
         var columnCount = columnTypes.Length;
 
+        if (columnNames.Length != 0 && columnNames.Length != columnCount)
+            throw new ArgumentException("The names of the data columns must be all specified, or none are. ", nameof(columnNames)); 
+
         // Native logical-type handles for the virtual relation's columns.  DuckDB copies these
         // during creation, so we own them and destroy them again in the finally block below.
-        var types = stackalloc _duckdb_logical_type*[columnCount];
+        var nativeTypes = stackalloc _duckdb_logical_type*[columnCount];
+
         try
         {
             for (var i = 0; i < columnCount; ++i)
-                types[i] = DuckDbComplexTypeInfo.MapToNativeLogicalType(columnTypes[i]).NativeHandle;
+                nativeTypes[i] = DuckDbComplexTypeInfo.MapToNativeLogicalType(columnTypes[i]).NativeHandle;
 
+            // Convert columnNames to array of UTF-8 strings.
+            using var namesConverter = new Utf8StringConverterState();
+            byte** nativeNames = null;
+            if (columnNames.Length != 0)
+            {
+                int namesBufferSize = Utf8StringConverterState.SuggestedBufferSize;
+                var namesBuffer = stackalloc byte[namesBufferSize];
+                var nativeNamesArray = stackalloc byte*[columnNames.Length];
+                namesConverter.ConvertStringArrayToUtf8(columnNames, nativeNamesArray, namesBuffer, namesBufferSize);    
+                nativeNames = nativeNamesArray;
+            }
+            
             var status = NativeMethods.duckdb_appender_create_query(nativeConn,
                                                                     query,
                                                                     columnCount,
-                                                                    types,
-                                                                    table_name: null,
-                                                                    column_names: null,
+                                                                    nativeTypes,
+                                                                    table_name: tableName,
+                                                                    column_names: nativeNames,
                                                                     out _nativeObj);
             try
             {
@@ -149,8 +167,8 @@ public sealed unsafe partial class DuckDbAppender : IDisposable
         {
             for (var i = 0; i < columnCount; ++i)
             {
-                if (types[i] != null)
-                    NativeMethods.duckdb_destroy_logical_type(ref types[i]);
+                if (nativeTypes[i] != null)
+                    NativeMethods.duckdb_destroy_logical_type(ref nativeTypes[i]);
             }
         }
     }

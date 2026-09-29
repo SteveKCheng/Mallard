@@ -96,6 +96,15 @@ public partial class DuckDbConnection
     /// </param>
     /// <param name="columnTypes">
     /// The .NET types of the columns of the <c>appended_data</c> relation, in declaration order.
+    /// This sequence must not be empty.
+    /// </param>
+    /// <param name="tableName">
+    /// The name used to refer to the table of appended data in the SQL statement.  Defaults to
+    /// <c>appended_data</c> if null. 
+    /// </param>
+    /// <param name="columnNames">
+    /// The names of each column of the <c>appended_data</c> relation, in declaration order.
+    /// If empty, the columns will be named <c>col1</c>, <c>col2</c>, … 
     /// </param>
     /// <returns>
     /// The "appender" object to stream rows through <paramref name="query" />.
@@ -107,11 +116,33 @@ public partial class DuckDbConnection
     /// DuckDB failed to create the query-based "appender" object, e.g. because <paramref name="query" />
     /// could not be parsed or bound.
     /// </exception>
-    public unsafe DuckDbAppender CreateQueryAppender(string query, ReadOnlySpan<Type> columnTypes)
+    public unsafe DuckDbAppender CreateQueryAppender(string query, ReadOnlySpan<Type> columnTypes,
+                                                     string? tableName, ReadOnlySpan<string> columnNames)
     {
         using var _ = _refCount.EnterScope(this);
-        return new DuckDbAppender(_nativeConn, query, columnTypes);
+        return new DuckDbAppender(_nativeConn, query, columnTypes, tableName, columnNames);
     }
+    
+    /// <summary>
+    /// Prepare to insert data rows by streaming them through an arbitrary SQL statement, using
+    /// DuckDB's query-based "appender" functionality.
+    /// </summary>
+    /// <param name="query">
+    /// The SQL statement to execute against the appended rows.  Can be an <c>INSERT</c>, <c>DELETE</c>,
+    /// <c>UPDATE</c>, or <c>MERGE INTO</c> statement that reads from the <c>appended_data</c> relation.
+    /// </param>
+    /// <param name="columnTypes">
+    /// The .NET types of the columns of the <c>appended_data</c> relation, in declaration order.
+    /// This sequence must not be empty.
+    /// </param>
+    /// <remarks>
+    /// <para>
+    /// <see cref="CreateQueryAppender(string, ReadOnlySpan{Type}, string?, ReadOnlySpan{string})" /> for details;
+    /// this overload omits the table name and column names but otherwise works the same.
+    /// </para>
+    /// </remarks>
+    public DuckDbAppender CreateQueryAppender(string query, ReadOnlySpan<Type> columnTypes)
+        => CreateQueryAppender(query, columnTypes, null, ReadOnlySpan<string>.Empty);
 
     #endregion
 }
