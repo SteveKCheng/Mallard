@@ -96,6 +96,65 @@ public sealed unsafe partial class DuckDbAppender : IDisposable
         }
     }
 
+    /// <summary>
+    /// Creates a query-based appender, backing <see cref="DuckDbConnection.CreateQueryAppender" />.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Rows appended through this object are streamed into a virtual relation (named
+    /// <c>appended_data</c>, with columns <c>col1</c>, <c>col2</c>, ... in this first implementation)
+    /// that the supplied <paramref name="query" /> reads from, so statements such as
+    /// <c>INSERT ... ON CONFLICT</c>, <c>MERGE INTO</c>, or <c>INSERT ... SELECT ... WHERE</c>
+    /// can be used, unlike the plain table appender.
+    /// </para>
+    /// <para>
+    /// The column types of the virtual relation cannot be inferred from the query, so they are
+    /// supplied explicitly by the caller and mapped to native logical types via
+    /// <see cref="DuckDbComplexTypeInfo.MapToNativeLogicalType" />.  DuckDB copies these logical
+    /// types, so they are destroyed again before this constructor returns.
+    /// </para>
+    /// </remarks>
+    internal DuckDbAppender(_duckdb_connection* nativeConn,
+                            string query,
+                            ReadOnlySpan<Type> columnTypes)
+    {
+        var columnCount = columnTypes.Length;
+
+        // Native logical-type handles for the virtual relation's columns.  DuckDB copies these
+        // during creation, so we own them and destroy them again in the finally block below.
+        var types = stackalloc _duckdb_logical_type*[columnCount];
+        try
+        {
+            for (var i = 0; i < columnCount; ++i)
+                types[i] = DuckDbComplexTypeInfo.MapToNativeLogicalType(columnTypes[i]).NativeHandle;
+
+            var status = NativeMethods.duckdb_appender_create_query(nativeConn,
+                                                                    query,
+                                                                    columnCount,
+                                                                    types,
+                                                                    table_name: null,
+                                                                    column_names: null,
+                                                                    out _nativeObj);
+            try
+            {
+                ThrowOnAppenderFailure(status, "Failed to create query-based appender. ");
+            }
+            catch
+            {
+                NativeMethods.duckdb_appender_destroy(ref _nativeObj);
+                throw;
+            }
+        }
+        finally
+        {
+            for (var i = 0; i < columnCount; ++i)
+            {
+                if (types[i] != null)
+                    NativeMethods.duckdb_destroy_logical_type(ref types[i]);
+            }
+        }
+    }
+
     /// <remarks>
     /// <para>
     /// When <paramref name="disposing" /> is false, this method is running on the finalizer thread,

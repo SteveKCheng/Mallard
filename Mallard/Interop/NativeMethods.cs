@@ -533,7 +533,16 @@ internal unsafe static partial class NativeMethods
                                                                     string? schema,
                                                                     string table,
                                                                     out _duckdb_appender* out_appender);
-    
+
+    [LibraryImport(LibraryName, StringMarshalling = StringMarshalling.Utf8)]
+    internal static partial duckdb_state duckdb_appender_create_query(_duckdb_connection* connection,
+                                                                      string query,
+                                                                      idx_t column_count,
+                                                                      _duckdb_logical_type** types,
+                                                                      string? table_name,
+                                                                      byte** column_names,
+                                                                      out _duckdb_appender* out_appender);
+
     [LibraryImport(LibraryName)]
     internal static partial duckdb_state duckdb_appender_destroy(ref _duckdb_appender* appender);
 

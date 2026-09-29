@@ -442,4 +442,78 @@ public class TestAppender
         Assert.Throws<InvalidOperationException>(() => appender.Append().Set(2));
         Assert.Throws<InvalidOperationException>(() => appender.FinishRow());
     }
+
+    /// <summary>
+    /// Verifies a query-based appender (<see cref="DuckDbConnection.CreateQueryAppender"/>) that
+    /// performs an upsert via <c>ON CONFLICT ... DO UPDATE</c>, which a plain table appender cannot
+    /// express.  Rows are streamed through the <c>appended_data</c> relation with explicitly declared
+    /// primitive column types.
+    /// </summary>
+    [Test]
+    public void QueryAppenderUpsert()
+    {
+        using var connection = new DuckDbConnection("");
+        connection.ExecuteNonQuery("CREATE TABLE scores (id INTEGER PRIMARY KEY, score DOUBLE)");
+        connection.ExecuteNonQuery("INSERT INTO scores VALUES (1, 10.0)");
+
+        using (var appender = connection.CreateQueryAppender(
+                   "INSERT INTO scores SELECT col1, col2 FROM appended_data " +
+                   "ON CONFLICT (id) DO UPDATE SET score = excluded.score",
+                   new[] { typeof(int), typeof(double) }))
+        {
+            // Conflicts with existing id 1: updates its score.
+            appender.Append().Set(1);
+            appender.Append().Set(99.5);
+            appender.FinishRow();
+
+            // New id 2: inserted.
+            appender.Append().Set(2);
+            appender.Append().Set(20.0);
+            appender.FinishRow();
+        }
+
+        Assert.Equal(2, connection.ExecuteValue<int>("SELECT COUNT(*)::INTEGER FROM scores"));
+        Assert.Equal(99.5, connection.ExecuteValue<double>("SELECT score FROM scores WHERE id = 1"));
+        Assert.Equal(20.0, connection.ExecuteValue<double>("SELECT score FROM scores WHERE id = 2"));
+    }
+
+    /// <summary>
+    /// Verifies a query-based appender that filters rows with a <c>WHERE</c> clause as they are
+    /// streamed in, so that only some of the appended rows reach the target table.
+    /// </summary>
+    [Test]
+    public void QueryAppenderFilteredInsert()
+    {
+        using var connection = new DuckDbConnection("");
+        connection.ExecuteNonQuery("CREATE TABLE evens (v INTEGER)");
+
+        using (var appender = connection.CreateQueryAppender(
+                   "INSERT INTO evens SELECT col1 FROM appended_data WHERE col1 % 2 = 0",
+                   new[] { typeof(int) }))
+        {
+            for (var i = 1; i <= 4; ++i)
+            {
+                appender.Append().Set(i);
+                appender.FinishRow();
+            }
+        }
+
+        // Only 2 and 4 satisfy the filter.
+        Assert.Equal(2, connection.ExecuteValue<int>("SELECT COUNT(*)::INTEGER FROM evens"));
+        Assert.Equal(6, connection.ExecuteValue<int>("SELECT SUM(v)::INTEGER FROM evens"));
+    }
+
+    /// <summary>
+    /// Verifies that requesting a query-based appender with a non-primitive column type (which this
+    /// initial implementation does not support) throws <see cref="NotSupportedException"/> from the
+    /// type mapping, before any native appender is created.
+    /// </summary>
+    [Test]
+    public void QueryAppenderRejectsUnsupportedColumnType()
+    {
+        using var connection = new DuckDbConnection("");
+        Assert.Throws<NotSupportedException>(() => connection.CreateQueryAppender(
+            "INSERT INTO whatever SELECT col1 FROM appended_data",
+            new[] { typeof(string) }));
+    }
 }
