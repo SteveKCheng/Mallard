@@ -516,4 +516,128 @@ public class TestAppender
             "INSERT INTO whatever SELECT col1 FROM appended_data",
             new[] { typeof(string) }));
     }
+
+    /// <summary>
+    /// Verifies a query-based appender with a caller-supplied table name and column names for the
+    /// virtual relation, exercising the marshalling of the column-name string array.
+    /// </summary>
+    [Test]
+    public void QueryAppenderCustomTableAndColumnNames()
+    {
+        using var connection = new DuckDbConnection("");
+        connection.ExecuteNonQuery("CREATE TABLE t (a INTEGER, b DOUBLE)");
+
+        using (var appender = connection.CreateQueryAppender(
+                   "INSERT INTO t SELECT xval, yval FROM my_data",
+                   new[] { typeof(int), typeof(double) },
+                   tableName: "my_data",
+                   columnNames: new[] { "xval", "yval" }))
+        {
+            appender.Append().Set(7);
+            appender.Append().Set(1.5);
+            appender.FinishRow();
+
+            appender.Append().Set(8);
+            appender.Append().Set(2.5);
+            appender.FinishRow();
+        }
+
+        Assert.Equal(2, connection.ExecuteValue<int>("SELECT COUNT(*)::INTEGER FROM t"));
+        Assert.Equal(15, connection.ExecuteValue<int>("SELECT SUM(a)::INTEGER FROM t"));
+        Assert.Equal(4.0, connection.ExecuteValue<double>("SELECT SUM(b) FROM t"));
+    }
+
+    /// <summary>
+    /// Verifies that a caller-supplied table name can be combined with default column names
+    /// (<c>col1</c>, <c>col2</c>, …) by passing an empty column-name span.
+    /// </summary>
+    [Test]
+    public void QueryAppenderCustomTableNameDefaultColumns()
+    {
+        using var connection = new DuckDbConnection("");
+        connection.ExecuteNonQuery("CREATE TABLE t2 (v INTEGER)");
+
+        using (var appender = connection.CreateQueryAppender(
+                   "INSERT INTO t2 SELECT col1 FROM src",
+                   new[] { typeof(int) },
+                   tableName: "src",
+                   columnNames: ReadOnlySpan<string>.Empty))
+        {
+            appender.Append().Set(42);
+            appender.FinishRow();
+        }
+
+        Assert.Equal(42, connection.ExecuteValue<int>("SELECT v FROM t2"));
+    }
+
+    /// <summary>
+    /// Verifies that long column names whose total UTF-8 length exceeds the converter's stack
+    /// buffer force the fallback heap allocation path, and are still marshalled correctly.
+    /// </summary>
+    [Test]
+    public void QueryAppenderLongColumnNamesOverflowStackBuffer()
+    {
+        using var connection = new DuckDbConnection("");
+        connection.ExecuteNonQuery("CREATE TABLE t3 (p INTEGER, q INTEGER, r INTEGER)");
+
+        // Three ~200-char names => ~600 bytes total, well past the 0x200 stack buffer.
+        var n1 = new string('a', 200);
+        var n2 = new string('b', 200);
+        var n3 = new string('c', 200);
+
+        using (var appender = connection.CreateQueryAppender(
+                   $"INSERT INTO t3 SELECT \"{n1}\", \"{n2}\", \"{n3}\" FROM data",
+                   new[] { typeof(int), typeof(int), typeof(int) },
+                   tableName: "data",
+                   columnNames: new[] { n1, n2, n3 }))
+        {
+            appender.Append().Set(10);
+            appender.Append().Set(20);
+            appender.Append().Set(30);
+            appender.FinishRow();
+        }
+
+        Assert.Equal(1, connection.ExecuteValue<int>("SELECT COUNT(*)::INTEGER FROM t3"));
+        Assert.Equal(60, connection.ExecuteValue<int>("SELECT (p + q + r)::INTEGER FROM t3"));
+    }
+
+    /// <summary>
+    /// Verifies that multi-byte (non-ASCII) column names are marshalled with the correct UTF-8 byte
+    /// lengths and null terminators, so the query can reference them.
+    /// </summary>
+    [Test]
+    public void QueryAppenderMultiByteColumnNames()
+    {
+        using var connection = new DuckDbConnection("");
+        connection.ExecuteNonQuery("CREATE TABLE t4 (x INTEGER, y INTEGER)");
+
+        using (var appender = connection.CreateQueryAppender(
+                   "INSERT INTO t4 SELECT \"café\", \"日本語\" FROM data",
+                   new[] { typeof(int), typeof(int) },
+                   tableName: "data",
+                   columnNames: new[] { "café", "日本語" }))
+        {
+            appender.Append().Set(3);
+            appender.Append().Set(4);
+            appender.FinishRow();
+        }
+
+        Assert.Equal(3, connection.ExecuteValue<int>("SELECT x FROM t4"));
+        Assert.Equal(4, connection.ExecuteValue<int>("SELECT y FROM t4"));
+    }
+
+    /// <summary>
+    /// Verifies that supplying a number of column names that does not match the number of column
+    /// types (and is non-zero) throws <see cref="ArgumentException"/>.
+    /// </summary>
+    [Test]
+    public void QueryAppenderMismatchedColumnNameCountThrows()
+    {
+        using var connection = new DuckDbConnection("");
+        Assert.Throws<ArgumentException>(() => connection.CreateQueryAppender(
+            "INSERT INTO whatever SELECT col1, col2 FROM appended_data",
+            new[] { typeof(int), typeof(int) },
+            tableName: null,
+            columnNames: new[] { "only_one" }));
+    }
 }
