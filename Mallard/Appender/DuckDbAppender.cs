@@ -13,7 +13,7 @@ namespace Mallard;
 /// to insert a row and executing it multiple times.  
 /// </para>
 /// <para>
-/// After obtaining this object from <see cref="DuckDbConnection.CreateAppender(string?,string?,string)" />
+/// After obtaining this object from <see cref="DuckDbConnection.CreateTableAppender" />
 /// or one of its convenience overloads, add data values for a row by calling <see cref="Append" />
 /// and then following up with a call to a method of <see cref="DuckDbValue" />.  Finish up one row's data
 /// by calling <see cref="FinishRow" />.  Repeat for each row.  Then dispose of this object.

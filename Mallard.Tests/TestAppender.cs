@@ -33,7 +33,7 @@ public class TestAppender
                 birthdate DATE
             )");
 
-        using (var appender = connection.CreateAppender("people"))
+        using (var appender = connection.CreateTableAppender("people"))
         {
             appender.Append().Set(1);
             appender.Append().Set("Alice");
@@ -96,7 +96,7 @@ public class TestAppender
                 note VARCHAR
             )");
 
-        using (var appender = connection.CreateAppender("items"))
+        using (var appender = connection.CreateTableAppender("items"))
         {
             // Row 1: using defaults and null
             appender.Append().Set(1);
@@ -175,7 +175,7 @@ public class TestAppender
 
         byte[] blobBytes = [0xDE, 0xAD, 0xBE, 0xEF];
 
-        using (var appender = connection.CreateAppender("all_types"))
+        using (var appender = connection.CreateTableAppender("all_types"))
         {
             appender.Append().Set((sbyte)-8);
             appender.Append().Set((short)-16);
@@ -243,7 +243,7 @@ public class TestAppender
         connection.ExecuteNonQuery("CREATE TABLE bulk_data (id INTEGER, val BIGINT)");
 
         const int rowCount = 5000;
-        using (var appender = connection.CreateAppender("bulk_data"))
+        using (var appender = connection.CreateTableAppender("bulk_data"))
         {
             for (int i = 0; i < rowCount; i++)
             {
@@ -259,7 +259,7 @@ public class TestAppender
     }
 
     /// <summary>
-    /// Tests <see cref="DuckDbConnection.CreateAppender(string, string)"/> targeting non-default schemas.
+    /// Tests <see cref="DuckDbConnection.CreateTableAppender(string,string)"/> targeting non-default schemas.
     /// </summary>
     [Test]
     public void AppendWithExplicitSchema()
@@ -268,7 +268,7 @@ public class TestAppender
         connection.ExecuteNonQuery("CREATE SCHEMA test_schema");
         connection.ExecuteNonQuery("CREATE TABLE test_schema.numbers (num INTEGER)");
 
-        using (var appender = connection.CreateAppender("test_schema", "numbers"))
+        using (var appender = connection.CreateTableAppender("test_schema", "numbers"))
         {
             appender.Append().Set(42);
             appender.FinishRow();
@@ -286,7 +286,7 @@ public class TestAppender
     public void NonExistentTableThrows()
     {
         using var connection = new DuckDbConnection("");
-        var e = Assert.Throws<DuckDbException>(() => connection.CreateAppender("does_not_exist"));
+        var e = Assert.Throws<DuckDbException>(() => connection.CreateTableAppender("does_not_exist"));
         Assert.Equal(DuckDbErrorKind.Catalog, e.ErrorKind);
         Assert.Contains("does_not_exist", e.Message);
     }
@@ -301,7 +301,7 @@ public class TestAppender
         using var connection = new DuckDbConnection("");
         connection.ExecuteNonQuery("CREATE TABLE multi_col (a INTEGER, b VARCHAR, c DOUBLE)");
 
-        using var appender = connection.CreateAppender("multi_col");
+        using var appender = connection.CreateTableAppender("multi_col");
         appender.Append().Set(1);
 
         // Table has 3 columns, but only 1 value was appended before FinishRow
@@ -321,7 +321,7 @@ public class TestAppender
         using var connection = new DuckDbConnection("");
         connection.ExecuteNonQuery("CREATE TABLE t (a INTEGER, b INTEGER)");
 
-        using var appender = connection.CreateAppender("t");
+        using var appender = connection.CreateTableAppender("t");
         var slot = appender.Append();
         slot.Set(1);
 
@@ -339,7 +339,7 @@ public class TestAppender
         using var connection = new DuckDbConnection("");
         connection.ExecuteNonQuery("CREATE TABLE t (a INTEGER, b INTEGER)");
 
-        using var appender = connection.CreateAppender("t");
+        using var appender = connection.CreateTableAppender("t");
         var slot1 = appender.Append();
         var slot2 = appender.Append();
 
@@ -360,7 +360,7 @@ public class TestAppender
         using var connection = new DuckDbConnection("");
         connection.ExecuteNonQuery("CREATE TABLE t (a INTEGER)");
 
-        var appender = connection.CreateAppender("t");
+        var appender = connection.CreateTableAppender("t");
         appender.Dispose();
 
         Assert.Throws<ObjectDisposedException>(() => appender.FinishRow());
@@ -378,7 +378,7 @@ public class TestAppender
         using var connection = new DuckDbConnection("");
         connection.ExecuteNonQuery("CREATE TABLE t (a INTEGER NOT NULL)");
 
-        var appender = connection.CreateAppender("t");
+        var appender = connection.CreateTableAppender("t");
         appender.Append().SetNull();
         appender.FinishRow();  // Not caught yet: NOT NULL is only enforced when flushed.
 
@@ -396,7 +396,7 @@ public class TestAppender
         using var connection = new DuckDbConnection("");
         connection.ExecuteNonQuery("CREATE TABLE t (a INTEGER NOT NULL)");
 
-        var appender = connection.CreateAppender("t");
+        var appender = connection.CreateTableAppender("t");
         appender.Append().SetNull();
         appender.FinishRow();
 
@@ -416,7 +416,7 @@ public class TestAppender
         using var connection = new DuckDbConnection("");
         connection.ExecuteNonQuery("CREATE TABLE multi_col (a INTEGER, b VARCHAR, c DOUBLE)");
 
-        var appender = connection.CreateAppender("multi_col");
+        var appender = connection.CreateTableAppender("multi_col");
         appender.Append().Set(1);
         Assert.Throws<DuckDbException>(() => appender.FinishRow());
 
@@ -435,7 +435,7 @@ public class TestAppender
         using var connection = new DuckDbConnection("");
         connection.ExecuteNonQuery("CREATE TABLE multi_col (a INTEGER, b VARCHAR, c DOUBLE)");
 
-        using var appender = connection.CreateAppender("multi_col");
+        using var appender = connection.CreateTableAppender("multi_col");
         appender.Append().Set(1);
         Assert.Throws<DuckDbException>(() => appender.FinishRow());
 

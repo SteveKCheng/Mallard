@@ -26,7 +26,7 @@ public partial class DuckDbConnection
     /// <exception cref="DuckDbException">
     /// DuckDB failed to create to create the "appender" object.
     /// </exception>
-    public unsafe DuckDbAppender CreateAppender(string? catalog, string? schema, string table)
+    public unsafe DuckDbAppender CreateTableAppender(string? catalog, string? schema, string table)
     {
         using var _ = _refCount.EnterScope(this);
         return new DuckDbAppender(_nativeConn, catalog, schema, table);
@@ -44,7 +44,7 @@ public partial class DuckDbConnection
     /// <exception cref="DuckDbException">
     /// DuckDB failed to create to create the "appender" object.
     /// </exception>
-    public DuckDbAppender CreateAppender(string table) => CreateAppender(null, null, table);
+    public DuckDbAppender CreateTableAppender(string table) => CreateTableAppender(null, null, table);
     
     /// <summary>
     /// Prepare to insert data rows into a database table using DuckDB's "appender" functionality. 
@@ -61,7 +61,7 @@ public partial class DuckDbConnection
     /// <exception cref="DuckDbException">
     /// DuckDB failed to create to create the "appender" object.
     /// </exception>
-    public DuckDbAppender CreateAppender(string schema, string table) => CreateAppender(null, schema, table);
+    public DuckDbAppender CreateTableAppender(string schema, string table) => CreateTableAppender(null, schema, table);
 
     /// <summary>
     /// Prepare to insert data rows by streaming them through an arbitrary SQL statement, using
@@ -69,7 +69,7 @@ public partial class DuckDbConnection
     /// </summary>
     /// <remarks>
     /// <para>
-    /// Unlike <see cref="CreateAppender(string)" />, which is limited to plain <c>INSERT</c> into a
+    /// Unlike <see cref="CreateTableAppender(string)" />, which is limited to plain <c>INSERT</c> into a
     /// single table, the appended rows are exposed to <paramref name="query" /> as a virtual relation
     /// named <c>appended_data</c>, with columns <c>col1</c>, <c>col2</c>, ... (in declaration order).
     /// The query may therefore reference that relation to perform conflict resolution, merges, or
