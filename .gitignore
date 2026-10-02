@@ -1,4 +1,7 @@
 .vs/
+.vscode/
+.idea/
+*.sln.DotSettings.user
 out/
 native/
 docfx/api/
