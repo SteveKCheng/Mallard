@@ -319,4 +319,103 @@ public class TestAppenderChunk
                 return 0;
             }));
     }
+
+    /// <summary>
+    /// Marks some elements invalid with <see cref="DuckDbVectorRawWriter{T}.SetInvalid"/> and verifies
+    /// they read back as SQL NULL while the others keep their values.
+    /// </summary>
+    [Test]
+    public void AppendChunkWithNulls()
+    {
+        using var connection = new DuckDbConnection("");
+        connection.ExecuteNonQuery("CREATE TABLE t (id INTEGER, val DOUBLE)");
+
+        using (var appender = connection.CreateTableAppender("t"))
+        {
+            appender.AppendChunk(0, static (in DuckDbChunkWriter w, int _) =>
+            {
+                var id = w.GetColumnRaw<int>(0).AsSpan();
+                var valCol = w.GetColumnRaw<double>(1);
+                var val = valCol.AsSpan();
+                for (var i = 0; i < 4; i++)
+                {
+                    id[i] = i;
+                    val[i] = i * 10.0;
+                }
+
+                // Rows 1 and 3 are NULL in the "val" column.
+                valCol.SetInvalid(1);
+                valCol.SetInvalid(3);
+                return 4;
+            });
+        }
+
+        Assert.Equal(4, connection.ExecuteValue<int>("SELECT COUNT(*)::INTEGER FROM t"));
+        Assert.Equal(2, connection.ExecuteValue<int>("SELECT COUNT(val)::INTEGER FROM t"));
+
+        using var result = connection.Execute("SELECT id, val FROM t ORDER BY id");
+        result.ProcessAllChunks(false, (in DuckDbChunkReader reader, bool _) =>
+        {
+            Assert.Equal(4, reader.Length);
+            var idCol = reader.GetColumn<int>(0);
+            var valCol = reader.GetColumn<double>(1);
+
+            Assert.Equal(0, idCol.GetItem(0));
+            Assert.True(valCol.IsItemValid(0));
+            Assert.Equal(0.0, valCol.GetItem(0));
+
+            Assert.Equal(1, idCol.GetItem(1));
+            Assert.False(valCol.IsItemValid(1));
+
+            Assert.Equal(2, idCol.GetItem(2));
+            Assert.True(valCol.IsItemValid(2));
+            Assert.Equal(20.0, valCol.GetItem(2));
+
+            Assert.Equal(3, idCol.GetItem(3));
+            Assert.False(valCol.IsItemValid(3));
+
+            return true;
+        });
+    }
+
+    /// <summary>
+    /// Confirms that the validity mask is cleared between chunk-writes when the cached chunk is reused:
+    /// a NULL written at an index in the first chunk must not leak into the same index of the next chunk.
+    /// </summary>
+    [Test]
+    public void AppendChunkNullsClearedOnReuse()
+    {
+        using var connection = new DuckDbConnection("");
+        connection.ExecuteNonQuery("CREATE TABLE t (id INTEGER, val INTEGER)");
+
+        using (var appender = connection.CreateTableAppender("t"))
+        {
+            // First chunk: two rows, row 0's value is NULL.
+            appender.AppendChunk(0, static (in DuckDbChunkWriter w, int _) =>
+            {
+                var id = w.GetColumnRaw<int>(0).AsSpan();
+                var valCol = w.GetColumnRaw<int>(1);
+                var val = valCol.AsSpan();
+                id[0] = 0; val[0] = 999;
+                id[1] = 1; val[1] = 111;
+                valCol.SetInvalid(0);
+                return 2;
+            });
+
+            // Second chunk reuses the same native chunk: row 0 must come back valid (not NULL),
+            // proving duckdb_data_chunk_reset cleared the validity mask.
+            appender.AppendChunk(0, static (in DuckDbChunkWriter w, int _) =>
+            {
+                var id = w.GetColumnRaw<int>(0).AsSpan();
+                var val = w.GetColumnRaw<int>(1).AsSpan();
+                id[0] = 2; val[0] = 222;
+                return 1;
+            });
+        }
+
+        // Only the first chunk's row 0 is NULL; the reused chunk's row 0 (id == 2) is valid.
+        Assert.Equal(3, connection.ExecuteValue<int>("SELECT COUNT(*)::INTEGER FROM t"));
+        Assert.Equal(2, connection.ExecuteValue<int>("SELECT COUNT(val)::INTEGER FROM t"));
+        Assert.Equal(222, connection.ExecuteValue<int>("SELECT val::INTEGER FROM t WHERE id = 2"));
+    }
 }

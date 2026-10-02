@@ -52,9 +52,10 @@ public partial class DuckDbAppender
     /// </para>
     /// <para>
     /// In this initial implementation only "raw" writing of primitive, fixed-width columns is
-    /// supported, and every appended row is valid (non-null).  Columns requiring conversion,
-    /// variable-length columns (e.g. <c>VARCHAR</c>), nested columns, and null values are not yet
-    /// supported through this API; use the row-at-a-time API for those.
+    /// supported.  Elements default to valid; individual elements may be marked SQL <c>NULL</c> with
+    /// <see cref="DuckDbVectorRawWriter{T}.SetInvalid" />.  Columns requiring conversion,
+    /// variable-length columns (e.g. <c>VARCHAR</c>), and nested columns are not yet supported through
+    /// this API; use the row-at-a-time API for those.
     /// </para>
     /// </remarks>
     /// <exception cref="ArgumentNullException">

@@ -264,6 +264,12 @@ internal unsafe static partial class NativeMethods
     internal static partial ulong* duckdb_vector_get_validity(_duckdb_vector* vector);
 
     [LibraryImport(LibraryName)]
+    internal static partial void duckdb_vector_ensure_validity_writable(_duckdb_vector* vector);
+
+    [LibraryImport(LibraryName)]
+    internal static partial void duckdb_validity_set_row_invalid(ulong* validity, idx_t row);
+
+    [LibraryImport(LibraryName)]
     internal static partial _duckdb_vector* duckdb_array_vector_get_child(_duckdb_vector* vector);
 
     [LibraryImport(LibraryName)]

@@ -1,6 +1,6 @@
 # Design: raw chunk-writing for the DuckDB appender
 
-Status: **implemented** (primitives, no nulls — see §5). All tests in
+Status: **implemented** — primitives, now including null/validity support (see §5). All tests in
 `Mallard.Tests/TestAppenderChunk.cs` pass.
 
 This note records the design for writing data to a DuckDB appender *by data chunk*
@@ -47,8 +47,8 @@ methods and `ReadOnlySpan<T>` becomes `Span<T>`.
 4. `duckdb_append_data_chunk(appender, chunk)`
 5. `duckdb_data_chunk_reset(chunk)` and reuse
 
-(Null/validity handling via `duckdb_vector_ensure_validity_writable` is part of the C
-pattern but is **out of scope** for the first cut — see §5.)
+(Null/validity handling via `duckdb_vector_ensure_validity_writable` is also part of the C
+pattern and is now supported — see §5.)
 
 In Mallard's interop convention the DuckDB pointer typedefs expand as
 `duckdb_data_chunk` -> `_duckdb_data_chunk*`, `duckdb_vector` -> `_duckdb_vector*`,
@@ -145,13 +145,13 @@ appender.AppendChunk(data, static (in DuckDbChunkWriter w, MyData d) =>
 `unmanaged` set that `ValidateElementType<T>` already accepts for raw reads: `bool`/`byte`,
 the signed/unsigned integers including `Int128`/`UInt128`, `float`, `double`, and the
 layout-compatible wrappers `DuckDbDate` / `DuckDbTime` / `DuckDbTimestamp` /
-`DuckDbInterval` / `DuckDbUuid`.
+`DuckDbInterval` / `DuckDbUuid`.  Plus **null/validity**: `DuckDbVectorRawWriter<T>.SetInvalid(i)`
+marks an element SQL `NULL` (lazily allocating the vector's validity mask via
+`duckdb_vector_ensure_validity_writable`).  `duckdb_data_chunk_reset` clears validity masks (and
+cardinality) between reuses — confirmed in the header and covered by a test — so each fill starts
+all-valid and nulls do not leak across reused chunks.
 
 **Out (explicit non-goals, deferred):**
-- **Nulls / validity.** No `SetInvalid`, no validity-mask writes in the first cut. All
-  appended rows are valid. (Adds back `duckdb_vector_ensure_validity_writable` plus a
-  validity-bit API when implemented. Watch: confirm `duckdb_data_chunk_reset` restores the
-  validity mask to all-valid between reuses once nulls are added.)
 - **VARCHAR / BLOB** (need `duckdb_vector_assign_string_element_len`; not plain memory writes).
 - **Nested LIST / ARRAY / STRUCT**, and **ENUM / DECIMAL** storage nuances.
 - **Type-converting ("non-raw") writers** -- would require reverse converters, a separate,
@@ -171,9 +171,11 @@ duckdb_appender_column_type(_duckdb_appender* appender, idx_t col_idx) -> _duckd
 ```
 
 Already present and reused: `duckdb_data_chunk_get_vector`, `duckdb_vector_get_data`,
-`duckdb_vector_size`, `duckdb_destroy_data_chunk`, `duckdb_destroy_logical_type`.
-(`duckdb_vector_get_validity`, `duckdb_vector_ensure_validity_writable`,
-`duckdb_validity_set_row_invalid` are only needed once nulls are added.)
+`duckdb_vector_get_validity`, `duckdb_vector_size`, `duckdb_destroy_data_chunk`,
+`duckdb_destroy_logical_type`.
+
+For null/validity support, also added: `duckdb_vector_ensure_validity_writable` and
+`duckdb_validity_set_row_invalid` (used by `DuckDbVectorInfo.UnsafeSetInvalid`).
 
 ## 7. Safety analysis (mirrors reader guarantees)
 
@@ -203,17 +205,20 @@ with `GetColumnRaw` / `GetColumn` and assert. Cases:
 - returned row count out of range throws;
 - an all-primitive-types table matching the reader's type matrix.
 
-(Null/validity tests arrive with the nulls feature.)
+Null/validity cases: a column with interleaved nulls round-tripped back (via `IsItemValid` /
+`GetItemOrDefault`), and a null written in a reused chunk not leaking into the next fill.
 
 ## 9. Work breakdown / files touched (as implemented)
 
 1. `Interop/NativeMethods.cs` -- added `duckdb_create_data_chunk`, `duckdb_data_chunk_set_size`,
    `duckdb_data_chunk_reset`, `duckdb_appender_column_count`, `duckdb_appender_column_type`, and
-   enabled `duckdb_append_data_chunk` (was commented out; fixed its arg to `_duckdb_data_chunk*`).
-2. `Mallard/Vector/DuckDbVectorInfo.cs` -- added `UnsafeWrite<T>` (mirror of `UnsafeRead<T>`).
+   enabled `duckdb_append_data_chunk` (was commented out; fixed its arg to `_duckdb_data_chunk*`);
+   plus `duckdb_vector_ensure_validity_writable` and `duckdb_validity_set_row_invalid` for nulls.
+2. `Mallard/Vector/DuckDbVectorInfo.cs` -- added `UnsafeWrite<T>` (mirror of `UnsafeRead<T>`) and
+   `UnsafeSetInvalid` (ensures a writable validity mask, then clears the row's validity bit).
 3. `Mallard/Vector/DuckDbVectorRawWriter.cs` -- new write-only `ref struct` wrapping
-   `DuckDbVectorInfo`; `AsSpan` added in `DuckDbVectorMethods.RawWriter.cs` to parallel
-   `DuckDbVectorMethods.RawReader.cs`.
+   `DuckDbVectorInfo`, with `SetItem` / indexer and `SetInvalid`; `AsSpan` added in
+   `DuckDbVectorMethods.RawWriter.cs` to parallel `DuckDbVectorMethods.RawReader.cs`.
 4. `Mallard/Appender/DuckDbChunkWriter.cs` -- new `ref struct` + the `DuckDbChunkWritingFunc`
    delegate.
 5. `Mallard/Appender/DuckDbAppender.Chunk.cs` -- new `partial`: cached write-chunk +

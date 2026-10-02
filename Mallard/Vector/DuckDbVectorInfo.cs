@@ -191,6 +191,32 @@ internal unsafe readonly struct DuckDbVectorInfo
         => ((T*)DataPointer)[index] = value;
 
     /// <summary>
+    /// Mark an element of the vector as invalid (SQL NULL) when writing to the vector.
+    /// </summary>
+    /// <param name="index">
+    /// The index of the element.  Must be within the capacity of the vector (see <see cref="Length" />).
+    /// </param>
+    /// <remarks>
+    /// <para>
+    /// This method does no run-time checking of <paramref name="index" />.  It is only meaningful for
+    /// a vector that is part of a data chunk being constructed for writing.
+    /// </para>
+    /// <para>
+    /// DuckDB does not allocate a validity mask for a vector until one is explicitly requested, so this
+    /// method calls <c>duckdb_vector_ensure_validity_writable</c> first (which is idempotent), then
+    /// re-queries the validity pointer — it must not use the possibly-null pointer cached in
+    /// <see cref="_validityMask" /> at construction time.  Elements default to valid, so only elements
+    /// that should be NULL need this call.
+    /// </para>
+    /// </remarks>
+    internal void UnsafeSetInvalid(int index)
+    {
+        NativeMethods.duckdb_vector_ensure_validity_writable(NativeVector);
+        var validity = NativeMethods.duckdb_vector_get_validity(NativeVector);
+        NativeMethods.duckdb_validity_set_row_invalid(validity, index);
+    }
+
+    /// <summary>
     /// Implementation of <see cref="DuckDbVectorReader{T}.ValidityMask" />.
     /// </summary>
     public ReadOnlySpan<ulong> ValidityMask

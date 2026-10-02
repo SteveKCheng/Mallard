@@ -105,4 +105,31 @@ public readonly ref struct DuckDbVectorRawWriter<T>
 
         _info.UnsafeWrite(index, value);
     }
+
+    /// <summary>
+    /// Mark an element of this vector as invalid, i.e. SQL <c>NULL</c>.
+    /// </summary>
+    /// <param name="index">
+    /// The index of the element in this vector; must be non-negative and less than
+    /// <see cref="Capacity" />.
+    /// </param>
+    /// <remarks>
+    /// <para>
+    /// Every element is valid by default, so only elements that should be <c>NULL</c> need this call.
+    /// Whatever data was (or was not) written at <paramref name="index" /> with <see cref="SetItem" />
+    /// or the span is ignored by DuckDB once the element is marked invalid.
+    /// </para>
+    /// <para>
+    /// Marking an element invalid causes DuckDB to allocate a validity mask for the whole vector if one
+    /// does not already exist, so a column with no nulls incurs no such cost.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="IndexOutOfRangeException">The index is out of range for the vector. </exception>
+    public void SetInvalid(int index)
+    {
+        if (unchecked((uint)index >= (uint)_info.Length))
+            throw new IndexOutOfRangeException("Index is out of range for the vector. ");
+
+        _info.UnsafeSetInvalid(index);
+    }
 }
