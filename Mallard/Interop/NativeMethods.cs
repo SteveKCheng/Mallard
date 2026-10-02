@@ -233,13 +233,22 @@ internal unsafe static partial class NativeMethods
     #region Data chunks
 
     [LibraryImport(LibraryName)]
+    internal static partial _duckdb_data_chunk* duckdb_create_data_chunk(_duckdb_logical_type** types, idx_t column_count);
+
+    [LibraryImport(LibraryName)]
     internal static partial void duckdb_destroy_data_chunk(ref _duckdb_data_chunk* chunk);
+
+    [LibraryImport(LibraryName)]
+    internal static partial void duckdb_data_chunk_reset(_duckdb_data_chunk* chunk);
 
     [LibraryImport(LibraryName)]
     internal static partial idx_t duckdb_data_chunk_get_column_count(_duckdb_data_chunk* chunk);
 
     [LibraryImport(LibraryName)]
     internal static partial idx_t duckdb_data_chunk_get_size(_duckdb_data_chunk* chunk);
+
+    [LibraryImport(LibraryName)]
+    internal static partial void duckdb_data_chunk_set_size(_duckdb_data_chunk* chunk, idx_t size);
 
     [LibraryImport(LibraryName)]
     internal static partial _duckdb_vector* duckdb_data_chunk_get_vector(_duckdb_data_chunk* chunk, idx_t col_idx);
@@ -544,6 +553,12 @@ internal unsafe static partial class NativeMethods
                                                                       out _duckdb_appender* out_appender);
 
     [LibraryImport(LibraryName)]
+    internal static partial idx_t duckdb_appender_column_count(_duckdb_appender* appender);
+
+    [LibraryImport(LibraryName)]
+    internal static partial _duckdb_logical_type* duckdb_appender_column_type(_duckdb_appender* appender, idx_t col_idx);
+
+    [LibraryImport(LibraryName)]
     internal static partial duckdb_state duckdb_appender_destroy(ref _duckdb_appender* appender);
 
     /// <summary>
@@ -629,11 +644,9 @@ internal unsafe static partial class NativeMethods
     [LibraryImport(LibraryName)]
     internal static partial _duckdb_error_data* duckdb_appender_error_data(_duckdb_appender* appender);
 
-    /*
     [LibraryImport(LibraryName)]
-    internal static partial duckdb_state duckdb_append_data_chunk(_duckdb_appender* appender, duckdb_data_chunk chunk);    
-    */
-    
+    internal static partial duckdb_state duckdb_append_data_chunk(_duckdb_appender* appender, _duckdb_data_chunk* chunk);
+
     #endregion
 
     #region Error data

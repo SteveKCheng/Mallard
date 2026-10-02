@@ -211,6 +211,11 @@ public sealed unsafe partial class DuckDbAppender : IDisposable
         finally
         {
             NativeMethods.duckdb_appender_destroy(ref _nativeObj);
+
+            // The reusable data chunk for bulk chunk-writing (if one was ever created) is
+            // owned by this appender and must be freed regardless of how disposal proceeded.
+            if (_writeChunk != null)
+                NativeMethods.duckdb_destroy_data_chunk(ref _writeChunk);
         }
     }
 

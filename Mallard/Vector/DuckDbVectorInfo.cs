@@ -167,6 +167,30 @@ internal unsafe readonly struct DuckDbVectorInfo
         => ref ((T*)DataPointer)[index];
 
     /// <summary>
+    /// Write an element of the vector into native memory.
+    /// </summary>
+    /// <typeparam name="T">
+    /// .NET type that is layout-compatible with the type of element in the DuckDB vector.
+    /// </typeparam>
+    /// <param name="index">
+    /// The index of the element.  Must be within the capacity of the vector (i.e. <see cref="Length" />,
+    /// which for a vector being written is the chunk's capacity, not its current size).
+    /// </param>
+    /// <param name="value">
+    /// The value to store at the given index.
+    /// </param>
+    /// <remarks>
+    /// This method does no run-time checking whatsoever.  It is used to implement writers
+    /// internally in this library.  Nevertheless use this method when possible, instead of
+    /// indexing <see cref="DataPointer" /> manually, so the places where we write to native
+    /// memory can be easily audited.  It is only meaningful for vectors that are part of a
+    /// data chunk being constructed for writing, where <see cref="DataPointer" /> is non-null.
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal void UnsafeWrite<T>(int index, T value) where T : unmanaged, allows ref struct
+        => ((T*)DataPointer)[index] = value;
+
+    /// <summary>
     /// Implementation of <see cref="DuckDbVectorReader{T}.ValidityMask" />.
     /// </summary>
     public ReadOnlySpan<ulong> ValidityMask

@@ -151,4 +151,22 @@ to keep reporting a consistent error after the first failure. Instead, `DuckDbAp
    Expose `Flush()` on `DuckDbAppender` for long-running streaming pipelines that require checkpointing
    before disposal. (`Close()` is now implemented; see section 6.)
 2. **Appender metadata introspection**:
-   Expose `duckdb_appender_column_count` and `duckdb_appender_column_type` to allow callers to verify column counts and types dynamically.
+   Expose `duckdb_appender_column_count` and `duckdb_appender_column_type` to allow callers to verify column counts and types dynamically.  (These two are now imported and used internally by the chunk-writing API — see section 8 — but are not yet surfaced as public members.)
+
+## 8. Chunk-wise (bulk vectorized) appending
+
+Beyond the row-at-a-time API (`Append` / `Slot` / `FinishRow`), the appender supports writing data a
+whole *chunk* at a time, straight into the native column-vector memory, via
+`DuckDbAppender.AppendChunk`.  This is the write-side mirror of the raw chunk *reader*
+(`DuckDbVectorRawReader<T>`), and is the fastest path for bulk inserts.
+
+See [`AppenderChunkWrite.md`](AppenderChunkWrite.md) for the full design.  In brief:
+
+- `appender.AppendChunk(state, (in DuckDbChunkWriter w, state) => { … return rowCount; })` hands the
+  callback a `DuckDbChunkWriter` (a `ref struct`, so it cannot escape the callback), which dispenses a
+  write-only `DuckDbVectorRawWriter<T>` per column via `GetColumnRaw<T>`.  Write values through its
+  `AsSpan()` / indexer / `SetItem`, then return the number of rows populated.
+- The reusable native data chunk is created lazily (typed from `duckdb_appender_column_count` /
+  `duckdb_appender_column_type`), reset between calls, and destroyed on disposal.
+- First cut: "raw" primitive, fixed-width columns only, and every appended row is valid.  Null
+  (validity) support, `VARCHAR`/`BLOB`, nested types, and type-converting writers are deferred.

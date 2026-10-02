@@ -39,7 +39,7 @@ using Mallard.Types;
 /// </para>
 /// <para>
 /// Elements can be accessed one by one through 
-/// Call <see cref="DuckDbVectorMethods.AsSpan" /> to obtain the 
+/// Call <see cref="DuckDbVectorMethods.AsSpan{T}(in DuckDbVectorRawReader{T})" /> to obtain the 
 /// </para>
 /// <para>
 /// This "raw" data may be difficult to consume, particularly for elements that are 
