@@ -21,23 +21,12 @@ public static partial class DuckDbVectorMethods
     /// Note that elements of the vector that are invalid, may be "garbage" or un-initialized when
     /// indexed using the returned span. 
     /// </returns>
-    /// <exception cref="InvalidOperationException">
-    /// When <typeparamref name="T" /> is <see cref="DuckDbArrayRef" />.  
-    /// A DuckDB vector of such type does not have directly have elements, and therefore
-    /// no span can be made available.  The contents of vector are made available in the
-    /// "children vector".
-    /// </exception>
     public static unsafe ReadOnlySpan<T> AsSpan<T>(in this DuckDbVectorRawReader<T> vector) where T : unmanaged
-    {
-        if (typeof(T) == typeof(DuckDbArrayRef))
-            ThrowForAccessingNonexistentItems(typeof(T));
-
-        return new(vector._info.DataPointer, vector._info.Length);
-    }
+        => new(vector._info.DataPointer, vector._info.Length);
 
     [DoesNotReturn]
     internal static void ThrowForAccessingNonexistentItems(Type t)
     {
-        throw new InvalidOperationException($"There are no items that can be directly accesed on DuckDbVectorRawReader<T> for T = {t.Name}. ");
+        throw new InvalidOperationException($"There are no items that can be directly accessed on DuckDbVectorRawReader<T> for T = {t.Name}. ");
     }
 }
