@@ -577,6 +577,9 @@ internal unsafe static partial class NativeMethods
     /// </summary>
     [LibraryImport(LibraryName)]
     internal static partial duckdb_state duckdb_appender_close(_duckdb_appender* appender);
+    
+    [LibraryImport(LibraryName)]
+    internal static partial duckdb_state duckdb_appender_flush(_duckdb_appender* appender);
 
     [LibraryImport(LibraryName)]
     internal static partial duckdb_state duckdb_appender_end_row(_duckdb_appender* appender);

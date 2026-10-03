@@ -606,4 +606,44 @@ public class TestAppenderChunk
             return true;
         });
     }
+
+    [Test]
+    public void FlushDataEarly()
+    {
+        using var connection = new DuckDbConnection("");
+        connection.ExecuteNonQuery("CREATE TABLE t (id INTEGER PRIMARY KEY, val DOUBLE)");
+
+        using (var appender1 = connection.CreateTableAppender("t"))
+        {
+            // No constraint violation while data is being buffered
+            for (int i = 0; i < 4000; ++i)
+            {
+                appender1.Append().SetNull();
+                appender1.Append().Set(i * 10.0);
+                appender1.FinishRow();
+            }
+        
+            // Constraint violation detected as soon as data is flushed
+            Assert.Throws<DuckDbException>(() => appender1.Flush(), 
+                e => e.ErrorKind == DuckDbErrorKind.Constraint 
+                    ? null : "Did not get a constraint violation on flushing bad data");
+        }
+    
+        using (var appender2 = connection.CreateTableAppender("t"))
+        {
+            // No constraint violation while data is being buffered
+            for (int i = 0; i < 4000; ++i)
+            {
+                appender2.Append().Set(i);
+                appender2.Append().Set(i * 10.0);
+                if (i != 3999)
+                    appender2.FinishRow();
+            }
+            
+            // Don't finish the last row
+            Assert.Throws<DuckDbException>(() => appender2.Flush(), 
+                e => e.ErrorKind == DuckDbErrorKind.InvalidInput 
+                    ? null : "Did not get a 'invalid input' complaint on flushing an incomplete row");
+        }
+    }
 }

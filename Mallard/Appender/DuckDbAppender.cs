@@ -74,7 +74,7 @@ public sealed unsafe partial class DuckDbAppender : IDisposable
     /// </para>
     /// </remarks>
     private ulong _sequenceCounter;
-    
+
     internal DuckDbAppender(_duckdb_connection* nativeConn,
                             string? catalogName,
                             string? schemaName,
@@ -338,7 +338,51 @@ public sealed unsafe partial class DuckDbAppender : IDisposable
     {
         using var _ = _barricade.EnterScope(this);
         CheckNotFailed();
+        _sequenceCounter++; // Invalidate any slots out there
         var status = NativeMethods.duckdb_appender_end_row(_nativeObj);
         ThrowOnAppenderFailure(status, "Failed to finish row. ");
+    }
+
+    /// <summary>
+    /// Materializes ("flushes") the appended rows and chunks that have been internally buffered by DuckDB,
+    /// into the destination table (or execute the SQL statement that is to receive the rows).  
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// DuckDB buffers data before they are materialized ("flushed") into database storage.  Row-level appends
+    /// (via <see cref="Append" />) are stored in a hidden chunk that DuckDB manages.
+    /// Appends of whole chunks (via <see cref="AppendChunk{TState}" />) also go into a collection
+    /// of pending chunks.
+    /// </para>
+    /// <para>
+    /// This method tells DuckDB to materialize those pending chunks into storage. (If the appender has been
+    /// created as part of a SQL transaction, the data in the chunks will be inserted as part of the transaction —
+    /// subject to roll-back as with any other SQL statement that mutates the database.)
+    /// </para>
+    /// <para>
+    /// DuckDB does not buffer an unlimited number of chunks, but will implicitly materialize them
+    /// after some number of chunks; the default is 1000.  The user may call this method to
+    /// force materialization earlier.  Any constraint violations in the data will be detected at that point.
+    /// </para>
+    /// <para>
+    /// Data is implicitly flushed also when the appender is closed (via <see cref="Dispose" /> or
+    /// <see cref="Close" />), so this method need not be called unless to check-point progress 
+    /// while appending a large amount of data. 
+    /// </para>
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">
+    /// This appender has already reported an error from DuckDB and can no longer be used.
+    /// </exception>
+    /// <exception cref="DuckDbException">
+    /// DuckDB encountered an error while attempting to flush the data, such as a constraint violation.
+    /// Attempting to flush while the current row has only been partially written will also throw this exception.
+    /// </exception>
+    public void Flush()
+    {
+        using var _ = _barricade.EnterScope(this);
+        CheckNotFailed();
+        _sequenceCounter++; // Invalidate any slots out there
+        var status = NativeMethods.duckdb_appender_flush(_nativeObj);
+        ThrowOnAppenderFailure(status, "Failed to flush pending data in appender. ");
     }
 }
