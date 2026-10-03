@@ -61,13 +61,13 @@ public unsafe readonly ref struct DuckDbVectorRawWriter<T>
     /// </para>
     /// <para>
     /// However, this structure immutable so we cannot cache the pointer directly,
-    /// but must store it inside an internal object.  (Even if this structure is made
-    /// mutable, the user could copy a structure in .NET at any time --- and the cached value
-    /// may become outdated if stored directly as a member here.) 
+    /// but must store it inside some other object, whose location is passed in to constructor.
+    /// (Even we made this structure mutable, the user could copy a structure in .NET at any time
+    /// --- and the cached value could become outdated when stored directly as a member here.) 
     /// </para>
     /// <para>
     /// A value of null means there is no current validity mask (or it has the initial value
-    /// of "all elements are valid).
+    /// of "all elements are valid").
     /// </para>
     /// <para>
     /// This cache relies on thread-exclusivity of the chunk writer, so no inter-thread
@@ -123,16 +123,16 @@ public unsafe readonly ref struct DuckDbVectorRawWriter<T>
     /// <see cref="IDuckDbVector.ValidityMask" />.
     /// </para>
     /// <para>
-    /// The validity mask will immediately reflect any changes made by <see cref="SetInvalid" />
-    /// or <see cref="SetItem" />.
+    /// The validity mask will immediately reflect any changes made by <see cref="SetInvalid" />,
+    /// or setting (non-null) values.
     /// </para>
     /// <para>
     /// Elements default to valid when the containing chunk is initialized, so
     /// accessing the validity mask need not be accessed if there are no NULL elements.
     /// </para>
     /// <para>
-    /// For many elements, setting the validity mask directly through the returned span is faster than
-    /// calling <see cref="SetInvalid" /> on each item.   
+    /// When the source validity values are already batched, setting the bits directly through the returned span
+    /// is faster than calling <see cref="SetInvalid" /> on each item.   
     /// </para>
     /// </remarks>
     public Span<ulong> ValidityMask => new(ValidityMaskPointer, DuckDbVectorInfo.GetValidityMaskLength(_info.Length));

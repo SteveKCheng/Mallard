@@ -219,11 +219,11 @@ internal unsafe readonly struct DuckDbVectorInfo
     /// <remarks>
     /// <para>
     /// DuckDB does not allocate a validity mask for a vector until one is explicitly requested,
-    /// through the native function <c>duckdb_vector_ensure_validity_writable</c> first (which is idempotent),
-    /// then re-queries the validity pointer.
+    /// through the native function <c>duckdb_vector_ensure_validity_writable</c> first (which is idempotent).
+    /// After doing that, this method re-queries the validity pointer.
     /// </para>
     /// <para>
-    /// This method does not, and cannot, cache the returned pointer since the containing structure is immutable;
+    /// This method does not, and cannot, cache the returned pointer since its receiver type is immutable;
     /// the caller should cache it.
     /// </para>
     /// </remarks>
@@ -243,7 +243,7 @@ internal unsafe readonly struct DuckDbVectorInfo
     /// <param name="index">
     /// The index of the element.  The caller must ensure it is non-negative and
     /// within the capacity of its containing DuckDB vector.
-    /// this method de-references the pointer to the validity mask with no bounds checks whatsoever. 
+    /// this method de-references <paramref name="ptr" /> with no bounds checks whatsoever. 
     /// </param>
     /// <remarks>
     /// This function has the same effect as <c>duckdb_validity_set_row_invalid</c> in the DuckDB C API.
@@ -266,7 +266,7 @@ internal unsafe readonly struct DuckDbVectorInfo
     /// <param name="index">
     /// The index of the element.  The caller must ensure it is non-negative and
     /// within the capacity of its containing DuckDB vector.
-    /// this method de-references the pointer to the validity mask with no bounds checks whatsoever. 
+    /// this method de-references <paramref name="ptr" /> with no bounds checks whatsoever. 
     /// </param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static void UnsafeSetValid(ulong* ptr, int index)

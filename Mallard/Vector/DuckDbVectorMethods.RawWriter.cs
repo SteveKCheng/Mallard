@@ -52,10 +52,10 @@ public static partial class DuckDbVectorMethods
     /// <remarks>
     /// <para>
     /// Unlike the fixed-width types written through <see cref="DuckDbVectorRawWriter{T}.SetItem" />,
-    /// a <c>VARCHAR</c> element cannot be written by a plain memory copy: DuckDB owns the storage for the
-    /// variable-length data and must copy the bytes in itself.  The characters are transcoded to UTF-8
-    /// first — short strings into a stack buffer, with a temporary heap allocation only for larger ones —
-    /// and the bytes are then handed to <see cref="SetStringUtf8(in DuckDbVectorRawWriter{DuckDbString}, int, ReadOnlySpan{byte})" />.
+    /// a <c>VARCHAR</c> element cannot be written by .NET directly into the DuckDB vector's memory:
+    /// DuckDB owns the storage for the variable-length data and must copy the bytes in itself.
+    /// The characters are transcoded to UTF-8 first, and then
+    /// handed to <see cref="SetStringUtf8(in DuckDbVectorRawWriter{DuckDbString}, int, ReadOnlySpan{byte})" />.
     /// </para>
     /// <para>
     /// If the element at <paramref name="index" /> was previously marked invalid via
@@ -95,9 +95,9 @@ public static partial class DuckDbVectorMethods
     /// <exception cref="IndexOutOfRangeException">
     /// <paramref name="index" /> is out of range for the vector.
     /// </exception>
-    public static unsafe void SetStringUtf8(in this DuckDbVectorRawWriter<DuckDbString> vector,
-                                            int index,
-                                            ReadOnlySpan<byte> value)
+    public static void SetStringUtf8(in this DuckDbVectorRawWriter<DuckDbString> vector,
+                                     int index,
+                                     ReadOnlySpan<byte> value)
         => AssignVariableLengthElement(vector, index, value);
 
     /// <summary>
@@ -121,9 +121,9 @@ public static partial class DuckDbVectorMethods
     /// <exception cref="IndexOutOfRangeException">
     /// <paramref name="index" /> is out of range for the vector.
     /// </exception>
-    public static unsafe void SetBlob(in this DuckDbVectorRawWriter<DuckDbBlob> vector,
-                                      int index,
-                                      ReadOnlySpan<byte> data)
+    public static void SetBlob(in this DuckDbVectorRawWriter<DuckDbBlob> vector,
+                               int index,
+                               ReadOnlySpan<byte> data)
         => AssignVariableLengthElement(vector, index, data);
 
     /// <summary>

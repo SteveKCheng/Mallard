@@ -29,7 +29,10 @@ namespace Mallard.Types;
 [StructLayout(LayoutKind.Sequential)]
 public readonly ref struct DuckDbString : IStatelesslyConvertible<DuckDbString, string>
 {
-    internal readonly DuckDbBlob _blob;
+    /// <summary>
+    /// The string in the DuckDB vector is represented exactly the same as a blob.
+    /// </summary>
+    private readonly DuckDbBlob _blob;
 
     /// <summary>
     /// Convert the UTF-8 string from DuckDB into a .NET string (in UTF-16).
