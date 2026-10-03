@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 
 namespace Mallard;
 using Mallard.Types;
@@ -24,8 +25,13 @@ using Mallard.Types;
 /// of fixed size whose .NET representation is identical to DuckDB's storage representation.
 /// </para>
 /// <para>
-/// Writing variable-length data (such as <see cref="DuckDbValueKind.VarChar" /> or nested types),
-/// and marking elements as invalid (null), are not supported by this type in its current form.
+/// Only "raw" fixed-width values can be written through this type.  Variable-length values
+/// (<see cref="DuckDbValueKind.VarChar" /> / <see cref="DuckDbValueKind.Blob" />, represented by the
+/// read-only <see cref="DuckDbString" /> and <see cref="DuckDbBlob" />) and nested types cannot be
+/// written here, because DuckDB must allocate and manage their backing memory; attempting to set such
+/// an element throws <see cref="NotSupportedException" />.  Use the row-at-a-time appender API for
+/// those columns until converting ("non-raw") writers are available.  Individual elements may,
+/// however, be marked SQL <c>NULL</c> with <see cref="SetInvalid" /> or through <see cref="ValidityMask" />.
 /// </para>
 /// <para>
 /// Like the raw reader, this writer is a "ref struct" because it holds pointers to native memory
@@ -163,18 +169,37 @@ public unsafe readonly ref struct DuckDbVectorRawWriter<T>
     /// it becomes valid after a successful call to this method.
     /// </para>
     /// </remarks>
+    /// <exception cref="NotSupportedException">
+    /// <typeparamref name="T" /> is a variable-length type (<see cref="DuckDbString" /> or
+    /// <see cref="DuckDbBlob" />), which cannot be written through a raw writer.
+    /// </exception>
     public void SetItem(int index, T value)
     {
         if (typeof(T) == typeof(DuckDbArrayRef) || typeof(T) == typeof(DuckDbStructRef))
             DuckDbVectorMethods.ThrowForAccessingNonexistentItems(typeof(T));
+
+        // DuckDbString / DuckDbBlob are read-only views over DuckDB-owned (variable-length) memory, so
+        // the raw bitwise copy below would merely stamp a dangling string_t into the vector and corrupt
+        // it.  Writing such values needs DuckDB to allocate their storage, which a raw writer does not do.
+        if (typeof(T) == typeof(DuckDbString) || typeof(T) == typeof(DuckDbBlob))
+            ThrowForUnwritableVariableLengthType(typeof(T));
 
         if (unchecked((uint)index >= (uint)_info.Length))
             throw new IndexOutOfRangeException("Index is out of range for the vector. ");
 
         _info.UnsafeWrite(index, value);
 
-        // The item may have been marked invalid earlier; we must revert that 
+        // The item may have been marked invalid earlier; we must revert that
         DuckDbVectorInfo.UnsafeSetValid(_validityMask, index);
+    }
+
+    [DoesNotReturn]
+    private static void ThrowForUnwritableVariableLengthType(Type type)
+    {
+        throw new NotSupportedException(
+            $"Values of type {type.Name} cannot be written through a raw vector writer, because DuckDB " +
+            "must allocate and manage the memory for variable-length data such as VARCHAR or BLOB.  Use the " +
+            "row-at-a-time appender API for such columns. ");
     }
 
     /// <summary>

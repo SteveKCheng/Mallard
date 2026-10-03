@@ -517,4 +517,31 @@ public class TestAppenderChunk
             return true;
         });
     }
+
+    /// <summary>
+    /// A raw writer cannot set variable-length (VARCHAR/BLOB) elements, since DuckDB must own their
+    /// memory; attempting to do so must throw rather than corrupt the vector.
+    /// </summary>
+    [Test]
+    public void AppendChunkRejectsVariableLengthColumns()
+    {
+        using var connection = new DuckDbConnection("");
+        connection.ExecuteNonQuery("CREATE TABLE t (s VARCHAR, b BLOB)");
+
+        using var appender = connection.CreateTableAppender("t");
+
+        Assert.Throws<NotSupportedException>(() =>
+            appender.AppendChunk(0, static (in DuckDbChunkWriter w, int _) =>
+            {
+                w.GetColumnRaw<DuckDbString>(0).SetItem(0, default);
+                return 0;
+            }));
+
+        Assert.Throws<NotSupportedException>(() =>
+            appender.AppendChunk(0, static (in DuckDbChunkWriter w, int _) =>
+            {
+                w.GetColumnRaw<DuckDbBlob>(1).SetItem(0, default);
+                return 0;
+            }));
+    }
 }
