@@ -112,6 +112,7 @@ not be performant enough, and so I do not put high priority on it.
     - [X] ``System.Data.IDbCommand``
     - [X] ``System.Data.IDataReader``
   - [X] Null values in database can be checked explicitly or flagged implicitly with ``System.Nullable<T>`` element types
+  - [X] DuckDB appenders for primitive types (that can be written raw without memory management)
   - [X] Thoroughly documented API and internals
   - [X] Thread-safe and memory-safe public API 
     - If you do not use unsafe code, then even improper use of the public API should not crash the .NET run-time
@@ -134,7 +135,7 @@ not be performant enough, and so I do not put high priority on it.
   - Implement “version 2” of ADO.NET
     - Using the base classes from ``System.Data.Common`` not the interfaces
   - User-defined functions
-  - Appenders (DuckDB's API to insert many values quickly into a table)
+  - Appenders on non-primitive columns (DuckDB's API to insert many values quickly into a table)
   - Adapters for ``Microsoft.Data.Analysis.DataFrame``
   - Not all features that work have been thoroughly tested
   - Make completely compatible with AOT compilation
