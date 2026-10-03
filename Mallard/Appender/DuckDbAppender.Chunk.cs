@@ -57,6 +57,13 @@ public partial class DuckDbAppender
     /// variable-length columns (e.g. <c>VARCHAR</c>), and nested columns are not yet supported through
     /// this API; use the row-at-a-time API for those.
     /// </para>
+    /// <para>
+    /// If row-wise appends (via <see cref="Append" />) have immediately preceded before
+    /// a call to this method, this method will implicitly flush them, as described in <see cref="Flush" />,
+    /// which may report any errors not detected up to the current point, 
+    /// e.g. constraint violations, a partially written last row.   (If this method were not to "auto-flush",
+    /// the rows may end up getting silently written in an incorrect order in DuckDB.)
+    /// </para>
     /// </remarks>
     /// <exception cref="ArgumentNullException">
     /// <paramref name="func" /> is null.
@@ -83,9 +90,21 @@ public partial class DuckDbAppender
         CheckNotFailed();
         EnsureWriteChunkInitialized();
 
+        // Flush any data appended via the row-wise API.  If we do not do this, the rows in the
+        // new chunk, being inserted by this method, will end up *before* the row-wise data
+        // (up to the size of a single chunk, typically 2048 rows).  Arguably this is a design
+        // flaw/oversight in DuckDB itself, that should be fixed in the same way we're doing
+        // so here, but as a C# binding we endeavour to prevent clients from triggering
+        // "undefined/ill-specified behavior" from the underlying C/C++ API.
+        if (_sequenceCounterStart != _sequenceCounter)
+            FlushInternal();
+        
         // Invalidate any outstanding Slot handed out by the row-wise API so a stale slot cannot
         // fire against this appender around a chunk write.
-        _sequenceCounter++;
+        //
+        // Note that _sequenceCounterStart gets the value of the updated counter, so consecutive
+        // appending of chunks do not cause spurious flushes.
+        _sequenceCounterStart = ++_sequenceCounter;
 
         // Invoke the user's chunk-writing function.
         //

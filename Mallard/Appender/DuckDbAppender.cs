@@ -87,6 +87,19 @@ public sealed unsafe partial class DuckDbAppender : IDisposable
     /// </remarks>
     private ulong _sequenceCounter;
 
+    /// <summary>
+    /// The (old) value of <see cref="_sequenceCounter" /> right after the last flush, chunk append,
+    /// or zero initially.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This counter indicates to <see cref="AppendChunk" /> when row-wise activity has occurred 
+    /// since the last flush or chunk boundary.  (See development notes in the source tree
+    /// for details and rationale.)
+    /// </para>
+    /// </remarks>
+    private ulong _sequenceCounterStart;
+
     internal DuckDbAppender(_duckdb_connection* nativeConn,
                             string? catalogName,
                             string? schemaName,
@@ -367,13 +380,13 @@ public sealed unsafe partial class DuckDbAppender : IDisposable
     /// of pending chunks.
     /// </para>
     /// <para>
-    /// This method tells DuckDB to materialize those pending chunks into storage. (If the appender has been
-    /// created as part of a SQL transaction, the data in the chunks will be inserted as part of the transaction —
+    /// This method tells DuckDB to materialize those pending chunks into storage. (If a SQL transaction is active,
+    /// the data in the chunks will be inserted as part of the transaction —
     /// subject to roll-back as with any other SQL statement that mutates the database.)
     /// </para>
     /// <para>
     /// DuckDB does not buffer an unlimited number of chunks, but will implicitly materialize them
-    /// after some number of chunks; the default is 1000.  The user may call this method to
+    /// after some number of chunks; the default is 100.  The user may call this method to
     /// force materialization earlier.  Any constraint violations in the data will be detected at that point.
     /// </para>
     /// <para>
@@ -393,7 +406,19 @@ public sealed unsafe partial class DuckDbAppender : IDisposable
     {
         using var _ = _barricade.EnterScope(this);
         CheckNotFailed();
-        _sequenceCounter++; // Invalidate any slots out there
+        
+        // Invalidate any slots out there and reset counter for flush
+        _sequenceCounterStart = ++_sequenceCounter; 
+
+        FlushInternal();
+    }
+
+    /// <summary>
+    /// Common code for flushing data to DuckDB, called by <see cref="Flush" /> and <see cref="AppendChunk" />;
+    /// the caller must take lock on this object and check/set sequence counters.
+    /// </summary>
+    private void FlushInternal()
+    {
         var status = NativeMethods.duckdb_appender_flush(_nativeObj);
         ThrowOnAppenderFailure(status, "Failed to flush pending data in appender. ");
     }
