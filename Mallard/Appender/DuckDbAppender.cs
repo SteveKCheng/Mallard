@@ -19,6 +19,18 @@ namespace Mallard;
 /// by calling <see cref="FinishRow" />.  Repeat for each row.  Then dispose of this object.
 /// </para>
 /// <para>
+/// If any method from an appender (instance of this class) throws an error, that appender object
+/// is spoiled, and it may not be used in further operations other than disposal.
+/// This behavior matches the DuckDB API.  In .NET, <see cref="InvalidOperationException" /> on attempts
+/// to use an appender that has already failed once.
+/// </para>
+/// <para>
+/// Appenders participate in any current transactions on the owning <see cref="DuckDbConnection" />.
+/// However, beware that on attempting to insert bad data (e.g. has constraint violations), the containing
+/// transaction may also be spoiled and must be rolled back.  (This behavior is no different than running
+/// a failed <c>INSERT</c> statement in DuckDB SQL within a transaction.)
+/// </para>
+/// <para>
 /// <a href="https://duckdb.org/docs/current/clients/c/appender">DuckDB Documentation: Client APIs : C: Appender</a>
 /// </para>
 /// </remarks>
