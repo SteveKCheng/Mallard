@@ -77,6 +77,30 @@ public readonly ref struct DuckDbVectorRawWriter<T>
         => DuckDbVectorInfo.ValidateElementType<T>(valueKind);
 
     /// <summary>
+    /// Obtain the vector whereby the validity of elements in the elements may be set directly
+    /// (by bit manipulation).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The indices of the validity mask is mapped in the same manner as described in
+    /// <see cref="IDuckDbVector.ValidityMask" />.
+    /// </para>
+    /// <para>
+    /// This vector will immediately reflect any changes made by <see cref="SetInvalid" />.
+    /// </para>
+    /// <para>
+    /// Elements default to valid when the containing chunk is initialized, so
+    /// accessing the validity mask need not be accessed if there are no NULL elements.
+    /// </para>
+    /// <para>
+    /// For many elements, the validity mask directly through the returned span is faster than
+    /// calling <see cref="SetInvalid" /> on each item.  Also, clients should re-use
+    /// the result of this property instead of re-evaluating it every time. 
+    /// </para>
+    /// </remarks>
+    public Span<ulong> ValidityMask => _info.ValidityMaskMutable;
+
+    /// <summary>
     /// Store one element into this vector.
     /// </summary>
     /// <param name="index">The index of the element in this vector. </param>
@@ -130,6 +154,6 @@ public readonly ref struct DuckDbVectorRawWriter<T>
         if (unchecked((uint)index >= (uint)_info.Length))
             throw new IndexOutOfRangeException("Index is out of range for the vector. ");
 
-        _info.UnsafeSetInvalid(index);
+        _info.SetInvalid(index);
     }
 }
