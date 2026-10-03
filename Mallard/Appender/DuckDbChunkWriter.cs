@@ -58,10 +58,16 @@ public unsafe readonly ref struct DuckDbChunkWriter
     /// </summary>
     private readonly DuckDbColumnInfo[] _columns;
 
+    /// <summary>
+    /// Cached validity masks for each column.
+    /// </summary>
+    private readonly ulong*[] _columnvalidityMasks;
+
     internal DuckDbChunkWriter(_duckdb_data_chunk* nativeChunk, DuckDbColumnInfo[] columns, int capacity)
     {
         _nativeChunk = nativeChunk;
         _columns = columns;
+        _columnvalidityMasks = new ulong*[capacity];
         Capacity = capacity;
     }
 
@@ -99,7 +105,7 @@ public unsafe readonly ref struct DuckDbChunkWriter
     /// <typeparamref name="T" /> does not match the storage type of the selected column.
     /// </exception>
     public DuckDbVectorRawWriter<T> GetColumnRaw<T>(int columnIndex) where T : unmanaged, allows ref struct
-        => new(GetVectorInfo(columnIndex));
+        => new(GetVectorInfo(columnIndex), ref _columnvalidityMasks[columnIndex]);
 
     private DuckDbVectorInfo GetVectorInfo(int columnIndex)
     {

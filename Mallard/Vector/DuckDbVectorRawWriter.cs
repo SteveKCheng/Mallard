@@ -33,7 +33,7 @@ using Mallard.Types;
 /// chunk-writing function conforming to <see cref="DuckDbChunkWritingFunc{TState}" />.
 /// </para>
 /// </remarks>
-public readonly ref struct DuckDbVectorRawWriter<T>
+public unsafe readonly ref struct DuckDbVectorRawWriter<T>
     where T : unmanaged, allows ref struct
 {
     /// <summary>
@@ -41,9 +41,40 @@ public readonly ref struct DuckDbVectorRawWriter<T>
     /// </summary>
     internal readonly DuckDbVectorInfo _info;
 
-    internal DuckDbVectorRawWriter(scoped in DuckDbVectorInfo info)
+    /// <summary>
+    /// Cached pointer to the validity mask for writing.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// DuckDB does not allocate a validity mask until one is explicitly requested.
+    /// That usually happens well after construction of this structure, but we
+    /// want to cache the returned pointer from DuckDB so we do not have call
+    /// P/Invoke to request it every time we set an item.  (Once allocated, the pointer
+    /// is always the same, and is not invalidated until the containing chunk is reset or
+    /// destroyed.) 
+    /// </para>
+    /// <para>
+    /// However, this structure immutable so we cannot cache the pointer directly,
+    /// but must store it inside an internal object.  (Even if this structure is made
+    /// mutable, the user could copy a structure in .NET at any time --- and the cached value
+    /// may become outdated if stored directly as a member here.) 
+    /// </para>
+    /// <para>
+    /// A value of null means there is no current validity mask (or it has the initial value
+    /// of "all elements are valid).
+    /// </para>
+    /// <para>
+    /// This cache relies on thread-exclusivity of the chunk writer, so no inter-thread
+    /// synchronization is necessary. 
+    /// </para>
+    /// </remarks>
+    private readonly ref ulong* _validityMask;
+
+    internal DuckDbVectorRawWriter(scoped in DuckDbVectorInfo info, ref ulong* validityMask)
     {
         _info = info;
+        _validityMask = ref validityMask;
+        
         if (!ValidateParamType(_info.ColumnInfo.StorageKind))
             DuckDbVectorInfo.ThrowForWrongParamType(_info.ColumnInfo, typeof(T));
     }
@@ -86,19 +117,26 @@ public readonly ref struct DuckDbVectorRawWriter<T>
     /// <see cref="IDuckDbVector.ValidityMask" />.
     /// </para>
     /// <para>
-    /// This vector will immediately reflect any changes made by <see cref="SetInvalid" />.
+    /// The validity mask will immediately reflect any changes made by <see cref="SetInvalid" />
+    /// or <see cref="SetItem" />.
     /// </para>
     /// <para>
     /// Elements default to valid when the containing chunk is initialized, so
     /// accessing the validity mask need not be accessed if there are no NULL elements.
     /// </para>
     /// <para>
-    /// For many elements, the validity mask directly through the returned span is faster than
-    /// calling <see cref="SetInvalid" /> on each item.  Also, clients should re-use
-    /// the result of this property instead of re-evaluating it every time. 
+    /// For many elements, setting the validity mask directly through the returned span is faster than
+    /// calling <see cref="SetInvalid" /> on each item.   
     /// </para>
     /// </remarks>
-    public Span<ulong> ValidityMask => _info.ValidityMaskMutable;
+    public Span<ulong> ValidityMask => new(ValidityMaskPointer, DuckDbVectorInfo.GetValidityMaskLength(_info.Length));
+
+    /// <summary>
+    /// The pointer to the writable validity mask for this DuckDB vector; 
+    /// cached version of <see cref="DuckDbVectorInfo.GetMutableValidityMask" />.
+    /// </summary>
+    private ulong* ValidityMaskPointer
+        => (_validityMask == null) ? (_validityMask = _info.GetMutableValidityMask()) : _validityMask;
 
     /// <summary>
     /// Store one element into this vector.
@@ -119,6 +157,12 @@ public readonly ref struct DuckDbVectorRawWriter<T>
     /// </param>
     /// <param name="value">The value to store. </param>
     /// <exception cref="IndexOutOfRangeException">The index is out of range for the vector. </exception>
+    /// <remarks>
+    /// <para>
+    /// If the element at <paramref name="index" /> was previously marked invalid via <see cref="SetInvalid" />,
+    /// it becomes valid after a successful call to this method.
+    /// </para>
+    /// </remarks>
     public void SetItem(int index, T value)
     {
         if (typeof(T) == typeof(DuckDbArrayRef) || typeof(T) == typeof(DuckDbStructRef))
@@ -128,6 +172,9 @@ public readonly ref struct DuckDbVectorRawWriter<T>
             throw new IndexOutOfRangeException("Index is out of range for the vector. ");
 
         _info.UnsafeWrite(index, value);
+
+        // The item may have been marked invalid earlier; we must revert that 
+        DuckDbVectorInfo.UnsafeSetValid(_validityMask, index);
     }
 
     /// <summary>
@@ -140,10 +187,6 @@ public readonly ref struct DuckDbVectorRawWriter<T>
     /// <remarks>
     /// <para>
     /// Every element is valid by default, so only elements that should be <c>NULL</c> need this call.
-    /// Whatever data was (or was not) written at <paramref name="index" /> with <see cref="SetItem" />
-    /// or the span is ignored by DuckDB once the element is marked invalid.
-    /// </para>
-    /// <para>
     /// Marking an element invalid causes DuckDB to allocate a validity mask for the whole vector if one
     /// does not already exist, so a column with no nulls incurs no such cost.
     /// </para>
@@ -154,6 +197,6 @@ public readonly ref struct DuckDbVectorRawWriter<T>
         if (unchecked((uint)index >= (uint)_info.Length))
             throw new IndexOutOfRangeException("Index is out of range for the vector. ");
 
-        _info.SetInvalid(index);
+        DuckDbVectorInfo.UnsafeSetInvalid(ValidityMaskPointer, index);
     }
 }

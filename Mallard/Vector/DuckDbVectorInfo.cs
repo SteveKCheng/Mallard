@@ -189,36 +189,12 @@ internal unsafe readonly struct DuckDbVectorInfo
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal void UnsafeWrite<T>(int index, T value) where T : unmanaged, allows ref struct
         => ((T*)DataPointer)[index] = value;
-
     
     /// <summary>
     /// Get the length, in the number of 64-bit array elements, of a validity mask given the count
     /// of rows in the containing DuckDB vector.
     /// </summary>
     internal static int GetValidityMaskLength(int rowCount) => (rowCount + 63) / 64;
-
-    /// <summary>
-    /// Mark an element of the vector as invalid (SQL NULL) when writing to the vector.
-    /// </summary>
-    /// <param name="index">
-    /// The index of the element.  Must be within the capacity of the vector (see <see cref="Length" />).
-    /// </param>
-    /// <remarks>
-    /// <para>
-    /// Indexing into the validity mask is bounds-checked through the <see cref="Span{T}" /> indexer, but
-    /// the caller should explicitly test against bounds to report a better diagnostic on failure.
-    /// </para>
-    /// </remarks>
-    internal void SetInvalid(int index)
-    {
-        var v = ValidityMaskMutable;
-
-        // Imitate DuckDB's implementation of duckdb_validity_set_row_invalid.
-        // Avoids the overhead of yet another P/Invoke call.
-        var i = index / 64;
-        var j = index % 64;
-        v[i] &= ~(1ul << j);
-    }
 
     /// <summary>
     /// Implementation of <see cref="DuckDbVectorReader{T}.ValidityMask" />.
@@ -228,7 +204,10 @@ internal unsafe readonly struct DuckDbVectorInfo
     /// This property should only be used for read-only vectors.  The validity mask for
     /// vectors being written to may allocate the validity mask on demand, which may not
     /// be reflected by this property.  In particular the returned span may be empty
-    /// if all elements are valid.
+    /// if all elements are valid at the time the constructor of this type is invoked.
+    /// </para>
+    /// <para>
+    /// For mutable vectors, use <see cref="GetMutableValidityMask" /> instead.
     /// </para>
     /// </remarks>
     public ReadOnlySpan<ulong> ValidityMask
@@ -239,26 +218,61 @@ internal unsafe readonly struct DuckDbVectorInfo
     /// </summary>
     /// <remarks>
     /// <para>
-    /// DuckDB does not allocate a validity mask for a vector until one is explicitly requested, so this
-    /// method calls <c>duckdb_vector_ensure_validity_writable</c> first (which is idempotent), then
-    /// re-queries the validity pointer.
+    /// DuckDB does not allocate a validity mask for a vector until one is explicitly requested,
+    /// through the native function <c>duckdb_vector_ensure_validity_writable</c> first (which is idempotent),
+    /// then re-queries the validity pointer.
     /// </para>
     /// <para>
-    /// This method never uses the possibly-null pointer cached in <see cref="_validityMask" /> at construction time.
-    /// In theory we could cache the non-null pointer from the first evaluation of this property, but that would
-    /// requiring making the containing structure mutable (not a <c>readonly struct</c>).  The extra efficiency
-    /// is not worth the complexity; any clients that need high performance will surely cache the evaluation
-    /// of this property anyway.  
+    /// This method does not, and cannot, cache the returned pointer since the containing structure is immutable;
+    /// the caller should cache it.
     /// </para>
     /// </remarks>
-    public Span<ulong> ValidityMaskMutable
+    internal ulong* GetMutableValidityMask()
     {
-        get
-        {
-            NativeMethods.duckdb_vector_ensure_validity_writable(NativeVector);
-            var validityMask = NativeMethods.duckdb_vector_get_validity(NativeVector);
-            return new(validityMask, GetValidityMaskLength(Length));
-        }
+        NativeMethods.duckdb_vector_ensure_validity_writable(NativeVector);
+        return NativeMethods.duckdb_vector_get_validity(NativeVector);
+    }
+
+    /// <summary>
+    /// Mark an element of the vector as invalid (SQL NULL) when writing to the vector.
+    /// </summary>
+    /// <param name="ptr">
+    /// Non-null pointer to the validity mask of the DuckDB vector,
+    /// as obtained by <see cref="GetMutableValidityMask" />.
+    /// </param>
+    /// <param name="index">
+    /// The index of the element.  The caller must ensure it is non-negative and
+    /// within the capacity of its containing DuckDB vector.
+    /// this method de-references the pointer to the validity mask with no bounds checks whatsoever. 
+    /// </param>
+    /// <remarks>
+    /// This function has the same effect as <c>duckdb_validity_set_row_invalid</c> in the DuckDB C API.
+    /// The logic is so simple, short, and unchanging, that we want to be able to inline it into .NET code
+    /// and avoid P/Invoke calls.
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static void UnsafeSetInvalid(ulong* ptr, int index)
+        => ptr[index / 64] &= ~(1ul << (index % 64));
+
+    /// <summary>
+    /// Mark an element of the vector as valid when writing to the vector
+    /// (when that element had been marked invalid earlier).
+    /// </summary>
+    /// <param name="ptr">
+    /// Pointer to the validity mask of the DuckDB vector,
+    /// as obtained by <see cref="GetMutableValidityMask" />.  If null, this function does nothing
+    /// (since a missing validity mask in DuckDB implies all elements are already valid).
+    /// </param>
+    /// <param name="index">
+    /// The index of the element.  The caller must ensure it is non-negative and
+    /// within the capacity of its containing DuckDB vector.
+    /// this method de-references the pointer to the validity mask with no bounds checks whatsoever. 
+    /// </param>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static void UnsafeSetValid(ulong* ptr, int index)
+    {
+        if (ptr != null)
+            ptr[index / 64] |= (1ul << (index % 64));
     }
 
     /// <summary>

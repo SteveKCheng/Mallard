@@ -1,4 +1,7 @@
 using System;
+using System.Data.Common;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using Mallard.Types;
 using TUnit.Core;
 using Xunit;
@@ -329,50 +332,61 @@ public class TestAppenderChunk
     {
         using var connection = new DuckDbConnection("");
         connection.ExecuteNonQuery("CREATE TABLE t (id INTEGER, val DOUBLE)");
+        
+        // A test sequence of indices where the indices are to be invalid.
+        // The first 24 members of the "The Lazy Caterer's Sequence":
+        //   1, 2, 4, 7, 11, 16, 22, ..., 211, 232, 254
+        var invalids = new bool[256];
+        for (int n = 0; n < 23; ++n)
+            invalids[(n * n + n + 2) / 2] = true;
 
         using (var appender = connection.CreateTableAppender("t"))
         {
-            appender.AppendChunk(0, static (in DuckDbChunkWriter w, int _) =>
+            appender.AppendChunk(0, (in DuckDbChunkWriter w, int _) =>
             {
                 var id = w.GetColumnRaw<int>(0).AsSpan();
                 var valCol = w.GetColumnRaw<double>(1);
                 var val = valCol.AsSpan();
-                for (var i = 0; i < 4; i++)
+
+                var valMask = valCol.ValidityMask;
+                
+                for (var i = 0; i < 256; i++)
                 {
                     id[i] = i;
                     val[i] = i * 10.0;
+
+                    if (invalids[i])
+                    {
+                        // For i < 32, try setting the validity mask directly.
+                        if (i < 32)
+                            valMask[0] &= ~(1ul << i);
+                        else
+                            valCol.SetInvalid(i);
+                    }
                 }
 
-                // Rows 1 and 3 are NULL in the "val" column.
-                valCol.SetInvalid(1);
-                valCol.SetInvalid(3);
-                return 4;
+                return 256;
             });
         }
 
-        Assert.Equal(4, connection.ExecuteValue<int>("SELECT COUNT(*)::INTEGER FROM t"));
-        Assert.Equal(2, connection.ExecuteValue<int>("SELECT COUNT(val)::INTEGER FROM t"));
+        Assert.Equal(256, connection.ExecuteValue<int>("SELECT COUNT(*)::INTEGER FROM t"));
+        Assert.Equal(invalids.Count(false), connection.ExecuteValue<int>("SELECT COUNT(val)::INTEGER FROM t"));
 
         using var result = connection.Execute("SELECT id, val FROM t ORDER BY id");
         result.ProcessAllChunks(false, (in DuckDbChunkReader reader, bool _) =>
         {
-            Assert.Equal(4, reader.Length);
+            Assert.Equal(256, reader.Length);
             var idCol = reader.GetColumn<int>(0);
             var valCol = reader.GetColumn<double>(1);
 
-            Assert.Equal(0, idCol.GetItem(0));
-            Assert.True(valCol.IsItemValid(0));
-            Assert.Equal(0.0, valCol.GetItem(0));
-
-            Assert.Equal(1, idCol.GetItem(1));
-            Assert.False(valCol.IsItemValid(1));
-
-            Assert.Equal(2, idCol.GetItem(2));
-            Assert.True(valCol.IsItemValid(2));
-            Assert.Equal(20.0, valCol.GetItem(2));
-
-            Assert.Equal(3, idCol.GetItem(3));
-            Assert.False(valCol.IsItemValid(3));
+            for (int i = 0; i < 256; i++)
+            {
+                Assert.Equal(i, idCol.GetItem(i));
+                if (invalids[i])
+                    Assert.False(valCol.IsItemValid(i));
+                else
+                    Assert.Equal(i * 10.0, valCol.GetItem(i));
+            }
 
             return true;
         });
@@ -417,5 +431,90 @@ public class TestAppenderChunk
         Assert.Equal(3, connection.ExecuteValue<int>("SELECT COUNT(*)::INTEGER FROM t"));
         Assert.Equal(2, connection.ExecuteValue<int>("SELECT COUNT(val)::INTEGER FROM t"));
         Assert.Equal(222, connection.ExecuteValue<int>("SELECT val::INTEGER FROM t WHERE id = 2"));
+    }
+
+    /// <summary>
+    /// Verify that multiple shallow copies of the column/writer structure share the same validity mask,
+    /// and that setting an element removes any previously flagging of the same element as invalid.  
+    /// </summary>
+    [Test]
+    public void CheckValidityMaskConsistency()
+    {
+        using var connection = new DuckDbConnection("");
+        connection.ExecuteNonQuery("CREATE TABLE t (id INTEGER, val DOUBLE)");
+        const int rowCount = 400; 
+
+        using (var appender = connection.CreateTableAppender("t"))
+        {
+            appender.AppendChunk(0, static (in DuckDbChunkWriter w, int _) =>
+            {
+                var idCol = w.GetColumnRaw<int>(0);
+                var valCol = w.GetColumnRaw<double>(1);
+
+                // "Shallow copy" the column ref structs and ensure the cached validity masks are the same  
+                var idColCopy = idCol;
+                var valColCopy = w.GetColumnRaw<double>(1);
+
+                var idMask = idColCopy.ValidityMask;
+                var valMask = valColCopy.ValidityMask;
+
+                Assert.True(Unsafe.AreSame(ref MemoryMarshal.GetReference(idMask), 
+                    ref MemoryMarshal.GetReference(idCol.ValidityMask)));
+                
+                // Deliberately set everything as invalid first
+                for (int i = 0; i < rowCount; i++)
+                {
+                    idCol.SetInvalid(i);
+                    valCol.SetInvalid(i);
+                }
+                
+                Assert.True(Unsafe.AreSame(ref MemoryMarshal.GetReference(valMask),
+                    ref MemoryMarshal.GetReference(valCol.ValidityMask)));
+
+                // Now set values for odd-numbered rows in the "id" column,
+                // and for even-numbered rows in the "val" column 
+                for (int i = 0; i < rowCount; i += 2)
+                {
+                    idCol.SetItem(i + 1, i + 1);
+                    valCol.SetItem(i, i * 10.0);
+                }
+                
+                // Check validity mask by reading its memory (through span)
+                for (int i = 0; i < rowCount; i++)
+                {
+                    bool isIdValid = (idMask[i / 64] & (1ul << (i % 64))) != 0;
+                    bool isValValid = (valMask[i / 64] & (1ul << (i % 64))) != 0;
+                    Assert.Equal((i % 2) != 0, isIdValid);
+                    Assert.Equal((i % 2) == 0, isValValid);
+                }
+                
+                // Check validity masks have the right length!
+                Assert.Equal((idCol.AsSpan().Length + 63) / 64, idMask.Length);
+                Assert.Equal((valCol.AsSpan().Length + 63) / 64, valMask.Length);
+
+                return rowCount;
+            });
+        }
+
+        static int SumArithmeticSequence(int start, int increment, int count)
+            => count * start + increment * (count * (count - 1)) / 2;
+            
+        // Check summed up values of columns are as expected,
+        // confirming that DuckDB is seeing the exact same elements being valid or invalid
+        Assert.Equal(SumArithmeticSequence(1, 2, rowCount / 2), connection.ExecuteValue<int>("SELECT SUM(id)::INTEGER FROM t"));
+        Assert.Equal(SumArithmeticSequence(0, 20, rowCount / 2), connection.ExecuteValue<int>("SELECT SUM(val)::INTEGER FROM t"));
+        
+        // Check length of validity mask of result.
+        using var result = connection.Execute("SELECT * FROM t");
+        result.ProcessAllChunks(false, (in DuckDbChunkReader reader, bool _) =>
+        {
+            var idCol = reader.GetColumnRaw<int>(0);
+            var valCol = reader.GetColumnRaw<double>(1);
+            var idMask = idCol.ValidityMask;
+            var valMask = valCol.ValidityMask;
+            Assert.Equal((reader.Length + 63) / 64, idMask.Length);
+            Assert.Equal((reader.Length + 63) / 64, valMask.Length);
+            return true;
+        });
     }
 }
