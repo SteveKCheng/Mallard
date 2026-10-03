@@ -135,7 +135,7 @@ These lists are not exhaustive.  Rules that are implicitly followed in the codeb
 
 ## Interop
 
-  - We use `ref` and `out` parameters in C# to represent "pass by value", not pointers
+  - We use `ref` and `out` parameters in C# to represent "pass by reference", not pointers
     - There is a small performance hit if the argument is always a local variable, as it may be pinned needlessly, but it does not seem significant
     - Readability is more important, versus double pointers since many "values" are themselves pointers in the DuckDB C API
   - Use the marshalling features in (source-generator-based) P/Invoke to avoid repeating error-prone marshalling code in core API-binding logic
