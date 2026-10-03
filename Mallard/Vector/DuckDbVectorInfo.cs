@@ -190,6 +190,13 @@ internal unsafe readonly struct DuckDbVectorInfo
     internal void UnsafeWrite<T>(int index, T value) where T : unmanaged, allows ref struct
         => ((T*)DataPointer)[index] = value;
 
+    
+    /// <summary>
+    /// Get the length, in the number of 64-bit array elements, of a validity mask given the count
+    /// of rows in the containing DuckDB vector.
+    /// </summary>
+    internal static int GetValidityMaskLength(int rowCount) => (rowCount + 63) / 64;
+
     /// <summary>
     /// Mark an element of the vector as invalid (SQL NULL) when writing to the vector.
     /// </summary>
@@ -220,7 +227,7 @@ internal unsafe readonly struct DuckDbVectorInfo
     /// Implementation of <see cref="DuckDbVectorReader{T}.ValidityMask" />.
     /// </summary>
     public ReadOnlySpan<ulong> ValidityMask
-        => new(_validityMask, _validityMask != null ? Length : 0);
+        => new(_validityMask, _validityMask != null ? GetValidityMaskLength(Length) : 0);
 
     /// <summary>
     /// Implementation of <see cref="DuckDbVectorReader{T}.IsItemValid" />.
