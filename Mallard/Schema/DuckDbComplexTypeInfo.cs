@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using Mallard.Interop;
+using Mallard.Types;
 
 namespace Mallard;
 
@@ -58,6 +59,11 @@ public abstract class DuckDbComplexTypeInfo
        
         if (type == typeof(float)) return MapToNativeLogicalTypePrimitive(DuckDbValueKind.Float);
         if (type == typeof(double)) return MapToNativeLogicalTypePrimitive(DuckDbValueKind.Double);
+        
+        if (type == typeof(DuckDbString) || type == typeof(string))
+            return MapToNativeLogicalTypePrimitive(DuckDbValueKind.VarChar);
+        if (type == typeof(DuckDbBlob) || type == typeof(byte[]))
+            return MapToNativeLogicalTypePrimitive(DuckDbValueKind.Blob);
 
         throw new NotSupportedException("Given .NET type cannot be mapped to a native DuckDB logical type. ");
     }

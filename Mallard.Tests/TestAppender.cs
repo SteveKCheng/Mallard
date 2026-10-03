@@ -512,9 +512,11 @@ public class TestAppender
     public void QueryAppenderRejectsUnsupportedColumnType()
     {
         using var connection = new DuckDbConnection("");
+        // typeof(decimal) is a type that MapToNativeLogicalType still does not support.  (string and
+        // byte[] used to be rejected here too, but are now supported as VARCHAR/BLOB respectively.)
         Assert.Throws<NotSupportedException>(() => connection.CreateQueryAppender(
             "INSERT INTO whatever SELECT col1 FROM appended_data",
-            new[] { typeof(string) }));
+            new[] { typeof(decimal) }));
     }
 
     /// <summary>
