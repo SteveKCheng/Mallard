@@ -92,18 +92,14 @@ data sizes nothing surfaces the problem early; it manifests only at the final fl
 
 The DuckDB contract for this combination is effectively undefined — ordering hinges on an internal
 2048-row boundary and on whether a row is in progress.  Rather than reject the mix, Mallard makes it
-**well-ordered by flushing the pending row-wise rows before appending the chunk** (to be
-implemented):
+**well-ordered by flushing the pending row-wise rows before appending the chunk**:
 
-- Track on `DuckDbAppender` whether any row-wise append has happened since the last flush (set by
-  `Append`/`FinishRow`, cleared on flush).  In `AppendChunk`, if that flag is set, call
-  `duckdb_appender_flush` first — which commits the buffered row-wise rows to the table — then append
-  the chunk.  This is the one genuinely useful internal use of flush; it need not be exposed publicly.
+- Track on `DuckDbAppender` whether any row-wise append has happened since the last flush.
+  In `AppendChunk`, when that situation is detected, call `duckdb_appender_flush` first — 
+  which commits the buffered row-wise rows to the table — then append the chunk.  
 - Only the **row-wise → chunk** transition needs this.  **chunk → row-wise** is already correctly
   ordered: the chunk rows enter `collection` first, and the row-wise rows reach `collection` only at
-  the final dispose-flush, i.e. after.  So only a row-wise-pending flag gates the implicit flush.
-- The `_sequenceCounter` already bumped in `AppendChunk` only invalidates stale `Slot`s; it does not
-  cover this ordering hazard, so the flag is separate.
+  the final dispose-flush, i.e. after.  
 
 Caveats:
 
