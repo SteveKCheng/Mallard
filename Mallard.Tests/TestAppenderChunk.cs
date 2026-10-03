@@ -631,19 +631,101 @@ public class TestAppenderChunk
     
         using (var appender2 = connection.CreateTableAppender("t"))
         {
-            // No constraint violation while data is being buffered
             for (int i = 0; i < 4000; ++i)
             {
                 appender2.Append().Set(i);
                 appender2.Append().Set(i * 10.0);
+
+                // Don't finish the last row
                 if (i != 3999)
                     appender2.FinishRow();
             }
             
-            // Don't finish the last row
-            Assert.Throws<DuckDbException>(() => appender2.Flush(), 
-                e => e.ErrorKind == DuckDbErrorKind.InvalidInput 
+            Assert.Throws<DuckDbException>(() => appender2.Flush(),
+                e => e.ErrorKind == DuckDbErrorKind.InvalidInput
                     ? null : "Did not get a 'invalid input' complaint on flushing an incomplete row");
         }
+    }
+
+    /// <summary>
+    /// Mixing row-wise appends with <see cref="DuckDbAppender.AppendChunk{TState}"/> must preserve the
+    /// overall append order in the table.  <see cref="DuckDbAppender.AppendChunk{TState}"/> implicitly
+    /// flushes the preceding row-wise rows first; without that, DuckDB would commit the chunk's rows
+    /// ahead of the still-buffered row-wise rows.  Physical insertion order is observed through the
+    /// <c>rowid</c> pseudo-column.
+    /// </summary>
+    [Test]
+    public void AppendChunkImplicitlyFlushesPrecedingRowWiseAppends()
+    {
+        using var connection = new DuckDbConnection("");
+        connection.ExecuteNonQuery("CREATE TABLE t (seq INTEGER)");
+
+        using (var appender = connection.CreateTableAppender("t"))
+        {
+            // seq 0, 1 — row-wise
+            appender.Append().Set(0); appender.FinishRow();
+            appender.Append().Set(1); appender.FinishRow();
+
+            // seq 2, 3, 4 — chunk
+            appender.AppendChunk(2, static (in DuckDbChunkWriter w, int baseSeq) =>
+            {
+                var seq = w.GetColumnRaw<int>(0).AsSpan();
+                for (int i = 0; i < 3; i++)
+                    seq[i] = baseSeq + i;
+                return 3;
+            });
+
+            // seq 5, 6 — row-wise again
+            appender.Append().Set(5); appender.FinishRow();
+            appender.Append().Set(6); appender.FinishRow();
+
+            // seq 7, 8 — chunk again
+            appender.AppendChunk(7, static (in DuckDbChunkWriter w, int baseSeq) =>
+            {
+                var seq = w.GetColumnRaw<int>(0).AsSpan();
+                for (int i = 0; i < 2; i++)
+                    seq[i] = baseSeq + i;
+                return 2;
+            });
+        }
+
+        Assert.Equal(9, connection.ExecuteValue<int>("SELECT COUNT(*)::INTEGER FROM t"));
+
+        // rowid reflects physical insertion order; seq must come back strictly ascending 0..8, which
+        // holds only because AppendChunk flushed the preceding row-wise rows (in order) before
+        // inserting the chunk.  If it did not, the chunk rows would have been committed first.
+        using var result = connection.Execute("SELECT seq FROM t ORDER BY rowid");
+        result.ProcessAllChunks(false, (in DuckDbChunkReader reader, bool _) =>
+        {
+            Assert.Equal(9, reader.Length);
+            var seqCol = reader.GetColumn<int>(0);
+            for (int i = 0; i < reader.Length; i++)
+                Assert.Equal(i, seqCol.GetItem(i));
+            return true;
+        });
+    }
+
+    /// <summary>
+    /// A chunk append after a partially-written row triggers the implicit flush, which surfaces the
+    /// incomplete row as <see cref="DuckDbErrorKind.InvalidInput"/>.  (The chunk-writing function is
+    /// never invoked, because the flush happens first.)
+    /// </summary>
+    [Test]
+    public void AppendChunkAfterPartialRowThrows()
+    {
+        using var connection = new DuckDbConnection("");
+        connection.ExecuteNonQuery("CREATE TABLE t (a INTEGER, b INTEGER)");
+
+        using var appender = connection.CreateTableAppender("t");
+        appender.Append().Set(1);   // only one of two columns appended; row left unfinished
+
+        var e = Assert.Throws<DuckDbException>(() =>
+            appender.AppendChunk(0, static (in DuckDbChunkWriter w, int _) =>
+            {
+                w.GetColumnRaw<int>(0).AsSpan()[0] = 10;
+                w.GetColumnRaw<int>(1).AsSpan()[0] = 20;
+                return 1;
+            }));
+        Assert.Equal(DuckDbErrorKind.InvalidInput, e.ErrorKind);
     }
 }
