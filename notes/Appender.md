@@ -134,16 +134,23 @@ to the table:
   false`) unconditionally skips straight to `duckdb_appender_destroy`.
 
 **Important finding on DuckDB's appender error state (not idempotent):** inspecting DuckDB's own C API
-implementation (`AppenderWrapper` in `src/include/duckdb/main/capi/capi_internal.hpp`, and
-`src/main/capi/appender-c.cpp`) shows that the appender's stored `ErrorData` is unconditionally
-overwritten by each subsequent failing call — there is no "already failed, don't bother trying" guard in
-the C++ layer, except for a separate sticky `flush_failed` bool used only by `duckdb_appender_close`/
-`duckdb_appender_destroy`. This means that, once an error has occurred, a further append call is not
-guaranteed to keep failing (it may spuriously succeed) or to report the *same* error if it does fail; the
-original diagnostic information can simply be lost. Because of this, Mallard does **not** rely on DuckDB
-to keep reporting a consistent error after the first failure. Instead, `DuckDbAppender.CheckNotFailed`
-(called before every attempt to append a value or finish a row) explicitly throws
-`InvalidOperationException` once `_hasFailed` is set, without making any further native calls.
+implementation as of **v1.5.6** (`AppenderWrapper` in `src/include/duckdb/main/capi/capi_internal.hpp`,
+and `duckdb_appender_run_function` in `src/main/capi/appender-c.cpp`) shows that `AppenderWrapper` holds
+only the appender plus an `ErrorData`, and each failing call simply overwrites that `ErrorData` and
+returns `DuckDBError` — there is no "already failed, don't bother trying" guard in the C API layer.
+
+(An earlier version of this note claimed there was a separate sticky `flush_failed` bool consulted by
+`duckdb_appender_close`/`duckdb_appender_destroy`.  That is **no longer accurate**: there is no
+`flush_failed` anywhere in the v1.5.6 source.  A failed flush does not poison the native appender — it
+stays usable, e.g. via `duckdb_appender_clear` — though recovery is still impractical, as explained in
+[`AppenderRowChunkMixing.md`](AppenderRowChunkMixing.md).)
+
+The consequence is unchanged: once an error has occurred, a further append call is not guaranteed to keep
+failing (it may spuriously succeed) or to report the *same* error if it does fail; the original
+diagnostic information can simply be lost. Because of this, Mallard does **not** rely on DuckDB to keep
+reporting a consistent error after the first failure. Instead, `DuckDbAppender.CheckNotFailed` (called
+before every attempt to append a value or finish a row) explicitly throws `InvalidOperationException`
+once `_hasFailed` is set, without making any further native calls.
 
 ## 7. Remaining Potential Enhancements for Future Work
 
