@@ -1,6 +1,6 @@
 # Design: raw chunk-writing for the DuckDB appender
 
-Status: **implemented** — primitives, now including null/validity support (see §5). All tests in
+Status: **implemented** — primitives, null/validity, and VARCHAR/BLOB (see §5). All tests in
 `Mallard.Tests/TestAppenderChunk.cs` pass.
 
 This note records the design for writing data to a DuckDB appender *by data chunk*
@@ -151,8 +151,15 @@ marks an element SQL `NULL` (lazily allocating the vector's validity mask via
 cardinality) between reuses — confirmed in the header and covered by a test — so each fill starts
 all-valid and nulls do not leak across reused chunks.
 
+Also **VARCHAR / BLOB** (added after the first cut): these cannot go through `SetItem` (a raw memory
+copy of a read-only `DuckDbString` / `DuckDbBlob` would corrupt the vector — `SetItem` throws for
+them), so they are written through dedicated setters on `DuckDbVectorMethods` that call
+`duckdb_vector_assign_string_element_len` (which copies the bytes into DuckDB-managed storage):
+`Set(string)` / `SetStringUtf16(ReadOnlySpan<char>)` / `SetStringUtf8(ReadOnlySpan<byte>)` on
+`DuckDbVectorRawWriter<DuckDbString>`, and `SetBlob(ReadOnlySpan<byte>)` on
+`DuckDbVectorRawWriter<DuckDbBlob>`, mirroring the `DuckDbValue` setter family.
+
 **Out (explicit non-goals, deferred):**
-- **VARCHAR / BLOB** (need `duckdb_vector_assign_string_element_len`; not plain memory writes).
 - **Nested LIST / ARRAY / STRUCT**, and **ENUM / DECIMAL** storage nuances.
 - **Type-converting ("non-raw") writers** -- would require reverse converters, a separate,
   larger effort.
@@ -176,6 +183,9 @@ Already present and reused: `duckdb_data_chunk_get_vector`, `duckdb_vector_get_d
 
 For null/validity support, also added: `duckdb_vector_ensure_validity_writable` and
 `duckdb_validity_set_row_invalid` (used by `DuckDbVectorInfo.UnsafeSetInvalid`).
+
+For VARCHAR / BLOB, also added: `duckdb_vector_assign_string_element_len` (used by the string/blob
+setters in `DuckDbVectorMethods.RawWriter.cs`).
 
 ## 7. Safety analysis (mirrors reader guarantees)
 
@@ -208,6 +218,10 @@ with `GetColumnRaw` / `GetColumn` and assert. Cases:
 Null/validity cases: a column with interleaved nulls round-tripped back (via `IsItemValid` /
 `GetItemOrDefault`), and a null written in a reused chunk not leaking into the next fill.
 
+VARCHAR/BLOB cases: `SetItem` on a `DuckDbString`/`DuckDbBlob` column throws `NotSupportedException`;
+and a round-trip exercising `Set` / `SetStringUtf16` / `SetStringUtf8` / `SetBlob` over a short string,
+a multi-byte UTF-8 string, a long string (heap-fallback path), an empty blob, a large blob, and a NULL.
+
 ## 9. Work breakdown / files touched (as implemented)
 
 1. `Interop/NativeMethods.cs` -- added `duckdb_create_data_chunk`, `duckdb_data_chunk_set_size`,
@@ -217,8 +231,11 @@ Null/validity cases: a column with interleaved nulls round-tripped back (via `Is
 2. `Mallard/Vector/DuckDbVectorInfo.cs` -- added `UnsafeWrite<T>` (mirror of `UnsafeRead<T>`) and
    `UnsafeSetInvalid` (ensures a writable validity mask, then clears the row's validity bit).
 3. `Mallard/Vector/DuckDbVectorRawWriter.cs` -- new write-only `ref struct` wrapping
-   `DuckDbVectorInfo`, with `SetItem` / indexer and `SetInvalid`; `AsSpan` added in
-   `DuckDbVectorMethods.RawWriter.cs` to parallel `DuckDbVectorMethods.RawReader.cs`.
+   `DuckDbVectorInfo`, with `SetItem` / indexer, `SetInvalid`, and an `UnsafeSetValid` helper.
+   `SetItem` throws `NotSupportedException` for the variable-length `DuckDbString` / `DuckDbBlob`.
+   `AsSpan` and the VARCHAR/BLOB setters (`Set` / `SetStringUtf16` / `SetStringUtf8` / `SetBlob`,
+   all via `duckdb_vector_assign_string_element_len`) live in `DuckDbVectorMethods.RawWriter.cs`,
+   paralleling `DuckDbVectorMethods.RawReader.cs` and the `DuckDbValue` setter family.
 4. `Mallard/Appender/DuckDbChunkWriter.cs` -- new `ref struct` + the `DuckDbChunkWritingFunc`
    delegate.
 5. `Mallard/Appender/DuckDbAppender.Chunk.cs` -- new `partial`: cached write-chunk +

@@ -168,6 +168,10 @@ See [`AppenderChunkWrite.md`](AppenderChunkWrite.md) for the full design.  In br
   `AsSpan()` / indexer / `SetItem`, then return the number of rows populated.
 - The reusable native data chunk is created lazily (typed from `duckdb_appender_column_count` /
   `duckdb_appender_column_type`), reset between calls, and destroyed on disposal.
-- "Raw" primitive, fixed-width columns only.  Elements default to valid; call
-  `DuckDbVectorRawWriter<T>.SetInvalid(i)` to mark one SQL `NULL`.  `VARCHAR`/`BLOB`, nested types,
-  and type-converting writers are deferred.
+- Fixed-width columns are written through `AsSpan()` / indexer / `SetItem`.  Elements default to
+  valid; call `DuckDbVectorRawWriter<T>.SetInvalid(i)` to mark one SQL `NULL`.
+- `VARCHAR` and `BLOB` columns are written through dedicated setters on `DuckDbVectorMethods` —
+  `Set(string)` / `SetStringUtf16` / `SetStringUtf8` on `DuckDbVectorRawWriter<DuckDbString>`, and
+  `SetBlob` on `DuckDbVectorRawWriter<DuckDbBlob>` — which hand the bytes to DuckDB to copy
+  (`SetItem` is unavailable for these and throws).  Nested types and type-converting writers are
+  still deferred.
