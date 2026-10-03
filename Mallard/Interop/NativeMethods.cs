@@ -284,6 +284,9 @@ internal unsafe static partial class NativeMethods
     [LibraryImport(LibraryName)]
     internal static partial _duckdb_logical_type* duckdb_vector_get_column_type(_duckdb_vector* vector);
 
+    [LibraryImport(LibraryName)]
+    internal static partial void duckdb_vector_assign_string_element_len(_duckdb_vector* vector, idx_t index, byte* str, idx_t str_len);
+
     #endregion
 
     #region Prepared statements

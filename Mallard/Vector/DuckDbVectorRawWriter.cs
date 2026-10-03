@@ -190,8 +190,10 @@ public unsafe readonly ref struct DuckDbVectorRawWriter<T>
         _info.UnsafeWrite(index, value);
 
         // The item may have been marked invalid earlier; we must revert that
-        DuckDbVectorInfo.UnsafeSetValid(_validityMask, index);
+        UnsafeSetValid(index);
     }
+    
+    internal void UnsafeSetValid(int index) => DuckDbVectorInfo.UnsafeSetValid(_validityMask, index);
 
     [DoesNotReturn]
     private static void ThrowForUnwritableVariableLengthType(Type type)
@@ -201,7 +203,7 @@ public unsafe readonly ref struct DuckDbVectorRawWriter<T>
             "must allocate and manage the memory for variable-length data such as VARCHAR or BLOB.  Use the " +
             "row-at-a-time appender API for such columns. ");
     }
-
+    
     /// <summary>
     /// Mark an element of this vector as invalid, i.e. SQL <c>NULL</c>.
     /// </summary>

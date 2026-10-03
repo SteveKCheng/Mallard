@@ -544,4 +544,66 @@ public class TestAppenderChunk
                 return 0;
             }));
     }
+
+    /// <summary>
+    /// Writes VARCHAR and BLOB elements through the <see cref="DuckDbVectorMethods.Set(in DuckDbVectorRawWriter{DuckDbString}, int, string)"/>,
+    /// <c>SetStringUtf16</c>, <c>SetStringUtf8</c>, and <c>SetBlob</c> helpers — covering a short string,
+    /// a multi-byte UTF-8 string, a string too long for the stack buffer (exercising the heap fallback),
+    /// an empty blob, and a value later marked NULL — then verifies the round-trip.
+    /// </summary>
+    [Test]
+    public void AppendChunkSetStringAndBlob()
+    {
+        using var connection = new DuckDbConnection("");
+        connection.ExecuteNonQuery("CREATE TABLE t (id INTEGER, name VARCHAR, data BLOB)");
+
+        // Longer than Utf8StringConverterState.SuggestedBufferSize (0x200) so the marshaller must
+        // allocate a temporary heap buffer.
+        var longString = new string('x', 1000);
+        var utf8Hello = System.Text.Encoding.UTF8.GetBytes("héllo");   // "héllo": é is 2 UTF-8 bytes
+        byte[] blob0 = [0xDE, 0xAD, 0xBE, 0xEF];
+        var blobBig = new byte[1000];
+        Array.Fill(blobBig, (byte)0x5A);
+
+        using (var appender = connection.CreateTableAppender("t"))
+        {
+            appender.AppendChunk(0, (in DuckDbChunkWriter w, int _) =>
+            {
+                var id = w.GetColumnRaw<int>(0).AsSpan();
+                var name = w.GetColumnRaw<DuckDbString>(1);
+                var data = w.GetColumnRaw<DuckDbBlob>(2);
+
+                id[0] = 0; name.Set(0, "Alice");                   data.SetBlob(0, blob0);
+                id[1] = 1; name.SetStringUtf8(1, utf8Hello);       data.SetBlob(1, ReadOnlySpan<byte>.Empty);
+                id[2] = 2; name.SetStringUtf16(2, longString.AsSpan()); data.SetBlob(2, blobBig);
+                id[3] = 3; name.Set(3, "overwritten"); name.SetInvalid(3); data.SetBlob(3, [0x01]);
+                return 4;
+            });
+        }
+
+        Assert.Equal(4, connection.ExecuteValue<int>("SELECT COUNT(*)::INTEGER FROM t"));
+        Assert.Equal(3, connection.ExecuteValue<int>("SELECT COUNT(name)::INTEGER FROM t"));
+
+        using var result = connection.Execute("SELECT id, name, data FROM t ORDER BY id");
+        result.ProcessAllChunks(false, (in DuckDbChunkReader reader, bool _) =>
+        {
+            Assert.Equal(4, reader.Length);
+            var nameCol = reader.GetColumn<string>(1);
+            var dataCol = reader.GetColumn<byte[]>(2);
+
+            Assert.Equal("Alice", nameCol.GetItem(0));
+            Assert2.Equal(blob0, dataCol.GetItem(0));
+
+            Assert.Equal("héllo", nameCol.GetItem(1));
+            Assert.Empty(dataCol.GetItem(1));
+
+            Assert.Equal(longString, nameCol.GetItem(2));
+            Assert2.Equal(blobBig, dataCol.GetItem(2));
+
+            Assert.False(nameCol.IsItemValid(3));
+            Assert2.Equal(new byte[] { 0x01 }, dataCol.GetItem(3));
+
+            return true;
+        });
+    }
 }
