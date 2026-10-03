@@ -231,7 +231,7 @@ internal unsafe readonly struct DuckDbVectorInfo
         if (unchecked(j >= (uint)Length))
             throw new IndexOutOfRangeException("Index is out of range for the vector. ");
 
-        return _validityMask == null || (_validityMask[j >> 6] & (1u << (int)(j & 63))) != 0;
+        return _validityMask == null || (_validityMask[j >> 6] & (1ul << (int)(j & 63))) != 0;
     }
 
     internal void VerifyItemIsValid(int index)

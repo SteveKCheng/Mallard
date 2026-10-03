@@ -33,7 +33,7 @@ public interface IDuckDbVector
     /// For element index <c>i</c> and validity mask <c>m</c> (the return value from this method), 
     /// the following expression indicates if the element is valid:
     /// <code>
-    /// m.Length == 0 || (m[i / 64] &amp; (1u % 64)) != 0
+    /// m.Length == 0 || (m[i / 64] &amp; (1ul &lt;&lt; (i % 64)) != 0
     /// </code>
     /// </remarks>
     ReadOnlySpan<ulong> ValidityMask { get; }
