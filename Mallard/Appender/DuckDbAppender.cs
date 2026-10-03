@@ -422,4 +422,16 @@ public sealed unsafe partial class DuckDbAppender : IDisposable
         var status = NativeMethods.duckdb_appender_flush(_nativeObj);
         ThrowOnAppenderFailure(status, "Failed to flush pending data in appender. ");
     }
+
+    /// <summary>
+    /// The size of the chunks allocated by DuckDB (via <see cref="AppendChunk{TState}" />).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This size is actually a compile-time constant in DuckDB, but the actual value is not
+    /// part of DuckDB's public contract.  Knowing this value makes it easier to write code
+    /// to batch writing of an arbitrary number of rows into chunks. 
+    /// </para>
+    /// </remarks>
+    public int ChunkSize => (int)NativeMethods.duckdb_vector_size();
 }

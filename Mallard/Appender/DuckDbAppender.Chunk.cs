@@ -181,7 +181,7 @@ public partial class DuckDbAppender
 
             _writeChunk = chunk;
             _writeColumns = columns;
-            _writeCapacity = (int)NativeMethods.duckdb_vector_size();
+            _writeCapacity = ChunkSize;
         }
         finally
         {
