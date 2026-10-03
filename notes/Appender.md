@@ -154,10 +154,7 @@ once `_hasFailed` is set, without making any further native calls.
 
 ## 7. Remaining Potential Enhancements for Future Work
 
-1. **Explicit `Flush()` method**:
-   Expose `Flush()` on `DuckDbAppender` for long-running streaming pipelines that require checkpointing
-   before disposal. (`Close()` is now implemented; see section 6.)
-2. **Appender metadata introspection**:
+1. **Appender metadata introspection**:
    Expose `duckdb_appender_column_count` and `duckdb_appender_column_type` to allow callers to verify column counts and types dynamically.  (These two are now imported and used internally by the chunk-writing API — see section 8 — but are not yet surfaced as public members.)
 
 ## 8. Chunk-wise (bulk vectorized) appending
