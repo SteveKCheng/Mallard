@@ -41,7 +41,19 @@ row-wise `chunk`.
 ### Flush
 `Flush()` ([`appender.cpp:404-418`](https://github.com/duckdb/duckdb/blob/v1.5.6/src/main/appender.cpp#L404-L418)) calls `FlushChunk()` — which appends the active `chunk` to the
 **end** of `collection` ([`appender.cpp:393-402`](https://github.com/duckdb/duckdb/blob/v1.5.6/src/main/appender.cpp#L393-L402)) — and then commits the whole `collection` to the
-table in collection order via `FlushInternal`.
+table in collection order via `FlushInternal` (an `INSERT … SELECT` from the collection) and resets
+the buffers.
+
+The appender's "cache" (the term the official docs use for what flushing clears) is thus this
+two-level buffer: the active `chunk` (≤ `STANDARD_VECTOR_SIZE` = 2048 rows) plus the `collection`.
+It is **not** unbounded: after each chunk boundary `ShouldFlush()`
+([`appender.cpp:772-782`](https://github.com/duckdb/duckdb/blob/v1.5.6/src/main/appender.cpp#L772-L782))
+auto-flushes once `collection->Count() >= flush_count`, where `flush_count = DEFAULT_FLUSH_COUNT =
+STANDARD_VECTOR_SIZE * 100` = 204 800 rows
+([`appender.hpp:33`](https://github.com/duckdb/duckdb/blob/v1.5.6/src/include/duckdb/main/appender.hpp#L33)).
+A memory-size threshold (`flush_memory_threshold`) also exists but the C API never sets it
+(`duckdb_appender_create_ext` leaves it invalid), so through the C API the bound is purely that row
+count.  `duckdb_appender_flush` just forces that commit earlier, at a caller-chosen point.
 
 ## Consequence 1: rows are reordered
 
@@ -79,14 +91,44 @@ data sizes nothing surfaces the problem early; it manifests only at the final fl
 ## Implication for Mallard
 
 The DuckDB contract for this combination is effectively undefined — ordering hinges on an internal
-2048-row boundary and on whether a row is in progress — so Mallard should **reject the mix** rather
-than pass it through to surprising results.
+2048-row boundary and on whether a row is in progress.  Rather than reject the mix, Mallard makes it
+**well-ordered by flushing the pending row-wise rows before appending the chunk** (to be
+implemented):
 
-Sketch of a guard (to be implemented): track, on `DuckDbAppender`, whether a row-wise append is in
-progress or there are pending unflushed row-wise rows (set by `Append`/`FinishRow`, cleared on
-flush), and have `AppendChunk` refuse — or force a flush — when that state is set, and vice versa.
-The `_sequenceCounter` already bumped in `AppendChunk` only invalidates stale `Slot`s; it does not
-cover this ordering hazard.
+- Track on `DuckDbAppender` whether any row-wise append has happened since the last flush (set by
+  `Append`/`FinishRow`, cleared on flush).  In `AppendChunk`, if that flag is set, call
+  `duckdb_appender_flush` first — which commits the buffered row-wise rows to the table — then append
+  the chunk.  This is the one genuinely useful internal use of flush; it need not be exposed publicly.
+- Only the **row-wise → chunk** transition needs this.  **chunk → row-wise** is already correctly
+  ordered: the chunk rows enter `collection` first, and the row-wise rows reach `collection` only at
+  the final dispose-flush, i.e. after.  So only a row-wise-pending flag gates the implicit flush.
+- The `_sequenceCounter` already bumped in `AppendChunk` only invalidates stale `Slot`s; it does not
+  cover this ordering hazard, so the flag is separate.
+
+Caveats:
+
+- **The implicit flush adds a commit boundary.**  `Flush` actually writes the row-wise prefix into
+  the table (via `FlushInternal`, committed under the connection's transaction — in autocommit, right
+  away).  So a mixed sequence no longer lands all-or-nothing at dispose: the row-wise prefix is
+  committed before the chunk is appended, and if a later operation fails, that prefix is already in
+  the table.  This is acceptable for an appender (whose commit timing is already loose — see the
+  204 800-row auto-flush above) but is a real behavioral change worth documenting for callers.
+- **On a flush error, propagate and mark the appender failed** (Mallard's existing `_hasFailed`
+  path — dispose only).  This matches how value-set and `FinishRow` errors already behave.
+
+### Why not attempt error recovery via flush?
+
+In v1.5.6 a failed flush does **not** poison the native appender — there is no `flush_failed` flag
+anywhere in the source (unlike what the older-version description in [`Appender.md`](Appender.md)
+states), and `duckdb_appender_run_function` merely records the error and returns `DuckDBError`
+([`appender-c.cpp:108-128`](https://github.com/duckdb/duckdb/blob/v1.5.6/src/main/capi/appender-c.cpp#L108-L128)).
+But recovery is still not practical: `Flush()` resets `collection` only *after* `FlushInternal`
+succeeds, so a constraint violation leaves the failed batch sitting in `collection`, and the next
+flush re-attempts — and re-fails on — those same rows.  The only escape is `duckdb_appender_clear`
+([`appender.cpp:750`](https://github.com/duckdb/duckdb/blob/v1.5.6/src/main/appender.cpp#L750)), which
+discards *all* buffered-uncommitted rows, not selectively.  So for error handling the practical model
+is dispose-and-recreate — which `Dispose`/`Close` already do (they flush) — and there is no reason to
+expose `duckdb_appender_flush` to clients for recovery.
 
 See [`AppenderChunkWrite.md`](AppenderChunkWrite.md) for the chunk-writing design, and
 [`Appender.md`](Appender.md) for the appender overview.
