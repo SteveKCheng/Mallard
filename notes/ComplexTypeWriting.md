@@ -225,6 +225,52 @@ parameter → `duckdb_param_logical_type(stmt, idx)`. Derive nested member types
 `duckdb_map_type_key_type` / `_value_type`, `duckdb_union_type_member_type`,
 `duckdb_struct_type_child_type`, etc.
 
+## Aliases (and why they force keeping the native logical type)
+
+DuckDB's "alias" is a non-standard use of the word: rather than an *alternate* name for a type, it is a
+name that becomes part of the type's **identity** and is compared in type equality (see "How DuckDB
+compares logical types" above). Key facts (v1.5.6):
+
+- **It is a single `string alias` on the base `ExtraTypeInfo` — at most one** (there is no notion of
+  multiple aliases). `LogicalType::SetAlias` attaches a `GENERIC_TYPE_INFO` to carry it when the type has
+  no `ExtraTypeInfo` yet
+  ([`types.cpp:1431`](https://github.com/duckdb/duckdb/blob/v1.5.6/src/common/types/types.cpp#L1431)).
+- **Any type can carry one, including simple ones** — it is *not* restricted to recursive/complex types.
+  The headline example is `JSON`: physically a `VARCHAR` that carries `alias = "JSON"`. So a simple
+  physical type can still be a distinct DuckDB type by virtue of its alias.
+- **It participates in equality and is surfaced first by `ToString`.** `LogicalType::ToString()` returns
+  the alias (plus any extension modifiers) when present, before the structural spelling. For `JSON`,
+  whose structure is identical to `VARCHAR`, the alias is the *sole* discriminator: `JSON != VARCHAR`
+  under `operator==` even though both are physically `VARCHAR`.
+
+**Does the alias reach the column types a binding introspects?** Sometimes — and that is the catch:
+
+- **`CREATE TYPE foo AS <base/list/enum/struct>`**: in v1.5.6 the alias is **resolved away** when `foo`
+  is used as a column type. Such a column's logical type is just the underlying structural type
+  (`myint` → `INTEGER`, `mylist` → `INTEGER[]`, a named `STRUCT`/`ENUM` → its structural spelling).
+  Confirmed empirically: `duckdb_columns().data_type` shows the structural form, and because `ToString`
+  would have shown the alias if present, the alias field really is empty.
+- **Extension / built-in named types such as `JSON`** (and spatial `GEOMETRY`, etc.): the alias **is**
+  the type's identity and **survives** into the column's logical type. A `JSON` column comes back from
+  `duckdb_column_logical_type` / `duckdb_appender_column_type` as `VARCHAR` with `alias = "JSON"`.
+
+**Design rule for Mallard.** Because an alias can ride on a *simple* type (JSON), the argument for
+preserving the originating `duckdb_logical_type` is **broader than "complex/recursive types"**: retain
+the native handle whenever a column's type has an alias or extension info, in addition to the
+nested-type cases. Rebuilding a type from `(id + children)` alone silently drops the alias — turning
+`JSON` into `VARCHAR`, which is structurally equal to a rebuilt `VARCHAR` but *unequal* to the real
+`JSON` under DuckDB's `operator==`, i.e. a different type identity.
+
+Two things keep the cost of this bounded:
+
+- On the **write** path DuckDB applies implicit casts (`VARCHAR` → `JSON` is implicit), so appending a
+  string to a `JSON` column — or a query-appender whose virtual column is declared `VARCHAR` — usually
+  still succeeds by coercion. So the alias matters mainly for *faithful type identity / introspection*
+  and for cases where no implicit cast exists, not for breaking ordinary appends.
+- Retaining the native type is no longer an ownership headache: per
+  [`DuckDbThreadSafety.md`](DuckDbThreadSafety.md), logical types are immutable and cheap/safe to share,
+  which removes the original reason Mallard avoided storing `duckdb_logical_type`.
+
 ## Design implications for Mallard
 
 - The write-side needs the recursive mirror of the reader's child accessors on
