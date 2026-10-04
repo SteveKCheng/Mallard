@@ -59,13 +59,14 @@ public readonly record struct DuckDbColumnInfo
     public DuckDbValueKind ValueKind => (DuckDbValueKind)_valueKind;
 
     /// <summary>
-    /// The actual representation kind used for storage within vectors, 
-    /// when the logical type is
-    /// <see cref="DuckDbValueKind.Enum" /> or <see cref="DuckDbValueKind.Decimal" />.
+    /// The actual representation kind used when elements are stored in the target DuckDB vector.
     /// </summary>
     /// <value>
-    /// The storage kind of element in the vector, or <see cref="DuckDbValueKind.Invalid" />
-    /// if inapplicable.
+    /// The storage kind of elements in the vector, which will be different from
+    /// <see cref="ValueKind" /> only when the latter is 
+    /// <see cref="DuckDbValueKind.Enum" /> or <see cref="DuckDbValueKind.Decimal" />,
+    /// and will indicate a fixed-width integer type (8-, 16, 32, or 64-bit), depending
+    /// on the allowed range of values as defined by the column's schema.
     /// </value> 
     public DuckDbValueKind StorageKind => (DuckDbValueKind)_storageKind;
 
