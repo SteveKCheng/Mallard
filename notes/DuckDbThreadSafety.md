@@ -39,13 +39,32 @@ queries that descend into children (`duckdb_struct_type_child_type`, `duckdb_lis
    ([`shared_ptr_ipp.hpp:16`](https://github.com/duckdb/duckdb/blob/v1.5.6/src/include/duckdb/common/shared_ptr_ipp.hpp#L16)),
    whose control-block refcount is atomic per the C++ standard. Concurrent copies/destroys of types
    sharing an `ExtraTypeInfo` are therefore race-free.
-3. **No lazy mutation on "read".** `LogicalType::physical_type_` is computed eagerly in the constructor
+3. **No lazy mutation on "read" — neither in `LogicalType` nor in `ExtraTypeInfo`.**
+   `LogicalType::physical_type_` is computed eagerly in the constructor
    ([`types.cpp:44-46`](https://github.com/duckdb/duckdb/blob/v1.5.6/src/common/types/types.cpp#L44-L46));
    `InternalType()` just returns that stored, non-`mutable` field
    ([`types.hpp:267`](https://github.com/duckdb/duckdb/blob/v1.5.6/src/include/duckdb/common/types.hpp#L267)).
-   The structural payload (`StructTypeInfo::child_types`, the `EnumTypeInfo` dictionary, decimal
-   width/scale) is immutable after construction. So a "read" query is genuinely const; concurrent
-   readers of the same immutable `ExtraTypeInfo` do not race.
+   The shared payload behind the `shared_ptr<ExtraTypeInfo>` is likewise built at construction and never
+   mutated on a read path: there is no `mutable` field, no lazy cache, and no `mutex`/`atomic`/lock in
+   `extra_type_info.hpp`/`.cpp` or its subclasses. The usual lazy-cache suspect — the ENUM string→index
+   lookup map — is in fact populated eagerly in the `EnumTypeInfoTemplated` constructor, and `GetValues()`
+   is `const`
+   ([`enum_type_info.hpp:11-44`](https://github.com/duckdb/duckdb/blob/v1.5.6/src/include/duckdb/common/extra_type_info/enum_type_info.hpp#L11-L44));
+   `StructTypeInfo::child_types`, list/array child types, and decimal width/scale are set once in their
+   constructors too.
+
+   Note that `LogicalType` holds `shared_ptr<ExtraTypeInfo>`, *not* `shared_ptr<const ExtraTypeInfo>` — so
+   the immutability is by construction/discipline, not enforced by the type system. That is a deliberate
+   DuckDB convention (they don't `const`-qualify the payload), not a sign of post-construction mutation;
+   the absence of any mutation path is what was verified above. There is correspondingly **no internal
+   lock**, because none is needed — immutable-after-construction is the stronger, lock-free guarantee.
+   This is the same property DuckDB's own executor relies on when it shares one `LogicalType` /
+   `ExtraTypeInfo` across operator threads by `const&` / `shared_ptr` instead of cloning per thread, so
+   DuckDB's internal multithreading corroborates the guarantee.
+
+   (Scope: this covers the resolved data types a binding actually sees in result/appender columns.
+   A not-yet-bound placeholder such as `UnboundTypeInfo` is a pre-binding artifact and does not appear
+   there.)
 
 ## Read-only vectors/chunks: concurrent reads are safe
 
