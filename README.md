@@ -84,7 +84,7 @@ without intermediate copying or heavy conversions involving GC objects.  I think
 useful in applications involving machine learning or data science.  An ADO.NET-based interface would just 
 not be performant enough, and so I do not put high priority on it.
 
-## What works today (as of September 24, 2025)
+## What works today (as of October 4, 2026)
 
   - [X] Executing SQL queries and reading results incrementally
   - [X] Prepared statements with parameter binding
@@ -112,7 +112,9 @@ not be performant enough, and so I do not put high priority on it.
     - [X] ``System.Data.IDbCommand``
     - [X] ``System.Data.IDataReader``
   - [X] Null values in database can be checked explicitly or flagged implicitly with ``System.Nullable<T>`` element types
-  - [X] DuckDB appenders for primitive types (that can be written raw without memory management)
+  - [X] DuckDB appenders for simple types (not nested ones like `LIST` and `STRUCT` yet)
+    - [X] Row-wise appends
+    - [X] Column-wise appends through `Span<T>` on the DuckDB vectors' native memory
   - [X] Thoroughly documented API and internals
   - [X] Thread-safe and memory-safe public API 
     - If you do not use unsafe code, then even improper use of the public API should not crash the .NET run-time
