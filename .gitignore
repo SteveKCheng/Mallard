@@ -6,3 +6,4 @@ out/
 native/
 docfx/api/
 docfx/_site/
+**/scratch/
