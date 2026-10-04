@@ -117,6 +117,43 @@ Two sharp edges, both from the C++ impl
 `ARRAY` needs none of this (fixed stride, child pre-sized at `parent_capacity * N`); `STRUCT` needs none
 (children track the parent size).
 
+## Nested lists, and what list-entry offsets may contain
+
+**`LIST(LIST(...))` is supported** (arbitrary nesting), and it is nested **per level, not globally
+flattened**.  `LIST(LIST(INT))` is three stacked vectors: the outer list vector (its own
+`list_entry{offset,length}` + validity) whose child is *another* list vector (its own `list_entry`
+array + validity + its own child size) whose child is a flat `INT` vector.  Each list level has an
+independent `(offset,length)` indirection and its own `get_child` / `reserve` / `set_size`.  So writing
+`LIST(LIST(T))` is a list writer whose child is a list writer whose child is a `T` writer, and the
+reserve-once sizing (below) applies at **each** level.
+
+**The entries need not be contiguous, ordered, or disjoint.**  When a list vector is materialized
+(which the appender flush does — `VectorOperations::Copy`,
+[`vector_copy.cpp:224-242`](https://github.com/duckdb/duckdb/blob/v1.5.6/src/common/vector_operations/vector_copy.cpp#L224-L242)),
+DuckDB processes each row independently by its own `(offset, length)`, gathers exactly
+`offset+0 … offset+length-1` from the child via a selection vector, and *compacts* them into a fresh
+contiguous child in the target.  Therefore:
+
+- **Gaps** (child elements no row references) are silently dropped — harmless, just wasted space.
+- **Out-of-order** (row 1's slice physically after row 2's) is honored; the copy re-lays-out into
+  logical row order.
+- **Overlap** (two rows reference the same child range) duplicates those elements into both lists —
+  well-defined, not undefined behavior (just rarely intended).
+
+**The one hard requirement:** every entry must satisfy `offset + length <= childSize` (the size set via
+`duckdb_list_vector_set_size`), and those child slots must have been written.  DuckDB only checks this
+in a **DEBUG** build (`D_ASSERT(le->offset + le->length <= ListVector::GetListSize(...))`,
+[`vector.cpp:1860`](https://github.com/duckdb/duckdb/blob/v1.5.6/src/common/types/vector.cpp#L1860));
+the release copy path reads `offset+j` with no bounds check, so an entry running past the child size is
+an out-of-bounds read in release — garbage data or memory corruption.  **This is the sole list-offset
+invariant Mallard must guarantee.**
+
+This is convenient for the writer design: the client may compute offsets freely (sparse, unordered),
+and Mallard only has to (a) reserve + `set_size` the child to cover the maximum `offset+length` used and
+(b) bound-check each entry against that declared child size.  Because `reserve` can realloc and C# has
+no way to retract a `Span<T>` already handed out, Mallard's contract is **declare the child size up
+front, reserve once, then it is fixed** — per list level.
+
 ## C API inventory for nested writing
 
 - Navigation: `duckdb_struct_vector_get_child(v,i)`, `duckdb_list_vector_get_child(v)`,
