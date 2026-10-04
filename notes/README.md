@@ -14,4 +14,5 @@ These have been created to optimize AI coding, but there is a fair amount of inf
   - [Thread safety of the DuckDB C API](DuckDbThreadSafety.md)
   - [What to do with errors in disposing a .NET object?](DisposeErrors.md)
   - [Advanced features of appenders in DuckDB](AppenderFeatures.md)
+  - [Author's design notes on column/vector state/info structures](ColumnVectorStateDesign.md)
 
