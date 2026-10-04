@@ -66,6 +66,30 @@ queries that descend into children (`duckdb_struct_type_child_type`, `duckdb_lis
    A not-yet-bound placeholder such as `UnboundTypeInfo` is a pre-binding artifact and does not appear
    there.)
 
+### The one exception: `SetAlias` mutates in place
+
+There is exactly one mutator on a logical type: `LogicalType::SetAlias`
+(`duckdb_logical_type_set_alias`). It is **not** copy-on-write — it writes `type_info_->alias` directly
+into the existing, `shared_ptr`-shared `ExtraTypeInfo` (or allocates a fresh `GENERIC_TYPE_INFO` when the
+type has none yet)
+([`types.cpp:1431`](https://github.com/duckdb/duckdb/blob/v1.5.6/src/common/types/types.cpp#L1431)).
+So calling it on a type whose `ExtraTypeInfo` is shared mutates every `LogicalType` sharing that info and
+races any concurrent reader. (A direct consequence: you cannot "rename a copy" — `SetAlias` on a copy
+also changes the source, because the copy shares the info.)
+
+This does **not** undermine the read guarantee above, because nothing mutates a *published/shared* type:
+DuckDB's own three `LogicalType::SetAlias` call sites are all type-definition/DDL-time on unpublished
+instances — the `JSON` and `GEOMETRY` factories call it on a brand-new `VARCHAR`/`BLOB` (null
+`type_info_`, so a fresh exclusively-owned info is allocated;
+[`types.cpp:1756`](https://github.com/duckdb/duckdb/blob/v1.5.6/src/common/types/types.cpp#L1756)), and
+the catalog `ToSQL` path mutates a copy only during single-threaded DDL string generation. Types that
+reach parallel readers (result / column / appender types) are fully built, aliases included, before
+being shared, and are never mutated thereafter.
+
+**Rule for Mallard:** treat any shared logical type as strictly read-only and never call `set_alias` on
+it (there is no need to expose it). If a type ever has to be aliased, do it on a freshly created type
+with no shared `type_info_`, never on a borrowed or copied handle.
+
 ## Read-only vectors/chunks: concurrent reads are safe
 
 A result chunk fetched through the C API is fully **materialized and flat**, and its contents are
