@@ -61,7 +61,9 @@ internal unsafe readonly struct DuckDbVectorInfo
     /// Construct descriptor on a given vector with cached column information.
     /// </summary>
     /// <param name="nativeVector">
-    /// The vector containing the data (for one column within one chunk of the query results).
+    /// The DuckDB vector containing the data (for one column within one chunk of the query results).
+    /// This instance does not own the DuckDB vector; it is usually borrowed from the chunk that
+    /// owns it — so the chunk (<see cref="_duckdb_data_chunk" />) must outlive the vector. 
     /// </param>
     /// <param name="length">
     /// The length (number of rows) in the vector.  This information is generally
@@ -115,6 +117,12 @@ internal unsafe readonly struct DuckDbVectorInfo
     /// <param name="columnIndex">
     /// The index of the column to select from <paramref name="resultColumns" />.
     /// </param>
+    /// <remarks>
+    /// <para>
+    /// This constructor forwards to <see cref="DuckDbVectorInfo(_duckdb_vector*, int, in DuckDbColumnInfo)" />,
+    /// consolidating the logic to derive the vector for one of a given chunk's columns.
+    /// </para>
+    /// </remarks>
     internal static DuckDbVectorInfo FromNativeChunk(_duckdb_data_chunk* nativeChunk, 
                                                      IResultColumns resultColumns,
                                                      int length,

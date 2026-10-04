@@ -270,9 +270,10 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
     /// </para>
     /// <para>
     /// Nevertheless, the processing of the contents of chunks may still be parallelized.
-    /// Have one thread/task call this method repeatedly to obtain individual
-    /// chunk objects.  Then, each such object may be passed to a different thread/task,
-    /// to process its contents via <see cref="DuckDbResultChunk.ProcessContents" />.
+    /// Dedicate one thread/task to call this method repeatedly to obtain individual
+    /// <see cref="DuckDbResultChunk" /> objects.  Then, farm out processing of each
+    /// received object to other threads/tasks.  Threads may also, in parallel,
+    /// read (parts of) the same chunk that has been retrieved. 
     /// </para>
     /// </remarks>
     /// <returns>
