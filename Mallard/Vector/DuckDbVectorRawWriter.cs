@@ -149,6 +149,15 @@ public unsafe readonly ref struct DuckDbVectorRawWriter<T>
     /// </summary>
     /// <param name="index">The index of the element in this vector. </param>
     /// <exception cref="IndexOutOfRangeException">The index is out of range for the vector. </exception>
+    /// <exception cref="NotSupportedException">
+    /// <typeparamref name="T" /> is a variable-length type which cannot be written out by this indexer.
+    /// </exception>
+    /// <remarks>
+    /// <para>
+    /// This indexer gives a more natural, convenient syntax for setting values.  Its semantics
+    /// are the same as <see cref="SetItem" />.
+    /// </para>
+    /// </remarks>
     public T this[int index]
     {
         set => SetItem(index, value);
@@ -168,21 +177,41 @@ public unsafe readonly ref struct DuckDbVectorRawWriter<T>
     /// If the element at <paramref name="index" /> was previously marked invalid via <see cref="SetInvalid" />,
     /// it becomes valid after a successful call to this method.
     /// </para>
+    /// <para>
+    /// The .NET representation of DuckDB types that are variable-length, such as <see cref="DuckDbString" />, are
+    /// always read-only views into existing native memory.  The user cannot pass instances in from 
+    /// .NET code to write into DuckDB, since constructing them in the first place requires cooperating with
+    /// DuckDB to allocate native memory.  Therefore this method cannot accept such types.  Use the dedicated
+    /// methods of <see cref="DuckDbVectorMethods" /> to set variable-length values such as strings.
+    /// </para>
+    /// <para>
+    /// The .NET types for variable-length values are always "ref structs".
+    /// So, for better compile-time safety, this method could be statically restricted to <typeparamref name="T" />
+    /// that are not "ref structs".  However, doing so makes <see cref="DuckDbVectorRawWriter{T}" />
+    /// unergonomic to manipulate in "forwarder methods" that are generic over <typeparamref name="T" />:
+    /// <a href="https://github.com/dotnet/csharplang/discussions/6308">the .NET generics
+    /// system does not allow constraining from a generic type <c>T</c> to a less generic but non-concrete type
+    /// <c>U</c></a>.
+    /// </para>
+    /// <para>
+    /// Since there is no .NET syntax to construct non-default instances of those "ref struct" anyway,
+    /// writing code to call <see cref="SetItem" /> on those "ref structs" is not an easy mistake to make.  So, as a 
+    /// design trade-off, such errors will only be signaled at run-time.  (Since .NET monomorphizes instantiations
+    /// of generic methods on value types, in the normal case where this method is used correctly,
+    /// the error checks are optimized out and incur no run-time cost.)
+    /// </para>
     /// </remarks>
     /// <exception cref="NotSupportedException">
-    /// <typeparamref name="T" /> is a variable-length type (<see cref="DuckDbString" /> or
-    /// <see cref="DuckDbBlob" />), which cannot be written through a raw writer.
+    /// <typeparamref name="T" /> is a variable-length type which cannot be written out by this method.
     /// </exception>
     public void SetItem(int index, T value)
     {
-        if (typeof(T) == typeof(DuckDbArrayRef) || typeof(T) == typeof(DuckDbStructRef))
-            DuckDbVectorMethods.ThrowForAccessingNonexistentItems(typeof(T));
-
-        // DuckDbString / DuckDbBlob are read-only views over DuckDB-owned (variable-length) memory, so
-        // the raw bitwise copy below would merely stamp a dangling string_t into the vector and corrupt
-        // it.  Writing such values needs DuckDB to allocate their storage, which a raw writer does not do.
-        if (typeof(T) == typeof(DuckDbString) || typeof(T) == typeof(DuckDbBlob))
-            ThrowForUnwritableVariableLengthType(typeof(T));
+        if (typeof(T).IsByRefLike)
+        {
+            throw new NotSupportedException(
+                $"Values of type {typeof(T).Name} cannot be written by this method. " +
+                "Use one of the extension methods available from DuckDbVectorMethods instead. ");
+        }
 
         if (unchecked((uint)index >= (uint)_info.Length))
             throw new IndexOutOfRangeException("Index is out of range for the vector. ");
@@ -195,15 +224,6 @@ public unsafe readonly ref struct DuckDbVectorRawWriter<T>
     
     internal void UnsafeSetValid(int index) => DuckDbVectorInfo.UnsafeSetValid(_validityMask, index);
 
-    [DoesNotReturn]
-    private static void ThrowForUnwritableVariableLengthType(Type type)
-    {
-        throw new NotSupportedException(
-            $"Values of type {type.Name} cannot be written through a raw vector writer, because DuckDB " +
-            "must allocate and manage the memory for variable-length data such as VARCHAR or BLOB.  Use the " +
-            "row-at-a-time appender API for such columns. ");
-    }
-    
     /// <summary>
     /// Mark an element of this vector as invalid, i.e. SQL <c>NULL</c>.
     /// </summary>
