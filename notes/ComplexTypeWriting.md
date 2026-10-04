@@ -165,6 +165,66 @@ front, reserve once, then it is fixed** — per list level.
   `_member_type`, `duckdb_decimal_width` / `_scale` / `_internal_type`.
 - Per-vector validity: `duckdb_vector_get_validity`, `duckdb_vector_ensure_validity_writable`.
 
+## Scalar values and type equality (mixed nominal / structural)
+
+This section is about the *scalar* `duckdb_value` API (prepared-statement parameters, appender row
+values) rather than vectors, but the typing rules it documents apply throughout DuckDB — they are
+useful to know even as a plain SQL user.
+
+### Use the dedicated MAP/UNION value creators
+
+Although MAP and UNION are physically backed by STRUCT (see "Physical representations"), a scalar MAP or
+UNION value is **not** built with `duckdb_create_struct_value` — a struct value has
+`LogicalTypeId::STRUCT`, which is not equal to MAP or UNION (see below) and there is no implicit
+struct→map/union coercion. DuckDB provides dedicated creators (stable as of v1.5.6):
+
+- `duckdb_create_map_value(map_type, duckdb_value *keys, duckdb_value *values, idx_t entry_count)` —
+  parallel key/value arrays, not pre-assembled key/value structs.
+- `duckdb_create_union_value(union_type, idx_t tag_index, duckdb_value value)` — the active member's
+  tag index plus that member's value.
+
+(The companions `duckdb_create_struct_value`, `duckdb_create_list_value`, `duckdb_create_array_value`,
+and `duckdb_create_enum_value` cover the other composites.)
+
+### How DuckDB compares logical types
+
+`LogicalType::operator==` is `id_ == rhs.id_ && EqualTypeInfo(rhs)`
+([`types.cpp:2071`](https://github.com/duckdb/duckdb/blob/v1.5.6/src/common/types/types.cpp#L2071)), and
+`EqualTypeInfo` → `ExtraTypeInfo::Equals` compares the **alias**, the **extension metadata**, and then
+the structural content
+([`extra_type_info.cpp:112-146`](https://github.com/duckdb/duckdb/blob/v1.5.6/src/common/types/extra_type_info.cpp#L112-L146)).
+So equality is **structural within a matching type id, but also alias- and ENUM-sensitive**:
+
+- **Type id must match.** A `STRUCT` never equals a `MAP` or `UNION`, even with identical children —
+  this is the nominal part, and why a struct value can't stand in for a map/union.
+- **Within the id, structural.** `STRUCT` compares its child `(name, type)` pairs *including order*
+  (`child_types == other.child_types`); `MAP` its key/value types; `UNION` its members; `DECIMAL` its
+  width + scale; `LIST`/`ARRAY` their child type (+ array size).
+- **Alias / extension sensitive.** A type carrying an alias (a `CREATE TYPE` user-defined type, or an
+  extension type) is only equal to another with the *same* alias; an anonymous rebuilt type will not
+  match an aliased one.
+- **ENUM is nominal-by-content.** Two enums are equal only if their dictionaries match exactly — same
+  size and same value strings in the same insert order
+  ([`extra_type_info.cpp` `EnumTypeInfo::EqualsInternal`](https://github.com/duckdb/duckdb/blob/v1.5.6/src/common/types/extra_type_info.cpp)).
+
+### Consequence: when you may rebuild a type vs. must reuse the schema's
+
+- For **plain anonymous composites** (`STRUCT`/`LIST`/`ARRAY`/`MAP`/`UNION`/`DECIMAL`, no alias), a
+  freshly materialized, structurally-identical type (`duckdb_create_map_type`, `_struct_type`, …)
+  compares equal to the column's — you need not thread through the exact schema object.
+- You **must** reuse (or faithfully replicate) the schema's type when it carries an **alias** / is a
+  user-defined or extension type, or is/contains an **ENUM**, or simply to avoid getting nested names
+  and order exactly right by hand.
+- Binding and appending additionally apply **implicit casts** to the target type, so a
+  not-quite-equal-but-castable value can still succeed — but don't rely on that for composites (there
+  is no implicit struct→map, and a failed cast is a runtime error).
+
+The target type is readily available in both scalar-write contexts, so reusing it is the easy *and*
+safe default: appender column → `duckdb_appender_column_type(appender, col)`; prepared-statement
+parameter → `duckdb_param_logical_type(stmt, idx)`. Derive nested member types from it with
+`duckdb_map_type_key_type` / `_value_type`, `duckdb_union_type_member_type`,
+`duckdb_struct_type_child_type`, etc.
+
 ## Design implications for Mallard
 
 - The write-side needs the recursive mirror of the reader's child accessors on
