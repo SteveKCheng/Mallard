@@ -1,3 +1,4 @@
+- name: Examples
+  href: articles/examples.md
 - name: API
   href: api/
-

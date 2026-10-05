@@ -337,6 +337,30 @@ article .markdown > ul,
 article .markdown > ol,
 article dl.parameters > dd { max-width: var(--ma-measure); }
 
+/* On API pages the content column is already narrow (sidebar + right rail take
+   the rest), so the per-element cap above rarely bites. On conceptual pages it
+   is the only thing narrowing the text, and on the landing page there are no
+   side columns at all — capping paragraphs while code blocks fill the column
+   leaves a badly frayed right edge. So outside the API reference, constrain the
+   article as a whole and let its children fill it. */
+body:not([data-yaml-mime="ManagedReference"]):not([data-yaml-mime="ApiPage"]) article > p,
+body:not([data-yaml-mime="ManagedReference"]):not([data-yaml-mime="ApiPage"]) article > ul,
+body:not([data-yaml-mime="ManagedReference"]):not([data-yaml-mime="ApiPage"]) article > ol,
+body:not([data-yaml-mime="ManagedReference"]):not([data-yaml-mime="ApiPage"]) article blockquote,
+body:not([data-yaml-mime="ManagedReference"]):not([data-yaml-mime="ApiPage"]) article .NOTE,
+body:not([data-yaml-mime="ManagedReference"]):not([data-yaml-mime="ApiPage"]) article .TIP,
+body:not([data-yaml-mime="ManagedReference"]):not([data-yaml-mime="ApiPage"]) article .IMPORTANT,
+body:not([data-yaml-mime="ManagedReference"]):not([data-yaml-mime="ApiPage"]) article .CAUTION,
+body:not([data-yaml-mime="ManagedReference"]):not([data-yaml-mime="ApiPage"]) article .WARNING {
+  max-width: none;
+}
+
+body[data-layout="landing"] > main > .content > article {
+  max-width: 54rem;
+  margin-inline: auto;
+  padding: 2.5rem 0 1rem;
+}
+
 /* Headings */
 article h1,
 article h2,
