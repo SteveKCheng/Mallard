@@ -126,8 +126,8 @@ public class DocExamples
         string? firstSymbol = null;
 
         result.ProcessAllChunks(
-            state: false,
-            function: (in DuckDbChunkReader reader, bool _) =>
+            state: false,   // dummy value; not used
+            function: (in DuckDbChunkReader reader, bool _ /* state */) =>
             {
                 var symbol = reader.GetColumn<string>(0);
                 var quantity = reader.GetColumn<int>(1);

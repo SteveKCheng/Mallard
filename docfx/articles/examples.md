@@ -66,7 +66,10 @@ individual values afterwards does no further type checking.
 > The @Mallard.DuckDbChunkReader is a `ref struct` that is only valid for the duration of
 > the callback — the chunk it reads is released as soon as the callback returns. The
 > compiler enforces this: you cannot store it in a field or let it escape. To carry
-> results out, close over a local, as above.
+> results out, close over a local, as above.  You can also return a value from your
+> callback (an unused dummy `true` is being returned above); the value from 
+> its last invocation will be returned from `ProcessAllChunks`.
+> 
 
 ## Reading without copying
 
