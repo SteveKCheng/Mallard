@@ -48,6 +48,11 @@ jobs:
       #     the current release version of Docfx depends on.)
       run: dotnet tool update -g docfx
 
+    - name: Verify documentation code snippets
+      # DocFX renders an EMPTY code block, with no warning, when a referenced
+      # #region no longer exists.  This catches that before it ships.
+      run: python3 docfx/check-snippets.py
+
     - name: Run Docfx
       run: docfx docfx/docfx.json
 
