@@ -10,22 +10,18 @@ This library works, and has been tested, but much work remains.  See further bel
 
 ## Build status
 
-[![Build&Test status](https://github.com/SteveKCheng/Mallard/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/SteveKCheng/Mallard/actions/workflows/build-and-test.yml)
+[![Build & test status](https://github.com/SteveKCheng/Mallard/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/SteveKCheng/Mallard/actions/workflows/build-and-test.yml) [![docfx status](https://github.com/SteveKCheng/Mallard/actions/workflows/docfx.yml/badge.svg)](https://github.com/SteveKCheng/Mallard/actions/workflows/docfx.yml)
 
 ## Requirements
 
   - .NET 10
-
-(Earlier versions had worked with .NET 9, but required “hacky” workarounds in the code.
-It is messy to automatically test both .NET 9 and .NET 10, so the support for the former 
-has been removed.)
 
 ## Build instructions
 
   - Simply open the solution file ``Mallard.slnx`` in your .NET IDE and tell it to build;
   - or, on the command line, run ``dotnet build`` from the top-level directory.
 
-## Getting DuckDB
+### Getting DuckDB
 
 The build process will automatically download the native library files for DuckDB 
 (e.g. ``duckdb.dll`` for Windows), assuming the platform you are running
@@ -67,7 +63,7 @@ The test programs support AOT (ahead-of-time) compilation.  To run in AOT mode:
 
 ## API documentation
 
-  * [API documentation generated from “XML doc comments”](https://github.gold-saucer.org/Mallard/api/Mallard.html)
+  * [API documentation and examples](https://github.gold-saucer.org/Mallard/api/Mallard.html)
 
 ## Relation to other .NET bindings
 
