@@ -38,13 +38,17 @@
     "output": "_site",
     "template": [
       "default",
-      "material/material"
+      "modern",
+      "template"
     ],
     "globalMetadata": {
       "_appName": "Mallard",
       "_appTitle": "Mallard",
       "_enableSearch": true,
-      "pdf": false
+      "pdf": false,
+      "_appFooter": "<span>Mallard &mdash; memory-safe C# bindings for DuckDB</span>",
+      "_disableContribution": false,
+      "_appLogoPath": "images/mallard.png"
     }
   }
 }

@@ -1,0 +1,974 @@
+/* ==========================================================================
+   Mallard docfx theme
+   --------------------------------------------------------------------------
+   Loaded by the `modern` template AFTER public/docfx.min.css, so everything
+   here is a pure override. No build step, no npm, no vendored framework.
+
+   Layering:   docfx.json  "template": [ "default", "modern", "template" ]
+                                                               ^^^^^^^^
+                                                          this folder
+
+   docfx's own API rules are written as
+       body[data-yaml-mime=ManagedReference] article <sel>
+   i.e. specificity (0,3,2). Overrides below mirror that prefix where needed.
+   docfx's layout rules assume a 60px-tall header; we keep that height.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Design tokens
+   -------------------------------------------------------------------------- */
+
+:root {
+  /* Brand. The mallard drake's head is iridescent green; the logo is ink.
+     One accent, used sparingly: links, active nav, member rules. */
+  --ma-accent:        #0b6e55;
+  --ma-accent-hover:  #095944;
+  --ma-accent-soft:   rgba(11, 110, 85, 0.09);
+  --ma-accent-line:   rgba(11, 110, 85, 0.35);
+
+  /* Surfaces */
+  --ma-bg:            #ffffff;
+  --ma-bg-sunken:     #f7f8f8;   /* sidebar, code blocks */
+  --ma-bg-raised:     #ffffff;
+  --ma-bg-hover:      rgba(16, 24, 32, 0.045);
+
+  /* Ink */
+  --ma-fg:            #1f2328;
+  --ma-fg-muted:      #596573;
+  --ma-fg-faint:      #8a95a1;
+
+  /* Hairlines */
+  --ma-border:        #e3e6e9;
+  --ma-border-strong: #cfd4d9;
+
+  /* Syntax / signature blocks */
+  --ma-code-bg:       #f6f7f8;
+  --ma-code-fg:       #1f2328;
+  --ma-code-border:   #e7eaec;
+
+  /* Inline <code> inside prose */
+  --ma-inlinecode-bg: rgba(16, 24, 32, 0.055);
+  --ma-inlinecode-fg: #0f3b30;
+
+  /* Callouts */
+  --ma-note:          #2f6fb0;
+  --ma-warning:       #b06a0f;
+  --ma-danger:        #b3402f;
+  --ma-tip:           var(--ma-accent);
+
+  /* Type. No webfont: the docs must look right offline and in a local _site.
+     The tail of each stack covers Linux, which has none of the Apple/MS faces. */
+  --ma-font-sans: "Inter var", "Inter", -apple-system, BlinkMacSystemFont,
+                  "Segoe UI", Roboto, "Helvetica Neue", Arial,
+                  "Noto Sans", "DejaVu Sans", Cantarell, "Liberation Sans",
+                  sans-serif;
+  --ma-font-mono: ui-monospace, "JetBrains Mono", "SFMono-Regular", "SF Mono",
+                  Menlo, Consolas, Hack, "DejaVu Sans Mono", "Liberation Mono",
+                  monospace;
+
+  /* Metrics */
+  --ma-header-h:      60px;      /* must match docfx's hardcoded 60px */
+  --ma-radius:        8px;
+  --ma-radius-sm:     5px;
+  --ma-measure:       78ch;      /* comfortable prose width */
+  --ma-shadow-sm:     0 1px 2px rgba(16, 24, 32, 0.05);
+  --ma-shadow:        0 4px 16px -4px rgba(16, 24, 32, 0.12);
+}
+
+[data-bs-theme="dark"] {
+  --ma-accent:        #4ecfa3;
+  --ma-accent-hover:  #76e0bb;
+  --ma-accent-soft:   rgba(78, 207, 163, 0.12);
+  --ma-accent-line:   rgba(78, 207, 163, 0.38);
+
+  --ma-bg:            #14171a;
+  --ma-bg-sunken:     #181c20;
+  --ma-bg-raised:     #1b2025;
+  --ma-bg-hover:      rgba(255, 255, 255, 0.06);
+
+  --ma-fg:            #e3e7ea;
+  --ma-fg-muted:      #9aa5b1;
+  --ma-fg-faint:      #6e7984;
+
+  --ma-border:        #272d33;
+  --ma-border-strong: #39414a;
+
+  --ma-code-bg:       #0f1317;
+  --ma-code-fg:       #dbe1e6;
+  --ma-code-border:   #272d33;
+
+  --ma-inlinecode-bg: rgba(255, 255, 255, 0.08);
+  --ma-inlinecode-fg: #8fe3c4;
+
+  --ma-note:          #74aee8;
+  --ma-warning:       #e0a640;
+  --ma-danger:        #e8806f;
+
+  --ma-shadow-sm:     0 1px 2px rgba(0, 0, 0, 0.4);
+  --ma-shadow:        0 4px 16px -4px rgba(0, 0, 0, 0.55);
+}
+
+/* Feed our tokens back into Bootstrap so untouched components follow along. */
+:root,
+[data-bs-theme="light"],
+[data-bs-theme="dark"] {
+  --bs-body-bg: var(--ma-bg);
+  --bs-body-color: var(--ma-fg);
+  --bs-emphasis-color: var(--ma-fg);
+  --bs-secondary-color: var(--ma-fg-muted);
+  --bs-tertiary-color: var(--ma-fg-faint);
+  --bs-border-color: var(--ma-border);
+  --bs-border-color-translucent: var(--ma-border);
+  --bs-link-color: var(--ma-accent);
+  --bs-link-hover-color: var(--ma-accent-hover);
+  --bs-code-color: var(--ma-inlinecode-fg);
+  --bs-body-font-family: var(--ma-font-sans);
+  --bs-font-monospace: var(--ma-font-mono);
+  --bs-body-font-size: 1rem;
+  --bs-body-line-height: 1.65;
+  --bs-border-radius: var(--ma-radius);
+  --bs-border-radius-sm: var(--ma-radius-sm);
+  --bs-primary: var(--ma-accent);
+  --bs-primary-rgb: 11, 110, 85;
+}
+
+/* --------------------------------------------------------------------------
+   2. Base
+   -------------------------------------------------------------------------- */
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  background: var(--ma-bg);
+  color: var(--ma-fg);
+  font-family: var(--ma-font-sans);
+  font-size: 1rem;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "cv05" 1, "ss01" 1;  /* no-op on fallback fonts */
+}
+
+::selection { background: var(--ma-accent-soft); }
+
+a { color: var(--ma-accent); text-underline-offset: 0.18em; }
+a:hover { color: var(--ma-accent-hover); }
+
+/* The default 1768px is far too wide to read across. Pull it in to something
+   closer to readthedocs / DuckDB docs while leaving room for 3 columns. */
+.container-xxl { max-width: 1380px; }
+
+/* --------------------------------------------------------------------------
+   3. Header / navbar
+   -------------------------------------------------------------------------- */
+
+body > header {
+  position: sticky;
+  top: 0;
+  z-index: 1030;
+  background: color-mix(in srgb, var(--ma-bg) 86%, transparent);
+  -webkit-backdrop-filter: saturate(180%) blur(12px);
+  backdrop-filter: saturate(180%) blur(12px);
+  border-bottom: 1px solid var(--ma-border) !important;
+}
+
+body > header .navbar { --bs-navbar-padding-y: 0; min-height: var(--ma-header-h); }
+
+.navbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 650;
+  font-size: 1.05rem;
+  letter-spacing: -0.012em;
+  color: var(--ma-fg) !important;
+}
+.navbar-brand:hover { color: var(--ma-fg) !important; }
+
+/* NOTE: art/mallard.png is a finely-hatched ink drawing. `contain` at least
+   shows the whole bird rather than a cropped smudge, but at navbar size the
+   detail still muddies. A simplified silhouette mark would serve far better
+   here; swap `_appLogoPath` in docfx.json once one exists. */
+.navbar-brand #logo {
+  height: 34px;
+  width: 34px;
+  object-fit: contain;
+  border-radius: 5px;
+}
+/* art/mallard.png is an ink drawing on white. Inverting it in dark mode turns
+   the plate black and the duck white, which sits correctly on a dark navbar. */
+[data-bs-theme="dark"] .navbar-brand #logo { filter: invert(1); }
+
+/* Search box: a proper modern field rather than a bare bootstrap input. */
+.navbar #navbar form.search { position: relative; max-width: 460px; width: 100%; }
+.navbar #navbar form.search > i.bi {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--ma-fg-faint);
+  pointer-events: none;
+  font-size: 0.92rem;
+}
+.navbar #navbar form.search #search-query {
+  padding-left: 2.1rem;
+  height: 36px;
+  border-radius: 999px;
+  background: var(--ma-bg-sunken);
+  border: 1px solid var(--ma-border);
+  color: var(--ma-fg);
+  font-size: 0.9rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+.navbar #navbar form.search #search-query::placeholder { color: var(--ma-fg-faint); }
+.navbar #navbar form.search #search-query:focus {
+  background: var(--ma-bg);
+  border-color: var(--ma-accent-line);
+  box-shadow: 0 0 0 3px var(--ma-accent-soft);
+  outline: none;
+}
+
+/* --------------------------------------------------------------------------
+   4. Left sidebar (table of contents)
+   -------------------------------------------------------------------------- */
+
+body:not([data-search])[data-layout=""] > main > .toc-offcanvas,
+body:not([data-search])[data-layout="conceptual"] > main > .toc-offcanvas {
+  max-width: 300px;
+  flex: 0 0 290px;
+}
+
+.toc-offcanvas .offcanvas-body { padding-right: 0.5rem; }
+
+/* Filter field, matching the header search. */
+.toc form.filter { margin-bottom: 1rem; }
+.toc form.filter > input {
+  height: 34px;
+  border-radius: var(--ma-radius-sm);
+  background: var(--ma-bg-sunken);
+  border: 1px solid var(--ma-border);
+  color: var(--ma-fg);
+  font-size: 0.875rem;
+}
+.toc form.filter > input:focus {
+  background: var(--ma-bg);
+  border-color: var(--ma-accent-line);
+  box-shadow: 0 0 0 3px var(--ma-accent-soft);
+  outline: none;
+}
+
+.toc ul { font-size: 0.875rem; }
+
+/* Rows: readthedocs-style compact list with a left rail and an active marker.
+   docfx uses `padding-left:.85rem` on li for the expand chevron; keep that. */
+.toc li { margin: 0; }
+
+.toc li > a {
+  display: block;
+  padding: 0.3rem 0.6rem 0.3rem 0.1rem;
+  margin-left: -0.1rem;
+  border-radius: var(--ma-radius-sm);
+  color: var(--ma-fg-muted);
+  line-height: 1.45;
+  transition: color 0.12s ease, background 0.12s ease;
+}
+.toc li > a:hover,
+.toc li > a:focus {
+  color: var(--ma-fg);
+  background: var(--ma-bg-hover);
+  text-decoration: none;
+}
+
+/* Active page */
+.toc li > a.active {
+  color: var(--ma-accent);
+  background: var(--ma-accent-soft);
+  font-weight: 600;
+}
+
+/* Nested levels get an indent rail rather than raw padding. */
+.toc li > ul {
+  margin-left: 0.3rem;
+  padding-left: 0.65rem;
+  border-left: 1px solid var(--ma-border);
+}
+
+.toc .expand-stub:before { color: var(--ma-fg-faint); }
+
+/* Namespace group labels */
+.toc span.name-only {
+  font-weight: 650;
+  font-size: 0.72rem;
+  letter-spacing: 0.085em;
+  text-transform: uppercase;
+  color: var(--ma-fg-faint);
+  margin: 1.25rem 0 0.4rem;
+}
+
+/* --------------------------------------------------------------------------
+   5. Content column
+   -------------------------------------------------------------------------- */
+
+body:not([data-search])[data-layout=""] > main > .content,
+body:not([data-search])[data-layout="conceptual"] > main > .content {
+  margin: 0 3.5rem;
+  padding-bottom: 5rem;
+}
+
+.actionbar { min-height: 2rem; }
+
+#breadcrumb {
+  font-size: 0.8125rem;
+  color: var(--ma-fg-faint);
+  padding-top: 0.35rem;
+}
+#breadcrumb .breadcrumb { margin-bottom: 0; }
+#breadcrumb a { color: var(--ma-fg-muted); text-decoration: none; }
+#breadcrumb a:hover { color: var(--ma-accent); text-decoration: underline; }
+
+article { padding-top: 0.5rem; }
+
+/* Prose measure. API pages carry wide signature blocks, so cap the text only. */
+article > p,
+article > ul,
+article > ol,
+article .markdown > p,
+article .markdown > ul,
+article .markdown > ol,
+article dl.parameters > dd { max-width: var(--ma-measure); }
+
+/* Headings */
+article h1,
+article h2,
+article h3,
+article h4,
+article h5 {
+  color: var(--ma-fg);
+  letter-spacing: -0.015em;
+  line-height: 1.25;
+}
+
+article h1 {
+  font-size: 2.1rem;
+  font-weight: 700;
+  margin: 0.4rem 0 0.75rem;
+  letter-spacing: -0.025em;
+}
+
+/* Anchors must clear the sticky header. */
+body > main > .content > article [id] { scroll-margin-top: calc(var(--ma-header-h) + 1.25rem); }
+
+/* Conceptual (hand-written .md) headings */
+article > h2 {
+  font-size: 1.5rem;
+  font-weight: 650;
+  margin-top: 2.75rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--ma-border);
+}
+article > h3 { font-size: 1.2rem; font-weight: 650; margin-top: 2rem; }
+article > h4 { font-size: 1.02rem; font-weight: 650; margin-top: 1.6rem; }
+
+/* Inline code in prose */
+article code:not(.hljs):not([class*="lang-"]) {
+  font-family: var(--ma-font-mono);
+  font-size: 0.875em;
+  background: var(--ma-inlinecode-bg);
+  color: var(--ma-inlinecode-fg);
+  padding: 0.14em 0.38em;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+article a code { color: inherit; background: var(--ma-accent-soft); }
+
+/* --------------------------------------------------------------------------
+   6. Code blocks / signatures
+   -------------------------------------------------------------------------- */
+
+.codewrapper { margin: 1rem 0 1.5rem; }
+
+article pre {
+  background: var(--ma-code-bg);
+  border: 1px solid var(--ma-code-border);
+  border-radius: var(--ma-radius);
+  padding: 0.95rem 1.1rem;
+  margin: 0;
+  overflow-x: auto;
+  box-shadow: none;
+}
+
+/* highlight.js paints its own background on `code.hljs`, and docfx's dark rule
+   `[data-bs-theme=dark] .hljs {background:#1e1e1e}` has specificity (0,2,0) —
+   higher than a plain `article pre > code.hljs` (0,1,3). Without the theme
+   attribute in these selectors the block renders a box inside a box in dark
+   mode. Both themes are listed so neither can win by accident. */
+article pre > code,
+article pre > code.hljs,
+[data-bs-theme="light"] article pre > code.hljs,
+[data-bs-theme="dark"] article pre > code.hljs {
+  background: transparent;
+  color: var(--ma-code-fg);
+  font-family: var(--ma-font-mono);
+  font-size: 0.8375rem;
+  line-height: 1.6;
+  padding: 0;
+  white-space: pre;
+  tab-size: 4;
+}
+
+/* API signatures are frequently longer than the column (generics, ref struct
+   constraints, long parameter lists). Horizontal scrollbars on the single most
+   important line of a member page are hostile, so these wrap with a hanging
+   indent. Hand-written fenced code in .md keeps `pre` semantics and scrolls. */
+body[data-yaml-mime="ManagedReference"] article .codewrapper > pre > code,
+body[data-yaml-mime="ApiPage"] article .codewrapper > pre > code {
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  text-indent: -2.5ch;
+  padding-left: 2.5ch;
+  display: block;
+}
+
+/* Copy button: visible on focus too, not just hover. */
+article pre > .code-action {
+  top: 0.4rem;
+  right: 0.4rem;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+article pre:hover > .code-action,
+article pre:focus-within > .code-action { display: block; opacity: 1; }
+article pre > .code-action button,
+article pre > .code-action .bi {
+  color: var(--ma-fg-faint);
+  background: var(--ma-bg);
+  border: 1px solid var(--ma-border);
+  border-radius: var(--ma-radius-sm);
+}
+
+/* Syntax highlighting — a restrained palette tuned to the accent.
+   highlight.js class names as emitted by docfx. */
+.hljs-keyword,
+.hljs-literal,
+.hljs-built_in       { color: #8250df; }
+.hljs-string,
+.hljs-meta-string    { color: #0a6b45; }
+.hljs-title,
+.hljs-title.function_,
+.hljs-section        { color: #0550ae; }
+.hljs-type,
+.hljs-class .hljs-title,
+.hljs-title.class_   { color: #953800; }
+.hljs-number         { color: #0550ae; }
+.hljs-comment,
+.hljs-quote          { color: #6e7781; font-style: italic; }
+.hljs-attr,
+.hljs-attribute,
+.hljs-variable       { color: #1f2328; }
+.hljs-meta           { color: #6e7781; }
+
+[data-bs-theme="dark"] .hljs-keyword,
+[data-bs-theme="dark"] .hljs-literal,
+[data-bs-theme="dark"] .hljs-built_in       { color: #d2a8ff; }
+[data-bs-theme="dark"] .hljs-string,
+[data-bs-theme="dark"] .hljs-meta-string    { color: #7ee0b0; }
+[data-bs-theme="dark"] .hljs-title,
+[data-bs-theme="dark"] .hljs-title.function_,
+[data-bs-theme="dark"] .hljs-section        { color: #79b8ff; }
+[data-bs-theme="dark"] .hljs-type,
+[data-bs-theme="dark"] .hljs-class .hljs-title,
+[data-bs-theme="dark"] .hljs-title.class_   { color: #ffa657; }
+[data-bs-theme="dark"] .hljs-number         { color: #79b8ff; }
+[data-bs-theme="dark"] .hljs-comment,
+[data-bs-theme="dark"] .hljs-quote          { color: #8b949e; }
+[data-bs-theme="dark"] .hljs-attr,
+[data-bs-theme="dark"] .hljs-attribute,
+[data-bs-theme="dark"] .hljs-variable       { color: #e3e7ea; }
+[data-bs-theme="dark"] .hljs-meta           { color: #8b949e; }
+
+/* --------------------------------------------------------------------------
+   7. API reference pages
+   -------------------------------------------------------------------------- */
+
+/* --- 7a. Facts strip (Namespace / Assembly) as chips --- */
+
+body[data-yaml-mime="ManagedReference"] article div.facts,
+body[data-yaml-mime="ApiPage"] article div.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.5rem;
+  font-size: 0.78rem;
+  margin: 0 0 1.5rem;
+  color: var(--ma-fg-muted);
+}
+body[data-yaml-mime="ManagedReference"] article div.facts > dl,
+body[data-yaml-mime="ApiPage"] article div.facts > dl {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  background: var(--ma-bg-sunken);
+  border: 1px solid var(--ma-border);
+  border-radius: 999px;
+  padding: 0.18rem 0.7rem;
+}
+body[data-yaml-mime="ManagedReference"] article div.facts > dl > dt,
+body[data-yaml-mime="ApiPage"] article div.facts > dl > dt {
+  font-weight: 600;
+  color: var(--ma-fg-faint);
+  text-transform: uppercase;
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+}
+body[data-yaml-mime="ManagedReference"] article div.facts > dl > dt:after,
+body[data-yaml-mime="ApiPage"] article div.facts > dl > dt:after { content: ""; }
+body[data-yaml-mime="ManagedReference"] article div.facts > dl > dd,
+body[data-yaml-mime="ApiPage"] article div.facts > dl > dd {
+  margin: 0;
+  font-family: var(--ma-font-mono);
+  font-size: 0.74rem;
+  color: var(--ma-fg);
+}
+
+/* --- 7b. Type relationship lists (Inheritance / Implements / Inherited) --- */
+
+body[data-yaml-mime="ManagedReference"] article dl.typelist,
+body[data-yaml-mime="ApiPage"] article dl.typelist {
+  margin: 0 0 0.6rem;
+  font-size: 0.82rem;
+  display: grid;
+  grid-template-columns: minmax(7.5rem, max-content) 1fr;
+  gap: 0.15rem 1rem;
+  align-items: baseline;
+}
+body[data-yaml-mime="ManagedReference"] article dl.typelist > dt,
+body[data-yaml-mime="ApiPage"] article dl.typelist > dt {
+  font-weight: 600;
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ma-fg-faint);
+  padding-top: 0.12rem;
+}
+body[data-yaml-mime="ManagedReference"] article dl.typelist > dd,
+body[data-yaml-mime="ApiPage"] article dl.typelist > dd {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.1rem 0.15rem;
+  font-family: var(--ma-font-mono);
+  font-size: 0.78rem;
+}
+/* Inheritance chain reads as A › B › C */
+body[data-yaml-mime="ManagedReference"] article dl.typelist.inheritance > dd > div:not(:last-child):after,
+body[data-yaml-mime="ApiPage"] article dl.typelist.inheritance > dd > div:not(:last-child):after {
+  content: "›";
+  color: var(--ma-fg-faint);
+  margin: 0 0.45em;
+}
+/* Flat lists read as comma-separated */
+body[data-yaml-mime="ManagedReference"] article dl.typelist:not(.inheritance) > dd > div:not(:last-child):after,
+body[data-yaml-mime="ApiPage"] article dl.typelist:not(.inheritance) > dd > div:not(:last-child):after {
+  content: ",";
+  color: var(--ma-fg-faint);
+  margin-right: 0.4em;
+}
+
+/* These are secondary metadata, not calls to action: mute the links so the
+   summary and signature stay the loudest things on the page. */
+body[data-yaml-mime="ManagedReference"] article dl.typelist > dd a.xref,
+body[data-yaml-mime="ManagedReference"] article dl.typelist > dd span.xref,
+body[data-yaml-mime="ApiPage"] article dl.typelist > dd a.xref,
+body[data-yaml-mime="ApiPage"] article dl.typelist > dd span.xref {
+  color: var(--ma-fg-muted);
+  text-decoration: none;
+}
+body[data-yaml-mime="ManagedReference"] article dl.typelist > dd a.xref:hover,
+body[data-yaml-mime="ApiPage"] article dl.typelist > dd a.xref:hover {
+  color: var(--ma-accent);
+  text-decoration: underline;
+}
+
+/* Long inherited-member lists are noise; let them collapse gracefully. */
+body[data-yaml-mime="ManagedReference"] article dl.typelist.inheritedMembers > dd,
+body[data-yaml-mime="ApiPage"] article dl.typelist.inheritedMembers > dd {
+  max-height: 5.5rem;
+  overflow-y: auto;
+  color: var(--ma-fg-muted);
+}
+
+/* Give the whole relationship block a quiet container. */
+body[data-yaml-mime="ManagedReference"] article dl.typelist.inheritance,
+body[data-yaml-mime="ApiPage"] article dl.typelist.inheritance { margin-top: 1.25rem; }
+
+/* --- 7c. Member group headings (Constructors / Properties / Methods) --- */
+
+body[data-yaml-mime="ManagedReference"] article h2.section,
+body[data-yaml-mime="ApiPage"] article h2.section {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ma-fg-faint);
+  margin: 3.75rem 0 0;
+  padding-bottom: 0.65rem;
+  border-bottom: 2px solid var(--ma-border-strong);
+}
+
+/* --- 7d. Individual members --- */
+
+/* Each member is wrapped by partials/class.tmpl.partial in <section.api-member>.
+   Without that partial these rules simply don't match and the page still works. */
+article section.api-member {
+  padding: 1.6rem 0 1.5rem;
+  border-bottom: 1px solid var(--ma-border);
+  scroll-margin-top: calc(var(--ma-header-h) + 1.25rem);
+}
+article section.api-member:last-of-type { border-bottom: 0; }
+article section.api-member:target { background: var(--ma-accent-soft); }
+
+/* Member name */
+body[data-yaml-mime="ManagedReference"] article h3[data-uid],
+body[data-yaml-mime="ApiPage"] article h3[data-uid] {
+  font-family: var(--ma-font-mono);
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--ma-fg);
+  margin: 0 0 0.5rem;
+  padding: 0 1.6rem 0 0.7rem;
+  border-left: 3px solid var(--ma-accent-line);
+  line-height: 1.4;
+}
+
+/* "View source" action: show on hover of the member, keyboard-reachable. */
+body[data-yaml-mime="ManagedReference"] article .header-action,
+body[data-yaml-mime="ApiPage"] article .header-action {
+  display: inline-block;
+  opacity: 0;
+  color: var(--ma-fg-faint);
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+article section.api-member:hover .header-action,
+article h1:hover .header-action,
+article .header-action:focus { opacity: 1; }
+article .header-action:hover { color: var(--ma-accent); }
+
+/* Summary text under a member */
+article .markdown.level1.summary { color: var(--ma-fg); max-width: var(--ma-measure); }
+article .markdown.level1.summary > p:last-child { margin-bottom: 0; }
+
+/* --- 7e. Parameters / Returns / Remarks sub-headings --- */
+
+body[data-yaml-mime="ManagedReference"] article h4.section,
+body[data-yaml-mime="ApiPage"] article h4.section {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ma-fg-faint);
+  margin: 1.5rem 0 0.5rem;
+}
+
+/* --- 7f. Parameter / return definition lists --- */
+
+body[data-yaml-mime="ManagedReference"] article dl.parameters,
+body[data-yaml-mime="ApiPage"] article dl.parameters {
+  margin: 0 0 0.5rem;
+  border-left: 1px solid var(--ma-border);
+  padding-left: 1rem;
+}
+/* A parameter type is NOT a single element: docfx emits a generic type as a run
+   of sibling <a class="xref"> plus bare "<", "," and ">" text nodes. Anything
+   box-like (chips, borders, flex gaps) therefore shatters `IEnumerable<KeyValuePair
+   <string, string>>` into unrelated fragments. So the whole <dt> is set as one
+   monospace run and only colour distinguishes name from type. */
+body[data-yaml-mime="ManagedReference"] article dl.parameters > dt,
+body[data-yaml-mime="ApiPage"] article dl.parameters > dt {
+  margin: 1.1rem 0 0.25rem;
+  font-family: var(--ma-font-mono);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--ma-fg-muted);
+  overflow-wrap: break-word;
+}
+body[data-yaml-mime="ManagedReference"] article dl.parameters > dt:first-child,
+body[data-yaml-mime="ApiPage"] article dl.parameters > dt:first-child { margin-top: 0.35rem; }
+
+/* Parameter name */
+body[data-yaml-mime="ManagedReference"] article dl.parameters > dt > code,
+body[data-yaml-mime="ApiPage"] article dl.parameters > dt > code {
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--ma-fg);
+  background: transparent;
+  padding: 0;
+  margin: 0 0.45em 0 0;
+  white-space: nowrap;
+}
+/* Type references stay inline, quiet, and underline only on hover. */
+body[data-yaml-mime="ManagedReference"] article dl.parameters > dt a.xref,
+body[data-yaml-mime="ManagedReference"] article dl.parameters > dt span.xref,
+body[data-yaml-mime="ApiPage"] article dl.parameters > dt a.xref,
+body[data-yaml-mime="ApiPage"] article dl.parameters > dt span.xref {
+  font-family: inherit;
+  color: var(--ma-fg-muted);
+  text-decoration: none;
+  background: none;
+  border: 0;
+  padding: 0;
+}
+body[data-yaml-mime="ManagedReference"] article dl.parameters > dt a.xref:hover,
+body[data-yaml-mime="ApiPage"] article dl.parameters > dt a.xref:hover {
+  color: var(--ma-accent);
+  text-decoration: underline;
+}
+/* docfx's JS tags offsite links (mostly learn.microsoft.com) with `.external`
+   and appends a box-arrow glyph. Useful in prose; inside a dense generic type
+   expression it is pure noise, so drop it in type runs only. */
+body[data-yaml-mime="ManagedReference"] article dl.parameters > dt a.external[href]:after,
+body[data-yaml-mime="ManagedReference"] article dl.typelist > dd a.external[href]:after,
+body[data-yaml-mime="ApiPage"] article dl.parameters > dt a.external[href]:after,
+body[data-yaml-mime="ApiPage"] article dl.typelist > dd a.external[href]:after { content: none; }
+
+body[data-yaml-mime="ManagedReference"] article dl.parameters > dd,
+body[data-yaml-mime="ApiPage"] article dl.parameters > dd {
+  margin: 0 0 0.2rem;
+  color: var(--ma-fg-muted);
+  font-size: 0.925rem;
+}
+body[data-yaml-mime="ManagedReference"] article dl.parameters > dd > p:last-child,
+body[data-yaml-mime="ApiPage"] article dl.parameters > dd > p:last-child { margin-bottom: 0; }
+
+/* Remarks read as body copy, slightly set back. */
+article .markdown.remarks,
+article .markdown.level0.remarks,
+article .markdown.level1.remarks { max-width: var(--ma-measure); color: var(--ma-fg); }
+
+/* --- 7g. Namespace index pages (dl.jumplist) --- */
+
+/* docfx emits one <dl class="jumplist"> per type, so this is a list of lists.
+   Treated as a directory: name, then its one-line summary. */
+body[data-yaml-mime="ManagedReference"] article dl.jumplist,
+body[data-yaml-mime="ApiPage"] article dl.jumplist {
+  margin: 0;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid var(--ma-border);
+}
+body[data-yaml-mime="ManagedReference"] article dl.jumplist > dt,
+body[data-yaml-mime="ApiPage"] article dl.jumplist > dt { margin: 0; }
+body[data-yaml-mime="ManagedReference"] article dl.jumplist > dt > a.xref,
+body[data-yaml-mime="ApiPage"] article dl.jumplist > dt > a.xref {
+  font-family: var(--ma-font-mono);
+  font-size: 0.935rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+body[data-yaml-mime="ManagedReference"] article dl.jumplist > dt > a.xref:hover,
+body[data-yaml-mime="ApiPage"] article dl.jumplist > dt > a.xref:hover { text-decoration: underline; }
+body[data-yaml-mime="ManagedReference"] article dl.jumplist > dd,
+body[data-yaml-mime="ApiPage"] article dl.jumplist > dd {
+  margin: 0.15rem 0 0;
+  color: var(--ma-fg-muted);
+  font-size: 0.925rem;
+  max-width: var(--ma-measure);
+}
+body[data-yaml-mime="ManagedReference"] article dl.jumplist > dd > p:last-child,
+body[data-yaml-mime="ApiPage"] article dl.jumplist > dd > p:last-child { margin-bottom: 0; }
+
+/* Group headings on a namespace page ("Classes", "Structs", "Interfaces"). */
+body[data-yaml-mime="ManagedReference"] article h3[id]:not([data-uid]),
+body[data-yaml-mime="ApiPage"] article h3[id]:not([data-uid]) {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ma-fg-faint);
+  margin: 3rem 0 0;
+  padding-bottom: 0.6rem;
+  border-bottom: 2px solid var(--ma-border-strong);
+}
+
+/* --------------------------------------------------------------------------
+   8. Right rail ("In this article")
+   -------------------------------------------------------------------------- */
+
+body:not([data-search])[data-layout=""] > main > .affix,
+body:not([data-search])[data-layout="conceptual"] > main > .affix { width: 250px; }
+
+.affix { font-size: 0.8125rem; padding-left: 1.25rem; border-left: 1px solid var(--ma-border); }
+
+.affix h5 {
+  display: block;
+  font-weight: 700;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ma-fg-faint);
+  padding: 0 0 0.6rem;
+  margin: 0;
+}
+
+.affix ul li { margin: 0; }
+.affix ul li a {
+  display: block;
+  padding: 0.22rem 0 0.22rem 0.7rem;
+  margin-left: -1.25rem;
+  padding-left: 1.25rem;
+  border-left: 2px solid transparent;
+  color: var(--ma-fg-muted);
+  line-height: 1.45;
+  transition: color 0.12s ease, border-color 0.12s ease;
+}
+.affix ul li a:hover,
+.affix ul li a:focus { color: var(--ma-fg); text-decoration: none; }
+.affix ul li a.active {
+  color: var(--ma-accent);
+  border-left-color: var(--ma-accent);
+  font-weight: 600;
+}
+.affix ul ul li a { padding-left: 2rem; font-size: 0.78rem; }
+
+/* --------------------------------------------------------------------------
+   9. Tables, callouts, misc content
+   -------------------------------------------------------------------------- */
+
+article table {
+  width: 100%;
+  margin: 1.25rem 0 1.75rem;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.9rem;
+  border: 1px solid var(--ma-border);
+  border-radius: var(--ma-radius);
+  overflow: hidden;
+}
+article table th {
+  background: var(--ma-bg-sunken);
+  font-weight: 650;
+  font-size: 0.78rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--ma-fg-muted);
+  text-align: left;
+}
+article table th,
+article table td {
+  padding: 0.55rem 0.85rem;
+  border-bottom: 1px solid var(--ma-border);
+  vertical-align: top;
+}
+article table tr:last-child td { border-bottom: 0; }
+
+/* docfx NOTE/WARNING/TIP blocks */
+article .NOTE,
+article .TIP,
+article .IMPORTANT,
+article .CAUTION,
+article .WARNING {
+  border: 1px solid var(--ma-border);
+  border-left: 3px solid var(--ma-note);
+  border-radius: var(--ma-radius-sm);
+  background: var(--ma-bg-sunken);
+  padding: 0.85rem 1.1rem;
+  margin: 1.25rem 0;
+  max-width: var(--ma-measure);
+}
+article .TIP { border-left-color: var(--ma-tip); }
+article .IMPORTANT { border-left-color: var(--ma-accent); }
+article .CAUTION,
+article .WARNING { border-left-color: var(--ma-warning); }
+article .NOTE > p:first-child,
+article .TIP > p:first-child,
+article .IMPORTANT > p:first-child,
+article .CAUTION > p:first-child,
+article .WARNING > p:first-child {
+  font-weight: 650;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ma-fg-muted);
+  margin-bottom: 0.35rem;
+}
+
+article blockquote {
+  border-left: 3px solid var(--ma-border-strong);
+  padding-left: 1rem;
+  color: var(--ma-fg-muted);
+  margin: 1.25rem 0;
+  max-width: var(--ma-measure);
+}
+
+article hr { border-color: var(--ma-border); opacity: 1; }
+
+/* --------------------------------------------------------------------------
+   10. Search results
+   -------------------------------------------------------------------------- */
+
+#search-results .search-list { color: var(--ma-fg-muted); font-size: 0.85rem; }
+#search-results .search-item {
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--ma-border);
+}
+#search-results .search-item a { font-weight: 600; text-decoration: none; }
+#search-results .search-item a:hover { text-decoration: underline; }
+#search-results mark {
+  background: var(--ma-accent-soft);
+  color: inherit;
+  padding: 0 0.1em;
+  border-radius: 2px;
+}
+
+/* --------------------------------------------------------------------------
+   11. Footer, prev/next, contribution
+   -------------------------------------------------------------------------- */
+
+.contribution a.edit-link { font-size: 0.85rem; color: var(--ma-fg-muted); }
+.contribution a.edit-link:hover { color: var(--ma-accent); }
+
+.next-article { border-color: var(--ma-border) !important; }
+.next-article > div > span { font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ma-fg-faint); opacity: 1; }
+.next-article > div > a { font-weight: 600; text-decoration: none; margin-top: 0.15rem; }
+.next-article > div > a:hover { text-decoration: underline; }
+
+body > footer {
+  margin-top: 0;
+  padding: 1.75rem 0;
+  font-size: 0.85rem;
+  color: var(--ma-fg-faint);
+  background: var(--ma-bg-sunken);
+  border-top: 1px solid var(--ma-border) !important;
+}
+body > footer a { color: var(--ma-fg-muted); }
+body > footer a:hover { color: var(--ma-accent); }
+
+/* --------------------------------------------------------------------------
+   12. Responsive
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 1200px) {
+  body:not([data-search])[data-layout=""] > main > .content,
+  body:not([data-search])[data-layout="conceptual"] > main > .content { margin: 0 2rem; }
+}
+
+@media (max-width: 767.98px) {
+  body:not([data-search])[data-layout=""] > main > .content,
+  body:not([data-search])[data-layout="conceptual"] > main > .content { margin: 0; }
+  article h1 { font-size: 1.6rem; }
+  .navbar #navbar form.search { max-width: none; margin: 0.5rem 0; }
+  body[data-yaml-mime="ManagedReference"] article dl.typelist,
+  body[data-yaml-mime="ApiPage"] article dl.typelist { grid-template-columns: 1fr; gap: 0 0; }
+  body[data-yaml-mime="ManagedReference"] article dl.typelist > dd,
+  body[data-yaml-mime="ApiPage"] article dl.typelist > dd { margin-bottom: 0.5rem; }
+}
+
+/* --------------------------------------------------------------------------
+   13. Print
+   -------------------------------------------------------------------------- */
+
+@media print {
+  body > header, .toc-offcanvas, .affix, body > footer, .next-article { display: none !important; }
+  body:not([data-search])[data-layout=""] > main > .content { margin: 0; }
+  article pre { border-color: #ccc; background: #fafafa; }
+}
