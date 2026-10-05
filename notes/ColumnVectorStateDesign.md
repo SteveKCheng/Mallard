@@ -107,3 +107,13 @@ Yet, there are other places where we end up storing `DuckDbVectorInfo` on the he
 `DuckDbVectorDelegateReader` in particular.  That class, in its own way, 
 requires unsafe code to implement.
 
+If we want to retain today's minimalism in raw readers, we could consider constructing
+the external state only when non-raw readers are activated.  That's certainly 
+possible since `DuckDbVectorReader<T>` and `DuckDbVectorRawReader<T>` are completely
+different `struct` types even if they look similar.  But: (user-defined) converters 
+may want to use raw readers on their inputs.  Mallard's current converters do not.
+
+Or, re-use the internal arrays across chunks, but then that doesn't work when working 
+with more than one chunk object at a time.  The code may get too error-prone even when
+with sequential chunks.
+
