@@ -1,4 +1,6 @@
-# Author's notes (Oct 4, 2026) on designing proper column/vector info/state structures for the chunk writer
+# Author's notes on designing proper column/vector info/state structures for the chunk writer
+
+Written on Oct 4, 2026, and reflects the state of Mallard then.
 
 ## *Column/type info* versus *mutable vector state*
 
@@ -69,4 +71,39 @@ since:
   - the information there is about the *type* representation and not the column
   - it would contrast better with `DuckDbComplexTypeInfo` which contains more detailed information
 
+## Consider external state for reading too
+
+Currently `DuckDbVectorRawReader<T>` does not use any external state like the
+`ref ulong*` member present today in `DuckDbVectorRawWriter<T>`.  
+
+The "extra" state that's relevant for readers when `T` is a complex (nested) type.
+Then it is necessary to obtain the child vectors from the DuckDB C API for every
+chunk.  (The user would have the raw readers as local variables, thus caching the
+results for use in reading one chunk.) For raw readers this overhead is small 
+and not an issue.
+
+However, for non-raw readers, the conversion function, when asked to retrieve
+a value, gets passed only the top-level vector.  So without caching, the conversion
+function would have to retrieve the child vectors from the DuckDB C API for every
+*row*.  That's not good, so the current way Mallard solves it is by allowing
+`VectorElementConverter` to bind itself to specific vectors.  
+
+Eventually, the
+converter implementation for complex types end up with storing `DuckDbVectorInfo` 
+into the heap.  This is unsafe and so equivalent functionality can't be made available
+to user-defined converters!  That breaks one design principle of Mallard: user-defined 
+converters should have equivalent power to built-in converters even they can't use
+certain unsafe optimizations.
+
+And with mutable vector states the situation gets worse: if the mutable vector
+state is designed for use with `ref struct`s only, i.e. `ref` fields are involved,
+then it can't even be stored on the heap as the converter's boxed state.
+
+So, should we make access to the child vectors efficient so that the feature of
+binding converters to specific vectors can be removed?  If so, when we are designing 
+the mutable vector state, we should just make the read-only case be a special case.
+
+Yet, there are other places where we end up storing `DuckDbVectorInfo` on the heap,
+`DuckDbVectorDelegateReader` in particular.  That class, in its own way, 
+requires unsafe code to implement.
 
