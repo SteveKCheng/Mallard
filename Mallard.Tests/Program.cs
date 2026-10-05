@@ -2,6 +2,10 @@
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Diagnostics.CodeAnalysis;
+
+[assembly: SuppressMessage("Usage", "TUXU0001:xUnit code can be converted to TUnit code", 
+    Justification = "Mallard.Tests deliberately prefers the xUnit assertions library over TUnit's library. ")]
 
 namespace Mallard.Tests;
 
