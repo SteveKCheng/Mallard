@@ -1,10 +1,10 @@
-# Your GitHub workflow file under .github/workflows/
-# Trigger the action on push to main
+name: docfx
+
 on:
-  workflow_dispatch: {}
-#  push:
-#    branches:
-#      - master
+#  workflow_dispatch: {}
+  push:
+    branches:
+      - master
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
@@ -40,12 +40,6 @@ jobs:
         dotnet-version: 10.x
 
     - name: Get Docfx
-      # Need to use nightly version of Docfx that fixes this bug:
-      #   https://github.com/dotnet/docfx/issues/10655
-      #     NullReferenceException when analyzing extension methods
-      #     when the receiver type allows ref struct.  (It is 
-      #     actually a bug in the older version of Roslyn that
-      #     the current release version of Docfx depends on.)
       run: dotnet tool update -g docfx
 
     - name: Verify documentation code snippets
