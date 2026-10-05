@@ -438,7 +438,7 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
     /// successive invocations of <paramref name="function" />, pass in either
     /// a reference type, or a "ref struct" containing managed pointers,
     /// for <typeparamref name="TState" /> so that <paramref name="function" />
-    /// can modify the referents.  Or, of course, the code for <paramref name="function" />
+    /// can modify the referents.  Or, the code for <paramref name="function" />
     /// could also be written to close over individual variables from its surrounding
     /// scope.
     /// </para>
@@ -450,12 +450,9 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
                                                       DuckDbChunkReadingFunc<TState, TReturn> function)
         where TState : allows ref struct
     {
-        TReturn? result;
-        bool hasChunk;
-        do
-        {
-            hasChunk = ProcessNextChunk(state, function, out result);
-        } while (hasChunk);
+        TReturn? result = default;
+        while (ProcessNextChunk(state, function, out var value))
+            result = value;
 
         return result;
     }
@@ -520,17 +517,8 @@ public unsafe sealed class DuckDbResult : IResultColumns, IDisposable
         where TState : allows ref struct
     {
         TReturn result = seed;
-        while (true)
-        {
-            bool hasChunk = ProcessNextChunk(state, function, out var value);
-            if (!hasChunk)
-                break;
-
-            // About the null-silencing operator here:  Not sure why the C# compiler is not
-            // seeing that when this line is executed, hasChunk is true and therefore TReturn
-            // from ProcessNextChunk should not be null (for the purposes of null ref. analysis).
-            result = accumulate(result, value!);
-        }
+        while (ProcessNextChunk(state, function, out var value))
+            result = accumulate(result, value);
 
         return result;
     }

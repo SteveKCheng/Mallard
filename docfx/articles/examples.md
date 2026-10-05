@@ -80,11 +80,6 @@ This overload of `ProcessAllChunks` takes an `accumulate` function and a `seed`,
 folds the per-chunk results together — the natural shape when each chunk produces a
 partial answer.
 
-> [!WARNING]
-> The two-argument overload of `ProcessAllChunks` — the one without `accumulate` and
-> `seed` — does not currently return the last chunk's value. Use the accumulating
-> overload, or close over a local, when you need a result out of the callback.
-
 ## Inserting many rows with an appender
 
 An appender is DuckDB's fast bulk-insert path, considerably faster than executing
