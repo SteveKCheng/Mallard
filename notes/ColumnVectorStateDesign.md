@@ -1,6 +1,8 @@
 # Author's notes on designing proper column/vector info/state structures for the chunk writer
 
-Written on Oct 4, 2026, and reflects the state of Mallard then.
+Written on Oct 4, 2026, and reflects the state of Mallard then.  
+
+This date corresponds to Git revision: `783cf126c3a8ef6ee54b43542550442574c43cac`.
 
 ## *Column/type info* versus *mutable vector state*
 
@@ -85,11 +87,11 @@ and not an issue.
 However, for non-raw readers, the conversion function, when asked to retrieve
 a value, gets passed only the top-level vector.  So without caching, the conversion
 function would have to retrieve the child vectors from the DuckDB C API for every
-*row*.  That's not good, so the current way Mallard solves it is by allowing
-`VectorElementConverter` to bind itself to specific vectors.  
+*row*.  That is bad for performance, and Mallard solves — perhaps one may say 
+‘works around’ — the problem is by by allowing `VectorElementConverter` to 
+bind to specific vectors.  
 
-Eventually, the
-converter implementation for complex types end up with storing `DuckDbVectorInfo` 
+Eventually, the converter implementation for complex types end up with storing `DuckDbVectorInfo` 
 into the heap.  This is unsafe and so equivalent functionality can't be made available
 to user-defined converters!  That breaks one design principle of Mallard: user-defined 
 converters should have equivalent power to built-in converters even they can't use
@@ -107,13 +109,32 @@ Yet, there are other places where we end up storing `DuckDbVectorInfo` on the he
 `DuckDbVectorDelegateReader` in particular.  That class, in its own way, 
 requires unsafe code to implement.
 
-If we want to retain today's minimalism in raw readers, we could consider constructing
+Suppose we do decide to remove re-binding.  Then there are two choices:
+
+  - If we want to retain today's minimalism in raw readers, we could consider constructing
 the external state only when non-raw readers are activated.  That's certainly 
 possible since `DuckDbVectorReader<T>` and `DuckDbVectorRawReader<T>` are completely
 different `struct` types even if they look similar.  But: (user-defined) converters 
 may want to use raw readers on their inputs.  Mallard's current converters do not.
-
-Or, re-use the internal arrays across chunks, but then that doesn't work when working 
+  - Or, re-use the internal arrays across chunks, but then that doesn't work when working 
 with more than one chunk object at a time.  The code may get too error-prone even when
 with sequential chunks.
+
+Verdict: 
+
+  - We should probably leave raw readers like they are today, and require `VectorElementConverter`
+    implementations to consume non-raw readers only.  No implementation of such converters in
+    Mallard today uses raw readers for list/struct/etc. children because the converters have
+    to be recursive.
+  - Does that mean (user-defined) conversions must be inefficient?  No, because there is the
+    alternative of not using the `VectorElementConverter` framework at all.  The user can code 
+    a `ref struct` processor by composing multiple instantiations of `DuckDbVectorRawReader<T>` 
+    as member variables.  No different than reading the values of the columns inside the main loop 
+    for the chunk.  This solution will not make any indirect function calls at all, and the number 
+    of abstraction layers it will have to go through for each read will be minimal.  Locality of
+    reference will be much higher.  It will be faster than any `VectorElementConverter` 
+    implementation can be (even Mallard's built-in ones that use unsafe optimizations).
+  - With non-raw readers using cached child vectors, we can remove the feature of re-binding 
+    to vectors in `VectorElementConverter`.
+
 
