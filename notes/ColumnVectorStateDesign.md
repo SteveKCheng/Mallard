@@ -94,7 +94,7 @@ bind to specific vectors.
 Eventually, the converter implementation for complex types end up with storing `DuckDbVectorInfo` 
 into the heap.  This is unsafe and so equivalent functionality can't be made available
 to user-defined converters!  That breaks one design principle of Mallard: user-defined 
-converters should have equivalent power to built-in converters even they can't use
+converters should have equivalent power to built-in converters even if they can't use
 certain unsafe optimizations.
 
 And with mutable vector states the situation gets worse: if the mutable vector
@@ -117,14 +117,14 @@ possible since `DuckDbVectorReader<T>` and `DuckDbVectorRawReader<T>` are comple
 different `struct` types even if they look similar.  But: (user-defined) converters 
 may want to use raw readers on their inputs.  Mallard's current converters do not.
   - Or, re-use the internal arrays across chunks, but then that doesn't work when working 
-with more than one chunk object at a time.  The code may get too error-prone even when
-with sequential chunks.
+with more than one chunk object at a time.  The implementation code may get too error-prone 
+even when with sequential chunks.
 
 Verdict: 
 
   - We should probably leave raw readers like they are today, and require `VectorElementConverter`
     implementations to consume non-raw readers only.  No implementation of such converters in
-    Mallard today uses raw readers for list/struct/etc. children because the converters have
+    Mallard today uses raw readers for list/struct children because the converters have
     to be recursive.
   - Does that mean (user-defined) conversions must be inefficient?  No, because there is the
     alternative of not using the `VectorElementConverter` framework at all.  The user can code 
@@ -133,8 +133,8 @@ Verdict:
     for the chunk.  This solution will not make any indirect function calls at all, and the number 
     of abstraction layers it will have to go through for each read will be minimal.  Locality of
     reference will be much higher.  It will be faster than any `VectorElementConverter` 
-    implementation can be (even Mallard's built-in ones that use unsafe optimizations).
-  - With non-raw readers using cached child vectors, we can remove the feature of re-binding 
-    to vectors in `VectorElementConverter`.
+    implementation can be — even Mallard's built-in ones that use unsafe optimizations.
+  - With non-raw readers using cached child vectors, we can remove the (unsafe) feature of 
+    re-binding to vectors in `VectorElementConverter`.
 
 
