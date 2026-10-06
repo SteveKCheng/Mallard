@@ -28,11 +28,14 @@ public class TestPreparedStatement(DatabaseFixture fixture)
             ps.Parameters[1].Set(mktsegment);
 
             using var dbResult = ps.Execute();
-            
             Assert.Equal(limitRows, dbResult.DestructivelyCount());
 
+            // Re-execute to get all chunks back.
+            // This also tests there is no error in executing again without changing any parameters
+            using var dbResult2 = ps.Execute();
+
             // Check all values for constrained column are as expected 
-            dbResult.ProcessAllChunks(false, (in DuckDbChunkReader reader, bool _) =>
+            dbResult2.ProcessAllChunks(false, (in DuckDbChunkReader reader, bool _) =>
             {
                 var mktSegmentCol = reader.GetColumn<string>(1);
                 for (int i = 0; i < reader.Length; ++i)
@@ -40,9 +43,6 @@ public class TestPreparedStatement(DatabaseFixture fixture)
                 return true; // unused
             });
         }
-        
-        // Ensure there is no error in executing again without changing any parameters
-        using var _ = ps.Execute();
         
         // Not setting a parameter's value should be an error
         ps.ClearBindings();
