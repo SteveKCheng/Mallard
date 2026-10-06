@@ -23,6 +23,7 @@ This method calls Dispose, specifying true to release all resources. You do not 
 On the other hand, this method `Close` is declared as `virtual` so individual implementations could conceivably make it behave differently than `Dispose`.  Yet, in [.NET / API browser / Stream.Dispose Method](https://learn.microsoft.com/en-us/dotnet/api/system.io.stream.dispose?view=net-10.0) we find:
 
 <blockquote>
+
 **Notes to Inheritors**
 
 Place all cleanup logic for your stream object in Dispose(Boolean). Do not override Close().
@@ -73,17 +74,17 @@ finally
 }
 
 ```
-
-
 If code inside the `try` block throws an exception, C# enters the `finally` block. If `Dispose()` throws a second exception inside `finally`, **the second exception replaces and masks the original exception**. You lose the stack trace and root cause of the primary failure.
-2. **Cascade Failures in Multi-Resource Cleanup**
+
+2. **Cascade Failures in Multi-Resource Cleanup**.
 If a component cleans up multiple resources in its `Dispose` method, an exception thrown by the first resource’s `Dispose()` prevents cleanup logic for remaining resources from ever executing, causing memory or handle leaks.
-3. **The WCF Anti-Pattern**
+
+3. **The WCF Anti-Pattern**.
 The most famous violation of this guideline in .NET history occurred in **Windows Communication Foundation (WCF)**. WCF's client channels threw `CommunicationException` inside `Dispose()` if the channel was in a faulted state. This made WCF clients unsafe to use inside C# `using` blocks. Microsoft eventually had to document a workaround advising developers **not** to use `using` statements with WCF clients, citing it as an API design flaw.
 
 ### 2. The Exception to the Rule: Streams and Write-Buffers
 
-Despite the general guideline, **`System.IO.Stream` and its subclasses (like `FileStream` and `CryptoStream`) intentionally throw exceptions during `Dispose()**`.
+Despite the general guideline, **`System.IO.Stream` and its subclasses (like `FileStream` and `CryptoStream`) intentionally throw exceptions during `Dispose()`**.
 
 Why does `Stream.Dispose()` break the rule?
 
