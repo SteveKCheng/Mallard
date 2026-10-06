@@ -15,4 +15,5 @@ These have been created to optimize AI coding, but there is a fair amount of inf
   - [What to do with errors in disposing a .NET object?](DisposeErrors.md)
   - [Advanced features of appenders in DuckDB](AppenderFeatures.md)
   - [Author's design notes on column/vector state/info structures](ColumnVectorStateDesign.md)
+  - [DocFX breadcrumb bug with anchor-based tables of contents](DocfxBreadcrumbBug.md)
 
