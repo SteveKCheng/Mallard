@@ -5,18 +5,19 @@ namespace Mallard.Tests;
 
 internal static class DatabaseExtensions
 {
+    /// <summary>
+    /// Consume chunks, but only count the number of rows in total.
+    /// </summary>
     public static int DestructivelyCount(this DuckDbResult result)
-    {
-        bool hasChunk;
-        int totalRows = 0;
-        do
-        {
-            hasChunk = result.ProcessNextChunk(false, (in DuckDbChunkReader reader, bool _) => reader.Length, out var length);
-            totalRows += length;
-        } while (hasChunk);
-        return totalRows;
-    }
+        => result.ProcessAllChunks(
+            false,
+            (in reader, _) => reader.Length,
+            accumulate: (a, b) => a + b, 
+            seed: 0);
 
+    /// <summary>
+    /// Read a file of SQL statements and execute them against a connection. 
+    /// </summary>
     public static void ExecuteSqlScript(this DuckDbConnection connection, string scriptFilePath)
     {
         var script = File.ReadAllText(Path.Combine(Program.TestDataDirectory, scriptFilePath));
